@@ -19,5 +19,25 @@ public class AuthService {
     }
 
 
+    public AuthResponse registrarUsuario(RegistroRequest request) {
+        if(usuarioRepository.findByEmail(request.email()).isPresent()) {
+            throw new RuntimeException("El email ya se encuentra registrado");
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setNombreUsuario(request.nombreUsuario());
+        usuario.setNombre(request.nombre());
+        usuario.setApellido(request.apellido());
+        usuario.setEmail(request.email());
+        usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
+
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        String token = "token";
+
+        return new AuthResponse(token, usuarioGuardado.getUsuarioId(),
+                usuarioGuardado.getNombreUsuario(), usuarioGuardado.getNombre(),
+                usuarioGuardado.getApellido(), usuarioGuardado.getEmail()
+        );
+    }
 
 }
