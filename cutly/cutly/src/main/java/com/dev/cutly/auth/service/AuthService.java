@@ -21,7 +21,6 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-
     public AuthResponse registrarUsuario(RegistroRequest request) {
         if(usuarioRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("El email ya se encuentra registrado");
