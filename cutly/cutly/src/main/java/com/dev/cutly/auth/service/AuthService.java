@@ -26,6 +26,10 @@ public class AuthService {
             throw new RuntimeException("El email ya se encuentra registrado");
         }
 
+//        if (!request.contrasena().equals(request.contrasenConfirmada())){
+//            throw new RuntimeException("Las contraseñas introducidas no coinciden");
+//        }
+
         Usuario usuario = new Usuario();
         usuario.setNombreUsuario(request.nombreUsuario());
         usuario.setNombre(request.nombre());

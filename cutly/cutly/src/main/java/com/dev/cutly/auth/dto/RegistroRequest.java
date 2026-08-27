@@ -1,5 +1,6 @@
 package com.dev.cutly.auth.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -24,7 +25,14 @@ public record RegistroRequest(
 
         @NotBlank(message = "La contraseña no debe estar vacia")
         @Size(min = 8, message = "La contraseña debe contener minimo 8 caracteres")
-        String contrasena
+        String contrasena,
 
+        @NotBlank(message = "Por favor confirme su contraseña")
+        String contrasenConfirmada
 ) {
+
+    @AssertTrue(message = "Las contraseñas introducidas no coinciden")
+    public boolean isPasswordValid() {
+        return contrasena.equals(contrasenConfirmada);
+    }
 }
