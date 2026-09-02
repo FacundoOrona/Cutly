@@ -42,6 +42,5 @@ public class Usuario {
 
     @NotBlank(message = "La contraseña no puede estar vacia")
     @Column(name = "password_hash", nullable = false, length = 255)
-    @Size(min = 8, max = 50, message = "La contraseña debe contener minimo 8 caracteres")
     private String contrasena;
 }
