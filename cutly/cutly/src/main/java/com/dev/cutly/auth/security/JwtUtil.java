@@ -51,10 +51,10 @@ public class JwtUtil {
 
     public Date extractExpiration(String token) {
         return Jwts.parser()
-                .setSigningKey(signingKey)
+                .verifyWith(signingKey)
                 .build()
-                .parseClaimsJws(token)
-                .getBody()
+                .parseSignedClaims(token)
+                .getPayload()
                 .getExpiration();
     }
 }
