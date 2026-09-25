@@ -2,11 +2,14 @@ package com.dev.cutly.auth.service;
 
 import com.dev.cutly.auth.dto.AuthResponse;
 import com.dev.cutly.auth.dto.LoginRequest;
-import com.dev.cutly.auth.dto.RegistroRequest;
-import com.dev.cutly.auth.model.TokenInvalido;
-import com.dev.cutly.auth.model.Usuario;
+import com.dev.cutly.auth.dto.RegistroClienteRequest;
+import com.dev.cutly.auth.dto.RegistroOwnerRequest;
+import com.dev.cutly.auth.entity.TokenInvalido;
+import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
-import com.dev.cutly.auth.repository.UsuarioRepository;
+import com.dev.cutly.usuario.enums.Rol;
+import com.dev.cutly.usuario.enums.UsuarioStatus;
+import com.dev.cutly.usuario.repository.UsuarioRepository;
 import com.dev.cutly.auth.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,28 +29,52 @@ public class AuthService {
         this.tokenInvalidoRepository = tokenInvalidoRepository;
     }
 
-    public AuthResponse registrarUsuario(RegistroRequest request) {
+    public AuthResponse registrarCliente(RegistroClienteRequest request) {
         if(usuarioRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("El email ya se encuentra registrado");
         }
 
-//        if (!request.contrasena().equals(request.contrasenConfirmada())){
-//            throw new RuntimeException("Las contraseñas introducidas no coinciden");
-//        }
-
         Usuario usuario = new Usuario();
-        usuario.setNombreUsuario(request.nombreUsuario());
         usuario.setNombre(request.nombre());
         usuario.setApellido(request.apellido());
         usuario.setEmail(request.email());
+        usuario.setDni(request.dni());
+        usuario.setRol(Rol.CLIENT);
+        usuario.setStatus(UsuarioStatus.ACTIVE);
         usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
 
-        Usuario usuarioGuardado = usuarioRepository.save(usuario);
-        String token = jwtUtil.generarToken(usuarioGuardado.getEmail());
+        Usuario clienteGuardado = usuarioRepository.save(usuario);
+        String token = jwtUtil.generarToken(clienteGuardado.getEmail());
 
-        return new AuthResponse(token, usuarioGuardado.getUsuarioId(),
-                usuarioGuardado.getNombreUsuario(), usuarioGuardado.getNombre(),
-                usuarioGuardado.getApellido(), usuarioGuardado.getEmail()
+        return new AuthResponse(token, clienteGuardado.getUsuarioId(),
+                clienteGuardado.getDni(), clienteGuardado.getNombre(),
+                clienteGuardado.getApellido(), clienteGuardado.getEmail(),
+                clienteGuardado.getStatus(), clienteGuardado.getRol()
+        );
+    }
+
+    public AuthResponse registrarOwner(RegistroOwnerRequest request) {
+        if(usuarioRepository.findByEmail(request.email()).isPresent()) {
+            throw new RuntimeException("El email ya se encuentra registrado");
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setNombre(request.nombre());
+        usuario.setApellido(request.apellido());
+        usuario.setEmail(request.email());
+        usuario.setDni(request.dni());
+        // El rol de la cuenta se define en el servidor; nunca se acepta desde el DTO.
+        usuario.setRol(Rol.OWNER);
+        usuario.setStatus(UsuarioStatus.ACTIVE);
+        usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
+
+        Usuario ownerGuardado = usuarioRepository.save(usuario);
+        String token = jwtUtil.generarToken(ownerGuardado.getEmail());
+
+        return new AuthResponse(token, ownerGuardado.getUsuarioId(),
+                ownerGuardado.getDni(), ownerGuardado.getNombre(),
+                ownerGuardado.getApellido(), ownerGuardado.getEmail(),
+                ownerGuardado.getStatus(), ownerGuardado.getRol()
         );
     }
 
@@ -59,10 +86,15 @@ public class AuthService {
             throw new RuntimeException("Credenciales invalidas: contraseña incorrecta");
         }
 
+        if (usuario.getStatus() != UsuarioStatus.ACTIVE) {
+            throw new RuntimeException("La cuenta no está activa");
+        }
+
         String token = jwtUtil.generarToken(usuario.getEmail());
 
-        return new AuthResponse(token, usuario.getUsuarioId(), usuario.getNombreUsuario(),
-                usuario.getNombre(), usuario.getApellido(), usuario.getEmail());
+        return new AuthResponse(token, usuario.getUsuarioId(), usuario.getDni(),
+                usuario.getNombre(), usuario.getApellido(), usuario.getEmail(),
+                usuario.getStatus(), usuario.getRol());
     }
 
     public void cerrarSesion(String token) {
