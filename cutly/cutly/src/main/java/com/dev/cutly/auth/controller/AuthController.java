@@ -2,7 +2,8 @@ package com.dev.cutly.auth.controller;
 
 import com.dev.cutly.auth.dto.AuthResponse;
 import com.dev.cutly.auth.dto.LoginRequest;
-import com.dev.cutly.auth.dto.RegistroRequest;
+import com.dev.cutly.auth.dto.RegistroClienteRequest;
+import com.dev.cutly.auth.dto.RegistroOwnerRequest;
 import com.dev.cutly.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -19,10 +20,22 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/registro")
-    public ResponseEntity<?> registroUsuario (@Valid @RequestBody RegistroRequest request) {
+    //Registro de clientes - usuarios
+    @PostMapping("/registro-cliente")
+    public ResponseEntity<?> registroCliente (@Valid @RequestBody RegistroClienteRequest request) {
         try {
-            AuthResponse response = authService.registrarUsuario(request);
+            AuthResponse response = authService.registrarCliente(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    //Registro de owners - usuarios dueños
+    @PostMapping("/registro-owner")
+    public ResponseEntity<?> registroOwner (@Valid @RequestBody RegistroOwnerRequest request) {
+        try {
+            AuthResponse response = authService.registrarOwner(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
