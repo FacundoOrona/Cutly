@@ -1,6 +1,6 @@
 package com.dev.cutly.auth.repository;
 
-import com.dev.cutly.auth.model.TokenInvalido;
+import com.dev.cutly.auth.entity.TokenInvalido;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
