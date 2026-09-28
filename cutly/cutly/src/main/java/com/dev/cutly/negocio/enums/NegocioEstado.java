@@ -1,4 +1,4 @@
-package com.dev.cutly.admin.enums;
+package com.dev.cutly.negocio.enums;
 
 public enum NegocioEstado {
     ACTIVE,
