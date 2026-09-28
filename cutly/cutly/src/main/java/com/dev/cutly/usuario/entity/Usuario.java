@@ -32,17 +32,17 @@ public class Usuario {
     @Column(nullable = false, length = 20)
     private String apellido;
 
+    @NotBlank(message = "El DNI no puede estar vacío")
+    @Size(min = 7, max = 9, message = "El DNI debe contener entre 7 y 9 caracteres")
     @Column(nullable = false, unique = true)
-    @NotBlank(message = "El dni no puede estar vacio")
-    @Size(min = 7, max = 9, message = "El dni debe contener entre 7 y 9 caracteres")
     private String dni;
 
-    @NotBlank(message = "El email no puede estar vacio")
-    @Email(message = "El formato del email no es valido")
+    @NotBlank(message = "El email no puede estar vacío")
+    @Email(message = "El formato del email no es válido")
     @Column(nullable = false, unique = true)
     private String email;
 
-    @NotBlank(message = "La contraseña no puede estar vacia")
+    @NotBlank(message = "La contraseña no puede estar vacía")
     @Column(name = "password_hash", nullable = false, length = 255)
     private String contrasena;
 
