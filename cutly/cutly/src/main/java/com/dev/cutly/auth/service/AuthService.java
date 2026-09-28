@@ -46,7 +46,8 @@ public class AuthService {
         return new AuthResponse(token, clienteGuardado.getUsuarioId(),
                 clienteGuardado.getDni(), clienteGuardado.getNombre(),
                 clienteGuardado.getApellido(), clienteGuardado.getEmail(),
-                clienteGuardado.getStatus(), clienteGuardado.getRol()
+                clienteGuardado.getStatus(), clienteGuardado.getRol(),
+                jwtUtil.extractExpiration(token).toInstant()
         );
     }
 
@@ -70,7 +71,8 @@ public class AuthService {
         return new AuthResponse(token, ownerGuardado.getUsuarioId(),
                 ownerGuardado.getDni(), ownerGuardado.getNombre(),
                 ownerGuardado.getApellido(), ownerGuardado.getEmail(),
-                ownerGuardado.getStatus(), ownerGuardado.getRol()
+                ownerGuardado.getStatus(), ownerGuardado.getRol(),
+                jwtUtil.extractExpiration(token).toInstant()
         );
     }
 
@@ -94,7 +96,8 @@ public class AuthService {
         return new AuthResponse(token, superAdminGuardado.getUsuarioId(),
                 superAdminGuardado.getDni(), superAdminGuardado.getNombre(),
                 superAdminGuardado.getApellido(), superAdminGuardado.getEmail(),
-                superAdminGuardado.getStatus(), superAdminGuardado.getRol()
+                superAdminGuardado.getStatus(), superAdminGuardado.getRol(),
+                jwtUtil.extractExpiration(token).toInstant()
         );
     }
 
@@ -114,7 +117,8 @@ public class AuthService {
 
         return new AuthResponse(token, usuario.getUsuarioId(), usuario.getDni(),
                 usuario.getNombre(), usuario.getApellido(), usuario.getEmail(),
-                usuario.getStatus(), usuario.getRol());
+                usuario.getStatus(), usuario.getRol(),
+                jwtUtil.extractExpiration(token).toInstant());
     }
 
     public void cerrarSesion(String token) {

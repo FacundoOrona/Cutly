@@ -15,18 +15,23 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    private static final long EXPIRACION = 1000 * 60 * 60 * 10;
     private final SecretKey signingKey;
+    private final long expiracionMs;
 
-    public JwtUtil(@Value("${security.jwt.secret}") String secretKey) {
+    public JwtUtil(@Value("${security.jwt.secret}") String secretKey,
+                   @Value("${security.jwt.expiration-ms:7200000}") long expiracionMs) {
         this.signingKey = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        if (expiracionMs <= 0) {
+            throw new IllegalArgumentException("security.jwt.expiration-ms debe ser mayor que cero");
+        }
+        this.expiracionMs = expiracionMs;
     }
 
     public String generarToken(String email) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRACION))
+                .setExpiration(new Date(System.currentTimeMillis() + expiracionMs))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }

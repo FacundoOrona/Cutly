@@ -2,6 +2,7 @@ package com.dev.cutly.auth.dto;
 
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
+import java.time.Instant;
 
 public record AuthResponse(
         String token,
@@ -11,6 +12,7 @@ public record AuthResponse(
         String apellido,
         String email,
         UsuarioStatus status,
-        Rol rol
+        Rol rol,
+        Instant fechaExpiracion
 ) {
 }
