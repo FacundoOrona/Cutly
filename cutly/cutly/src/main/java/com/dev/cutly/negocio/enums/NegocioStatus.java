@@ -1,6 +1,6 @@
 package com.dev.cutly.negocio.enums;
 
-public enum NegocioEstado {
+public enum NegocioStatus {
     ACTIVE,
     INACTIVE,
     SUSPENDED
