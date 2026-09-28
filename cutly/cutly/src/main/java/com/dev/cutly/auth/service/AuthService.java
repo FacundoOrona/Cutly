@@ -1,9 +1,6 @@
 package com.dev.cutly.auth.service;
 
-import com.dev.cutly.auth.dto.AuthResponse;
-import com.dev.cutly.auth.dto.LoginRequest;
-import com.dev.cutly.auth.dto.RegistroClienteRequest;
-import com.dev.cutly.auth.dto.RegistroOwnerRequest;
+import com.dev.cutly.auth.dto.*;
 import com.dev.cutly.auth.entity.TokenInvalido;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
@@ -63,7 +60,6 @@ public class AuthService {
         usuario.setApellido(request.apellido());
         usuario.setEmail(request.email());
         usuario.setDni(request.dni());
-        // El rol de la cuenta se define en el servidor; nunca se acepta desde el DTO.
         usuario.setRol(Rol.OWNER);
         usuario.setStatus(UsuarioStatus.ACTIVE);
         usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
@@ -75,6 +71,30 @@ public class AuthService {
                 ownerGuardado.getDni(), ownerGuardado.getNombre(),
                 ownerGuardado.getApellido(), ownerGuardado.getEmail(),
                 ownerGuardado.getStatus(), ownerGuardado.getRol()
+        );
+    }
+
+    public AuthResponse registrarSuperAdmin(RegistroSuperAdminRequest request) {
+        if(usuarioRepository.findByEmail(request.email()).isPresent()) {
+            throw new RuntimeException("El email ya se encuentra registrado");
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setNombre(request.nombre());
+        usuario.setApellido(request.apellido());
+        usuario.setEmail(request.email());
+        usuario.setDni(request.dni());
+        usuario.setRol(Rol.SUPER_ADMIN);
+        usuario.setStatus(UsuarioStatus.ACTIVE);
+        usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
+
+        Usuario superAdminGuardado = usuarioRepository.save(usuario);
+        String token = jwtUtil.generarToken(superAdminGuardado.getEmail());
+
+        return new AuthResponse(token, superAdminGuardado.getUsuarioId(),
+                superAdminGuardado.getDni(), superAdminGuardado.getNombre(),
+                superAdminGuardado.getApellido(), superAdminGuardado.getEmail(),
+                superAdminGuardado.getStatus(), superAdminGuardado.getRol()
         );
     }
 

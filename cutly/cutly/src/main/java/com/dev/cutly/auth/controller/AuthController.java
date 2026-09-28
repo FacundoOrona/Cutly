@@ -1,9 +1,6 @@
 package com.dev.cutly.auth.controller;
 
-import com.dev.cutly.auth.dto.AuthResponse;
-import com.dev.cutly.auth.dto.LoginRequest;
-import com.dev.cutly.auth.dto.RegistroClienteRequest;
-import com.dev.cutly.auth.dto.RegistroOwnerRequest;
+import com.dev.cutly.auth.dto.*;
 import com.dev.cutly.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -36,6 +33,17 @@ public class AuthController {
     public ResponseEntity<?> registroOwner (@Valid @RequestBody RegistroOwnerRequest request) {
         try {
             AuthResponse response = authService.registrarOwner(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    //Registro Super_Admin (Solo para poder probar los endpoints de manera local)
+    @PostMapping("/registro-super-admin")
+    public ResponseEntity<?> registroSuperAdmin (@Valid @RequestBody RegistroSuperAdminRequest request) {
+        try {
+            AuthResponse response = authService.registrarSuperAdmin(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
