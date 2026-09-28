@@ -2,11 +2,11 @@ package com.dev.cutly.turno.enums;
 
 public enum TurnoStatus {
 
-    PENDIENTE,
-    CONFIRMADO,
-    EN_PROGRESO,
-    COMPLETADO,
-    CANCELADO,
-    NO_PRESENTADO,
-    RECHAZADO
+    PENDING,
+    CONFIRMED,
+    IN_PROGRESS,
+    COMPLETED,
+    CANCELLED,
+    NO_SHOW,
+    REJECTED
 }
