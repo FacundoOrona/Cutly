@@ -68,6 +68,13 @@ public class AdminUsuarioService {
         return aDto(usuario);
     }
 
+    public AdminUsuarioDto actualizarEstado(Long id, UsuarioStatus status) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario con id " + id));
+        usuario.setStatus(status);
+        return aDto(usuarioRepository.save(usuario));
+    }
+
     private void validarPaginacionYOrden(Pageable pageable) {
         if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1
                 || pageable.getPageSize() > TAMANO_MAXIMO_PAGINA) {

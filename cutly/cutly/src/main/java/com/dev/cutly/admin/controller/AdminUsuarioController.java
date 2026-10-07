@@ -2,7 +2,7 @@ package com.dev.cutly.admin.controller;
 
 import com.dev.cutly.admin.service.AdminUsuarioService;
 import com.dev.cutly.usuario.dto.AdminUsuarioDto;
-import com.dev.cutly.admin.dto.ErrorResponseDto;
+import com.dev.cutly.usuario.dto.ErrorResponseDto;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 import org.springframework.data.domain.Page;
@@ -68,6 +68,39 @@ public class AdminUsuarioController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponseDto("Ocurrió un error inesperado al consultar el usuario"));
+        }
+    }
+
+    @PatchMapping("/usuarios/{id}/activar")
+    public ResponseEntity<?> activarUsuario(@PathVariable Long id) {
+        return actualizarEstadoUsuario(id, UsuarioStatus.ACTIVE);
+    }
+
+    @PatchMapping("/usuarios/{id}/desactivar")
+    public ResponseEntity<?> desactivarUsuario(@PathVariable Long id) {
+        return actualizarEstadoUsuario(id, UsuarioStatus.INACTIVE);
+    }
+
+    @PatchMapping("/usuarios/{id}/bloquear")
+    public ResponseEntity<?> bloquearUsuario(@PathVariable Long id) {
+        return actualizarEstadoUsuario(id, UsuarioStatus.BLOCKED);
+    }
+
+    @PatchMapping("/usuarios/{id}/desbloquear")
+    public ResponseEntity<?> desbloquearUsuario(@PathVariable Long id) {
+        return actualizarEstadoUsuario(id, UsuarioStatus.ACTIVE);
+    }
+
+    private ResponseEntity<?> actualizarEstadoUsuario(Long id, UsuarioStatus status) {
+        try {
+            AdminUsuarioDto usuario = adminUsuarioService.actualizarEstado(id, status);
+            return ResponseEntity.ok(usuario);
+        } catch (java.util.NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponseDto("No se encontró el usuario con id " + id));
+        } catch (DataAccessException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponseDto("No se pudo actualizar el estado del usuario"));
         }
     }
 
