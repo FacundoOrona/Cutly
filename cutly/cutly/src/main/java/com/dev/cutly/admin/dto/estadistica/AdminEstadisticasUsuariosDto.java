@@ -1,4 +1,4 @@
-package com.dev.cutly.admin.dto;
+package com.dev.cutly.admin.dto.estadistica;
 
 public record AdminEstadisticasUsuariosDto(
         long totalUsuarios,

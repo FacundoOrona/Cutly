@@ -1,11 +1,11 @@
 package com.dev.cutly.admin.controller;
 
-import com.dev.cutly.admin.dto.AdminEstadisticasNegociosDto;
-import com.dev.cutly.admin.dto.AdminEstadisticasIngresosDto;
-import com.dev.cutly.admin.dto.AdminEstadisticasSuscripcionesDto;
-import com.dev.cutly.admin.dto.AdminEstadisticasTurnosDto;
-import com.dev.cutly.admin.dto.AdminEstadisticasUsuariosDto;
-import com.dev.cutly.admin.dto.AdminResumenEstadisticasDto;
+import com.dev.cutly.admin.dto.estadistica.AdminEstadisticasNegociosDto;
+import com.dev.cutly.admin.dto.estadistica.AdminEstadisticasIngresosDto;
+import com.dev.cutly.admin.dto.estadistica.AdminEstadisticasSuscripcionesDto;
+import com.dev.cutly.admin.dto.estadistica.AdminEstadisticasTurnosDto;
+import com.dev.cutly.admin.dto.estadistica.AdminEstadisticasUsuariosDto;
+import com.dev.cutly.admin.dto.estadistica.AdminResumenEstadisticasDto;
 import com.dev.cutly.admin.dto.ErrorResponseDto;
 import com.dev.cutly.admin.service.AdminEstadisticaService;
 import org.springframework.dao.DataAccessException;
