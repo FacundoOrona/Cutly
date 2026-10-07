@@ -1,6 +1,6 @@
 package com.dev.cutly.admin.service;
 
-import com.dev.cutly.admin.dto.AdminReviewDto;
+import com.dev.cutly.admin.dto.review.AdminReviewDto;
 import com.dev.cutly.auditoria.entity.AuditLog;
 import com.dev.cutly.auditoria.repository.AuditoriaRepository;
 import com.dev.cutly.review.entity.Review;

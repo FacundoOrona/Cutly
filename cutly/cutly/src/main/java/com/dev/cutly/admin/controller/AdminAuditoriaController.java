@@ -1,6 +1,6 @@
 package com.dev.cutly.admin.controller;
 
-import com.dev.cutly.admin.dto.AdminAuditoriaDto;
+import com.dev.cutly.admin.dto.auditoria.AdminAuditoriaDto;
 import com.dev.cutly.admin.dto.ErrorResponseDto;
 import com.dev.cutly.admin.service.AdminAuditoriaService;
 import org.springframework.dao.DataAccessException;

@@ -1,6 +1,6 @@
 package com.dev.cutly.admin.service;
 
-import com.dev.cutly.admin.dto.AdminAuditoriaDto;
+import com.dev.cutly.admin.dto.auditoria.AdminAuditoriaDto;
 import com.dev.cutly.auditoria.entity.AuditLog;
 import com.dev.cutly.auditoria.repository.AuditoriaRepository;
 import org.springframework.stereotype.Service;

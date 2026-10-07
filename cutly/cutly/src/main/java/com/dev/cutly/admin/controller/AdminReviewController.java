@@ -1,6 +1,6 @@
 package com.dev.cutly.admin.controller;
 
-import com.dev.cutly.admin.dto.AdminReviewDto;
+import com.dev.cutly.admin.dto.review.AdminReviewDto;
 import com.dev.cutly.admin.dto.ErrorResponseDto;
 import com.dev.cutly.admin.service.AdminReviewService;
 import jakarta.servlet.http.HttpServletRequest;
