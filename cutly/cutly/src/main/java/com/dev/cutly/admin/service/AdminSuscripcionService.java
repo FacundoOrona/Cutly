@@ -15,6 +15,8 @@ import java.util.Set;
 @Service
 public class AdminSuscripcionService {
 
+    // GESTION MANUAL DE DIAS QUE DURA LA SUSCRIPCION
+
     private static final int DIAS_PROXIMOS_A_VENCER = 30;
     private static final Set<SuscripcionStatus> ESTADOS_ACTIVOS = Set.of(
             SuscripcionStatus.ACTIVE,

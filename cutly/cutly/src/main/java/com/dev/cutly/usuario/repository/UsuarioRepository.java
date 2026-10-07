@@ -13,4 +13,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
     Optional<Usuario> findByEmail(String email);
 
     List<Usuario> findByRol(Rol rol);
+
+    long countByRol(Rol rol);
+
+    long countByStatus(com.dev.cutly.usuario.enums.UsuarioStatus status);
 }

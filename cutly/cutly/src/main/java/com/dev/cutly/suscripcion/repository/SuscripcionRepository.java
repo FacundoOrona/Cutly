@@ -10,6 +10,10 @@ import java.util.List;
 
 public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> {
 
+    long countByStatus(SuscripcionStatus status);
+
+    long countByStatusIn(Collection<SuscripcionStatus> estados);
+
     List<Suscripcion> findByStatusOrFechaVencimientoBefore(
             SuscripcionStatus status,
             LocalDate fecha
