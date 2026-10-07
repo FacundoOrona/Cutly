@@ -102,6 +102,11 @@ public class OwnerNegocioService {
                         "No se encontró el negocio solicitado"));
     }
 
+    public Negocio obtenerEntidadNegocioPropio(Long negocioId, String emailOwner) {
+        Usuario owner = obtenerOwnerAutenticado(emailOwner);
+        return buscarNegocioPropio(negocioId, owner.getUsuarioId());
+    }
+
     private OwnerNegocioDto aDto(Negocio negocio) {
         return new OwnerNegocioDto(
                 negocio.getNegocioId(),
