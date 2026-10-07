@@ -6,6 +6,8 @@ import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -29,8 +31,22 @@ public class AdminClienteService {
 
     public AdminClienteDto actualizarEstado(Long id, UsuarioStatus status) {
         Usuario cliente = buscarCliente(id);
+        if (!transicionValida(cliente.getStatus(), status)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el estado del cliente de " + cliente.getStatus() + " a " + status);
+        }
+        if (cliente.getStatus() == status) {
+            return aDto(cliente);
+        }
         cliente.setStatus(status);
         return aDto(usuarioRepository.save(cliente));
+    }
+
+    private boolean transicionValida(UsuarioStatus actual, UsuarioStatus destino) {
+        return switch (actual) {
+            case ACTIVE -> destino == UsuarioStatus.INACTIVE || destino == UsuarioStatus.BLOCKED;
+            case INACTIVE, BLOCKED -> destino == UsuarioStatus.ACTIVE;
+        };
     }
 
     private Usuario buscarCliente(Long id) {

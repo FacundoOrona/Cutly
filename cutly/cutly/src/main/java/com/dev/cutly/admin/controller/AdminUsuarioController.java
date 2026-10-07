@@ -13,6 +13,9 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.data.domain.Sort.Direction.DESC;
 
@@ -93,9 +96,15 @@ public class AdminUsuarioController {
 
     private ResponseEntity<?> actualizarEstadoUsuario(Long id, UsuarioStatus status) {
         try {
-            AdminUsuarioDto usuario = adminUsuarioService.actualizarEstado(id, status);
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String emailActor = authentication == null ? null : authentication.getName();
+            AdminUsuarioDto usuario = adminUsuarioService.actualizarEstado(id, status, emailActor);
             return ResponseEntity.ok(usuario);
-        } catch (java.util.NoSuchElementException e) {
+        } catch (java.util.NoSuchElementException | ResponseStatusException e) {
+            if (e instanceof ResponseStatusException statusException) {
+                return ResponseEntity.status(statusException.getStatusCode())
+                        .body(new ErrorResponseDto(statusException.getReason()));
+            }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErrorResponseDto("No se encontró el usuario con id " + id));
         } catch (DataAccessException e) {

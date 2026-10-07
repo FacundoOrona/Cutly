@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
@@ -68,11 +70,32 @@ public class AdminUsuarioService {
         return aDto(usuario);
     }
 
-    public AdminUsuarioDto actualizarEstado(Long id, UsuarioStatus status) {
+    public AdminUsuarioDto actualizarEstado(Long id, UsuarioStatus status, String emailActor) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario con id " + id));
+
+        if (usuario.getRol() == Rol.SUPER_ADMIN
+                && (status == UsuarioStatus.INACTIVE || status == UsuarioStatus.BLOCKED)
+                && emailActor != null && usuario.getEmail().equalsIgnoreCase(emailActor)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Un SUPER_ADMIN no puede desactivarse ni bloquearse a sí mismo");
+        }
+        if (!transicionValida(usuario.getStatus(), status)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el estado del usuario de " + usuario.getStatus() + " a " + status);
+        }
+        if (usuario.getStatus() == status) {
+            return aDto(usuario);
+        }
         usuario.setStatus(status);
         return aDto(usuarioRepository.save(usuario));
+    }
+
+    private boolean transicionValida(UsuarioStatus actual, UsuarioStatus destino) {
+        return switch (actual) {
+            case ACTIVE -> destino == UsuarioStatus.INACTIVE || destino == UsuarioStatus.BLOCKED;
+            case INACTIVE, BLOCKED -> destino == UsuarioStatus.ACTIVE;
+        };
     }
 
     private void validarPaginacionYOrden(Pageable pageable) {

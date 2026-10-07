@@ -6,6 +6,8 @@ import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -60,8 +62,24 @@ public class AdminSuscripcionService {
     public AdminSuscripcionDto actualizarEstado(Long id, SuscripcionStatus status) {
         Suscripcion suscripcion = suscripcionRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró la suscripción con id " + id));
+        if (!transicionValida(suscripcion.getStatus(), status)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede cambiar el estado de la suscripción de " + suscripcion.getStatus() + " a " + status);
+        }
+        if (suscripcion.getStatus() == status) {
+            return aDto(suscripcion);
+        }
         suscripcion.setStatus(status);
         return aDto(suscripcionRepository.save(suscripcion));
+    }
+
+    private boolean transicionValida(SuscripcionStatus actual, SuscripcionStatus destino) {
+        return switch (actual) {
+            case TRIAL -> destino == SuscripcionStatus.ACTIVE || destino == SuscripcionStatus.SUSPENDED;
+            case ACTIVE -> destino == SuscripcionStatus.SUSPENDED;
+            case SUSPENDED -> destino == SuscripcionStatus.ACTIVE;
+            case EXPIRED, CANCELLED -> false;
+        };
     }
 
     private AdminSuscripcionDto aDto(Suscripcion suscripcion) {

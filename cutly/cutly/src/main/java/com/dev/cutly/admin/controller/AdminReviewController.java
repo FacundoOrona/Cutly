@@ -3,9 +3,12 @@ package com.dev.cutly.admin.controller;
 import com.dev.cutly.admin.dto.AdminReviewDto;
 import com.dev.cutly.admin.dto.ErrorResponseDto;
 import com.dev.cutly.admin.service.AdminReviewService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,9 +56,11 @@ public class AdminReviewController {
     }
 
     @DeleteMapping("/reviews/{id}")
-    public ResponseEntity<?> eliminarReview(@PathVariable Long id) {
+    public ResponseEntity<?> eliminarReview(@PathVariable Long id, HttpServletRequest request) {
         try {
-            adminReviewService.eliminarReview(id);
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String emailActor = authentication == null ? null : authentication.getName();
+            adminReviewService.eliminarReview(id, emailActor, request.getRemoteAddr());
             return ResponseEntity.noContent().build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

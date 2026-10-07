@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -72,7 +73,11 @@ public class AdminNegocioController {
         try {
             AdminNegocioDto negocio = adminNegocioService.actualizarEstado(id, status);
             return ResponseEntity.ok(negocio);
-        } catch (NoSuchElementException e) {
+        } catch (NoSuchElementException | ResponseStatusException e) {
+            if (e instanceof ResponseStatusException statusException) {
+                return ResponseEntity.status(statusException.getStatusCode())
+                        .body(new ErrorResponseDto(statusException.getReason()));
+            }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErrorResponseDto("No se encontró el negocio con id " + id));
         } catch (DataAccessException e) {
