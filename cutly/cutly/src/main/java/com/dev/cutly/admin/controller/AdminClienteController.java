@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -53,17 +54,17 @@ public class AdminClienteController {
         }
     }
 
-    @PatchMapping("/cliente/{id}/activar")
+    @PatchMapping("/clientes/{id}/activar")
     public ResponseEntity<?> activarCliente(@PathVariable Long id) {
         return actualizarEstadoCliente(id, UsuarioStatus.ACTIVE);
     }
 
-    @PatchMapping("/cliente/{id}/desactivar")
+    @PatchMapping("/clientes/{id}/desactivar")
     public ResponseEntity<?> desactivarCliente(@PathVariable Long id) {
         return actualizarEstadoCliente(id, UsuarioStatus.INACTIVE);
     }
 
-    @PatchMapping("/cliente/{id}/bloquear")
+    @PatchMapping("/clientes/{id}/bloquear")
     public ResponseEntity<?> bloquearCliente(@PathVariable Long id) {
         return actualizarEstadoCliente(id, UsuarioStatus.BLOCKED);
     }
@@ -72,7 +73,11 @@ public class AdminClienteController {
         try {
             AdminClienteDto cliente = adminClienteService.actualizarEstado(id, status);
             return ResponseEntity.ok(cliente);
-        } catch (NoSuchElementException e) {
+        } catch (NoSuchElementException | ResponseStatusException e) {
+            if (e instanceof ResponseStatusException statusException) {
+                return ResponseEntity.status(statusException.getStatusCode())
+                        .body(new ErrorResponseDto(statusException.getReason()));
+            }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ErrorResponseDto("No se encontró el cliente con id " + id));
         } catch (DataAccessException e) {
