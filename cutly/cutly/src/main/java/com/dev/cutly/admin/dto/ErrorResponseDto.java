@@ -1,4 +1,4 @@
-package com.dev.cutly.usuario.dto;
+package com.dev.cutly.admin.dto;
 
 public record ErrorResponseDto(String mensaje) {
 }

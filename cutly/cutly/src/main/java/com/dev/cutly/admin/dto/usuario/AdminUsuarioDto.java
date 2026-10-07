@@ -1,4 +1,4 @@
-package com.dev.cutly.usuario.dto;
+package com.dev.cutly.admin.dto.usuario;
 
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;

@@ -1,8 +1,8 @@
 package com.dev.cutly.admin.controller;
 
 import com.dev.cutly.admin.service.AdminUsuarioService;
-import com.dev.cutly.usuario.dto.AdminUsuarioDto;
-import com.dev.cutly.usuario.dto.ErrorResponseDto;
+import com.dev.cutly.admin.dto.usuario.AdminUsuarioDto;
+import com.dev.cutly.admin.dto.ErrorResponseDto;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 import org.springframework.data.domain.Page;

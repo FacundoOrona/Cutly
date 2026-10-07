@@ -1,6 +1,6 @@
 package com.dev.cutly.admin.service;
 
-import com.dev.cutly.usuario.dto.AdminUsuarioDto;
+import com.dev.cutly.admin.dto.usuario.AdminUsuarioDto;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
