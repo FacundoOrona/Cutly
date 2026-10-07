@@ -12,6 +12,14 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
 
     Optional<Usuario> findByEmail(String email);
 
+    boolean existsByDni(String dni);
+
+    boolean existsByEmail(String email);
+
+    boolean existsByDniAndUsuarioIdNot(String dni, Long usuarioId);
+
+    boolean existsByEmailAndUsuarioIdNot(String email, Long usuarioId);
+
     List<Usuario> findByRol(Rol rol);
 
     long countByRol(Rol rol);
