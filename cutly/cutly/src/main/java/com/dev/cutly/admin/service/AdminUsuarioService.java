@@ -1,6 +1,6 @@
 package com.dev.cutly.admin.service;
 
-import com.dev.cutly.admin.dto.AdminUsuarioDto;
+import com.dev.cutly.usuario.dto.AdminUsuarioDto;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 @Service
@@ -59,6 +60,12 @@ public class AdminUsuarioService {
         };
 
         return usuarioRepository.findAll(filtros, pageable).map(this::aDto);
+    }
+
+    public AdminUsuarioDto obtenerUsuario(Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario con id " + id));
+        return aDto(usuario);
     }
 
     private void validarPaginacionYOrden(Pageable pageable) {
