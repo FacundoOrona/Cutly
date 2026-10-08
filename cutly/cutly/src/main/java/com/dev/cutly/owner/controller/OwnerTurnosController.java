@@ -11,11 +11,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.time.LocalDate;
+import com.dev.cutly.turno.enums.TurnoStatus;
 
 @RestController
 @RequestMapping("/api/owner/negocios/{negocioId}/turnos")
@@ -28,10 +31,15 @@ public class OwnerTurnosController {
     }
 
     @GetMapping
-    public ResponseEntity<?> listarTurnos(@PathVariable Long negocioId) {
+    public ResponseEntity<?> listarTurnos(
+            @PathVariable Long negocioId,
+            @RequestParam(required = false) LocalDate fecha,
+            @RequestParam(required = false) Long empleadoId,
+            @RequestParam(required = false) TurnoStatus status
+    ) {
         try {
             List<OwnerTurnoDto> turnos = ownerTurnosService.listarTurnos(
-                    negocioId, emailOwnerAutenticado()
+                    negocioId, fecha, empleadoId, status, emailOwnerAutenticado()
             );
             return ResponseEntity.ok(turnos);
         } catch (ResponseStatusException e) {

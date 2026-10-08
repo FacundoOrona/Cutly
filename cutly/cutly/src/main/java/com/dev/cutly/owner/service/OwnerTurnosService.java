@@ -5,12 +5,18 @@ import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.usuario.entity.Usuario;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
@@ -24,9 +30,34 @@ public class OwnerTurnosService {
         this.ownerNegocioService = ownerNegocioService;
     }
 
-    public List<OwnerTurnoDto> listarTurnos(Long negocioId, String emailOwner) {
+    public List<OwnerTurnoDto> listarTurnos(
+            Long negocioId,
+            LocalDate fecha,
+            Long empleadoId,
+            TurnoStatus status,
+            String emailOwner
+    ) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        return turnoRepository.findByNegocio_NegocioIdOrderByFechaHoraInicioAscTurnoIdAsc(negocioId)
+        Specification<Turno> filtros = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("negocio").get("negocioId"), negocioId));
+            if (fecha != null) {
+                LocalDateTime desde = fecha.atStartOfDay();
+                LocalDateTime hasta = fecha.plusDays(1).atStartOfDay();
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("fechaHoraInicio"), desde));
+                predicates.add(criteriaBuilder.lessThan(root.get("fechaHoraInicio"), hasta));
+            }
+            if (empleadoId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("empleado").get("empleadoId"), empleadoId));
+            }
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+        return turnoRepository.findAll(filtros, Sort.by(
+                        Sort.Order.asc("fechaHoraInicio"), Sort.Order.asc("turnoId")
+                ))
                 .stream().map(this::aDto).toList();
     }
 
