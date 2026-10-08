@@ -3,7 +3,7 @@ package com.dev.cutly.owner.controller;
 import com.dev.cutly.owner.dto.direccion.ActualizarDireccionRequestDto;
 import com.dev.cutly.owner.dto.direccion.CrearDireccionRequestDto;
 import com.dev.cutly.owner.dto.direccion.OwnerDireccionDto;
-import com.dev.cutly.owner.dto.negocio.OwnerErrorResponseDto;
+import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.service.OwnerDireccionService;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataAccessException;

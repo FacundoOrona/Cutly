@@ -1,4 +1,4 @@
-package com.dev.cutly.owner.dto.negocio;
+package com.dev.cutly.owner.dto;
 
 public record OwnerErrorResponseDto(String mensaje) {
 }

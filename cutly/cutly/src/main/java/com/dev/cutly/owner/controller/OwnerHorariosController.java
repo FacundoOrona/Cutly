@@ -3,7 +3,7 @@ package com.dev.cutly.owner.controller;
 import com.dev.cutly.owner.dto.horario.ActualizarHorarioRequestDto;
 import com.dev.cutly.owner.dto.horario.CrearHorarioRequestDto;
 import com.dev.cutly.owner.dto.horario.OwnerHorarioDto;
-import com.dev.cutly.owner.dto.negocio.OwnerErrorResponseDto;
+import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.service.OwnerHorariosService;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataAccessException;

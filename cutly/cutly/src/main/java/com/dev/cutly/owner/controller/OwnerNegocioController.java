@@ -2,7 +2,7 @@ package com.dev.cutly.owner.controller;
 
 import com.dev.cutly.owner.dto.negocio.ActualizarNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.CrearNegocioRequestDto;
-import com.dev.cutly.owner.dto.negocio.OwnerErrorResponseDto;
+import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.dto.negocio.OwnerNegocioDto;
 import com.dev.cutly.owner.service.OwnerNegocioService;
 import com.dev.cutly.negocio.enums.NegocioStatus;

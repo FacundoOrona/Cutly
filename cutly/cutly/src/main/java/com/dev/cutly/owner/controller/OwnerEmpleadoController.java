@@ -3,7 +3,7 @@ package com.dev.cutly.owner.controller;
 import com.dev.cutly.owner.dto.empleado.ActualizarEmpleadoRequestDto;
 import com.dev.cutly.owner.dto.empleado.CrearEmpleadoRequestDto;
 import com.dev.cutly.owner.dto.empleado.OwnerEmpleadoDto;
-import com.dev.cutly.owner.dto.negocio.OwnerErrorResponseDto;
+import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.service.OwnerEmpleadoService;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataAccessException;
