@@ -22,7 +22,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.function.Predicate;
 
 @Service
 @Transactional(readOnly = true)
@@ -102,7 +101,7 @@ public class ClienteDisponibilidadService {
         LocalDateTime desde = fecha.atTime(horario.getHoraApertura());
         LocalDateTime hasta = fecha.atTime(horario.getHoraCierre());
         List<Turno> turnos = turnoRepository
-                .findByNegocio_NegocioIdAndFechaHoraInicioBetweenOrderByFechaHoraInicioAsc(negocioId, desde, hasta)
+                .findTurnosSolapados(negocioId, desde, hasta)
                 .stream().filter(this::bloqueaHorario).toList();
         List<ClienteDisponibilidadDto> resultado = new java.util.ArrayList<>();
         LocalTime inicio = horario.getHoraApertura();
