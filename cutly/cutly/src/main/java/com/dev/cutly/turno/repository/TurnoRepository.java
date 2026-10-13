@@ -55,6 +55,8 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
 
     Optional<Turno> findByTurnoIdAndCliente_UsuarioId(Long turnoId, Long clienteId);
 
+    Optional<Turno> findByTurnoIdAndEmpleado_EmpleadoId(Long turnoId, Long empleadoId);
+
     @Query("select t.status, count(t) from Turno t "
             + "where t.negocio.negocioId = :negocioId "
             + "and (:desde is null or t.fechaHoraInicio >= :desde) "
