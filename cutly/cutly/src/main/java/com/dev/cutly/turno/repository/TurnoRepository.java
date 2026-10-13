@@ -21,6 +21,10 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
 
     List<Turno> findByNegocio_NegocioIdOrderByFechaHoraInicioAscTurnoIdAsc(Long negocioId);
 
+    List<Turno> findByNegocio_NegocioIdAndFechaHoraInicioBetweenOrderByFechaHoraInicioAsc(
+            Long negocioId, LocalDateTime desde, LocalDateTime hasta
+    );
+
     Optional<Turno> findByTurnoIdAndNegocio_NegocioId(Long turnoId, Long negocioId);
 
     @Query("select t.status, count(t) from Turno t "

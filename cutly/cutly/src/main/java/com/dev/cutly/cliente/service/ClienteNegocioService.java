@@ -1,9 +1,9 @@
 package com.dev.cutly.cliente.service;
 
-import com.dev.cutly.cliente.dto.ClienteEmpleadoDto;
-import com.dev.cutly.cliente.dto.ClienteNegocioDto;
-import com.dev.cutly.cliente.dto.ClienteReviewDto;
-import com.dev.cutly.cliente.dto.ClienteServicioDto;
+import com.dev.cutly.cliente.dto.negocio.ClienteEmpleadoDto;
+import com.dev.cutly.cliente.dto.negocio.ClienteNegocioDto;
+import com.dev.cutly.cliente.dto.negocio.ClienteReviewDto;
+import com.dev.cutly.cliente.dto.negocio.ClienteServicioDto;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.DireccionNegocio;
 import com.dev.cutly.negocio.entity.Negocio;
