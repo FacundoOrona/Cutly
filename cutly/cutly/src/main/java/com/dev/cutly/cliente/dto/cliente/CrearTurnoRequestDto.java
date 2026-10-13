@@ -1,4 +1,4 @@
-package com.dev.cutly.cliente.dto.service;
+package com.dev.cutly.cliente.dto.cliente;
 
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;

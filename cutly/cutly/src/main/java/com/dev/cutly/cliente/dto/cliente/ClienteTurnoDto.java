@@ -1,4 +1,4 @@
-package com.dev.cutly.cliente.dto.service;
+package com.dev.cutly.cliente.dto.cliente;
 
 import com.dev.cutly.turno.enums.TurnoStatus;
 import java.math.BigDecimal;

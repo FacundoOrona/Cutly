@@ -1,7 +1,7 @@
 package com.dev.cutly.cliente.service;
 
-import com.dev.cutly.cliente.dto.service.ClienteTurnoDto;
-import com.dev.cutly.cliente.dto.service.CrearTurnoRequestDto;
+import com.dev.cutly.cliente.dto.cliente.ClienteTurnoDto;
+import com.dev.cutly.cliente.dto.cliente.CrearTurnoRequestDto;
 import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.HorarioNegocio;

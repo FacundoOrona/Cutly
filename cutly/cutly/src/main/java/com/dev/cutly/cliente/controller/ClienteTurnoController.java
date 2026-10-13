@@ -1,8 +1,8 @@
 package com.dev.cutly.cliente.controller;
 
 import com.dev.cutly.cliente.dto.ClienteErrorResponseDto;
-import com.dev.cutly.cliente.dto.service.ClienteTurnoDto;
-import com.dev.cutly.cliente.dto.service.CrearTurnoRequestDto;
+import com.dev.cutly.cliente.dto.cliente.ClienteTurnoDto;
+import com.dev.cutly.cliente.dto.cliente.CrearTurnoRequestDto;
 import com.dev.cutly.cliente.service.ClienteTurnoService;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import jakarta.validation.Valid;
