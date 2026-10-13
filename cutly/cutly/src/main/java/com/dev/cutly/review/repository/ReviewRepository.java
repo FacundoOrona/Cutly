@@ -11,4 +11,10 @@ public interface ReviewRepository extends JpaRepository<Review,Long> {
     List<Review> findByNegocio_NegocioIdOrderByReviewIdDesc(Long negocioId);
 
     Optional<Review> findByReviewIdAndNegocio_NegocioId(Long reviewId, Long negocioId);
+
+    List<Review> findByCliente_UsuarioIdOrderByReviewIdDesc(Long clienteId);
+
+    Optional<Review> findByReviewIdAndCliente_UsuarioId(Long reviewId, Long clienteId);
+
+    boolean existsByTurno_TurnoId(Long turnoId);
 }
