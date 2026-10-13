@@ -10,6 +10,8 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
 
     List<Empleado> findByNegocio_NegocioIdOrderByEmpleadoIdAsc(Long negocioId);
 
+    List<Empleado> findByNegocio_NegocioIdAndActivoTrueOrderByEmpleadoIdAsc(Long negocioId);
+
     Optional<Empleado> findByEmpleadoIdAndNegocio_NegocioId(Long empleadoId, Long negocioId);
 
     boolean existsByUsuario_UsuarioId(Long usuarioId);
