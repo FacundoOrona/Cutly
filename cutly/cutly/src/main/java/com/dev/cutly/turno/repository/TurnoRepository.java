@@ -32,7 +32,28 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
             @Param("hasta") LocalDateTime hasta
     );
 
+    @Query("select t from Turno t where t.empleado.empleadoId = :empleadoId "
+            + "and t.fechaHoraInicio < :hasta and t.fechaHoraFin > :desde")
+    List<Turno> findTurnosSolapadosPorEmpleado(
+            @Param("empleadoId") Long empleadoId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta
+    );
+
+    @Query("select t from Turno t "
+            + "where t.cliente.usuarioId = :clienteId "
+            + "and t.fechaHoraInicio < :hasta "
+            + "and t.fechaHoraFin > :desde "
+            + "order by t.fechaHoraInicio asc")
+    List<Turno> findTurnosClienteSolapados(
+            @Param("clienteId") Long clienteId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta
+    );
+
     Optional<Turno> findByTurnoIdAndNegocio_NegocioId(Long turnoId, Long negocioId);
+
+    Optional<Turno> findByTurnoIdAndCliente_UsuarioId(Long turnoId, Long clienteId);
 
     @Query("select t.status, count(t) from Turno t "
             + "where t.negocio.negocioId = :negocioId "
