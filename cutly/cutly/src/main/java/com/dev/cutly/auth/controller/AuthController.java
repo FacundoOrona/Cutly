@@ -39,17 +39,6 @@ public class AuthController {
         }
     }
 
-    //Registro Super_Admin (Solo para poder probar los endpoints de manera local)
-    @PostMapping("/registro-super-admin")
-    public ResponseEntity<?> registroSuperAdmin (@Valid @RequestBody RegistroSuperAdminRequest request) {
-        try {
-            AuthResponse response = authService.registrarSuperAdmin(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
-
     @PostMapping("/iniciarSesion")
     public ResponseEntity<?> inciarSesion (@Valid @RequestBody LoginRequest request) {
         try {

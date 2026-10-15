@@ -76,31 +76,6 @@ public class AuthService {
         );
     }
 
-    public AuthResponse registrarSuperAdmin(RegistroSuperAdminRequest request) {
-        if(usuarioRepository.findByEmail(request.email()).isPresent()) {
-            throw new RuntimeException("El email ya se encuentra registrado");
-        }
-
-        Usuario usuario = new Usuario();
-        usuario.setNombre(request.nombre());
-        usuario.setApellido(request.apellido());
-        usuario.setEmail(request.email());
-        usuario.setDni(request.dni());
-        usuario.setRol(Rol.SUPER_ADMIN);
-        usuario.setStatus(UsuarioStatus.ACTIVE);
-        usuario.setContrasena(passwordEncoder.encode(request.contrasena()));
-
-        Usuario superAdminGuardado = usuarioRepository.save(usuario);
-        String token = jwtUtil.generarToken(superAdminGuardado.getEmail());
-
-        return new AuthResponse(token, superAdminGuardado.getUsuarioId(),
-                superAdminGuardado.getDni(), superAdminGuardado.getNombre(),
-                superAdminGuardado.getApellido(), superAdminGuardado.getEmail(),
-                superAdminGuardado.getStatus(), superAdminGuardado.getRol(),
-                jwtUtil.extractExpiration(token).toInstant()
-        );
-    }
-
     public AuthResponse inciarSesion (LoginRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("Credenciales invalidas: Usuario no existente"));
