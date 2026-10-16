@@ -33,6 +33,7 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
     );
 
     @Query("select t from Turno t where t.empleado.empleadoId = :empleadoId "
+            + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "
             + "and t.fechaHoraInicio < :hasta and t.fechaHoraFin > :desde")
     List<Turno> findTurnosSolapadosPorEmpleado(
             @Param("empleadoId") Long empleadoId,
@@ -42,6 +43,7 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
 
     @Query("select t from Turno t "
             + "where t.cliente.usuarioId = :clienteId "
+            + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "
             + "and t.fechaHoraInicio < :hasta "
             + "and t.fechaHoraFin > :desde "
             + "order by t.fechaHoraInicio asc")
