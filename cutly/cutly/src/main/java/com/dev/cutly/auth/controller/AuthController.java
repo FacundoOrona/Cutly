@@ -3,6 +3,7 @@ package com.dev.cutly.auth.controller;
 import com.dev.cutly.auth.dto.*;
 import com.dev.cutly.auth.service.AuthService;
 import jakarta.validation.Valid;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,8 +45,8 @@ public class AuthController {
         try {
             AuthResponse response = authService.inciarSesion(request);
             return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email o contraseña incorrectos");
         }
     }
 

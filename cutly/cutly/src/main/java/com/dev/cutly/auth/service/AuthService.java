@@ -8,6 +8,7 @@ import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
 import com.dev.cutly.auth.security.JwtUtil;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -78,14 +79,14 @@ public class AuthService {
 
     public AuthResponse inciarSesion (LoginRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("Credenciales invalidas: Usuario no existente"));
+                .orElse(null);
 
-        if (!passwordEncoder.matches(request.contrasena(), usuario.getContrasena())){
-            throw new RuntimeException("Credenciales invalidas: contraseña incorrecta");
+        if (usuario == null || !passwordEncoder.matches(request.contrasena(), usuario.getContrasena())) {
+            throw new BadCredentialsException("Email o contraseña incorrectos");
         }
 
         if (usuario.getStatus() != UsuarioStatus.ACTIVE) {
-            throw new RuntimeException("La cuenta no está activa");
+            throw new BadCredentialsException("Email o contraseña incorrectos");
         }
 
         String token = jwtUtil.generarToken(usuario.getEmail());
