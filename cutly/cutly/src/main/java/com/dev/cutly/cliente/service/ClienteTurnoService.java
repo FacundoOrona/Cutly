@@ -24,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -56,6 +57,7 @@ public class ClienteTurnoService {
         this.horarioRepository = horarioRepository;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ClienteTurnoDto crear(CrearTurnoRequestDto request, String emailCliente) {
         Usuario cliente = obtenerCliente(emailCliente);
         cliente = usuarioRepository.findWithLockingByUsuarioId(cliente.getUsuarioId())
