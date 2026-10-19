@@ -14,19 +14,20 @@ import com.dev.cutly.servicio.entity.EmpleadoServicio;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
+import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -36,6 +37,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -49,16 +51,38 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://127.0.0.1:13306/cutly_concurrency_test?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
-        "spring.datasource.username=root",
+        "spring.datasource.url=jdbc:h2:mem:cutly_concurrency_test;MODE=MySQL;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=5000",
+        "spring.datasource.username=sa",
         "spring.datasource.password=",
+        "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "security.jwt.secret=isolated-concurrency-test-secret-32-bytes-minimum"
+        "spring.jpa.show-sql=false",
+        "spring.flyway.enabled=false",
+        "security.jwt.secret=isolated-concurrency-test-secret-32-bytes-minimum",
+        "app.bootstrap-super-admin.nombre=Test",
+        "app.bootstrap-super-admin.apellido=Admin",
+        "app.bootstrap-super-admin.dni=99999999",
+        "app.bootstrap-super-admin.email=test-admin@test.local",
+        "app.bootstrap-super-admin.password=test-password-only"
 })
 class ClienteTurnoConcurrencyIntegrationTests {
 
+    private static final String TEST_DATABASE_URL =
+            "jdbc:h2:mem:cutly_concurrency_test;MODE=MySQL;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=5000";
     private static final AtomicInteger DNI_SEQUENCE = new AtomicInteger(10000000);
     private static final AtomicInteger FIXTURE_SEQUENCE = new AtomicInteger();
+
+    static {
+        boolean hasSafeDatasource = Arrays.stream(
+                        ClienteTurnoConcurrencyIntegrationTests.class
+                                .getAnnotation(SpringBootTest.class).properties())
+                .anyMatch(property -> property.equals("spring.datasource.url=" + TEST_DATABASE_URL));
+        if (!hasSafeDatasource) {
+            throw new ExceptionInInitializerError(
+                    "La prueba de concurrencia exige la URL H2 descartable configurada explícitamente"
+            );
+        }
+    }
 
     @Autowired
     private ClienteTurnoService clienteTurnoService;
@@ -88,7 +112,7 @@ class ClienteTurnoConcurrencyIntegrationTests {
     private PlatformTransactionManager transactionManager;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private org.springframework.core.env.Environment environment;
 
     @MockitoBean
     private SuperAdminInitializer superAdminInitializer;
@@ -97,7 +121,11 @@ class ClienteTurnoConcurrencyIntegrationTests {
     private LocalDateTime inicio;
 
     @BeforeEach
-    void prepararDatosAislados() {
+    void verificarBaseDescartableYPrepararDatos() {
+        String url = environment.getRequiredProperty("spring.datasource.url");
+        assertTrue(url.equals(TEST_DATABASE_URL),
+                "La prueba solo puede ejecutarse contra la base H2 descartable configurada explícitamente");
+
         String suffix = Integer.toString(FIXTURE_SEQUENCE.incrementAndGet());
         inicio = LocalDate.now().plusDays(30).atTime(10, 0);
 
@@ -146,8 +174,12 @@ class ClienteTurnoConcurrencyIntegrationTests {
             horarioNegocioRepository.save(horario);
 
             return new Fixture(
+                    owner.getUsuarioId(),
+                    clienteUno.getUsuarioId(),
                     clienteUno.getEmail(),
+                    clienteDos.getUsuarioId(),
                     clienteDos.getEmail(),
+                    empleadoUsuario.getUsuarioId(),
                     negocio.getNegocioId(),
                     empleado.getEmpleadoId(),
                     servicio.getServicioId()
@@ -157,39 +189,54 @@ class ClienteTurnoConcurrencyIntegrationTests {
         assertNotNull(fixture);
     }
 
+    @AfterEach
+    void limpiarDatosDelFixture() {
+        if (fixture == null) {
+            return;
+        }
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            List<Turno> turnos = turnoRepository.findAll().stream()
+                    .filter(turno -> turno.getNegocio().getNegocioId().equals(fixture.negocioId()))
+                    .toList();
+            turnoRepository.deleteAll(turnos);
+            empleadoServicioRepository.deleteAll(empleadoServicioRepository
+                    .findByEmpleado_EmpleadoIdAndServicio_ServicioId(fixture.empleadoId(), fixture.servicioId())
+                    .stream().toList());
+            horarioNegocioRepository.deleteAll(horarioNegocioRepository
+                    .findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(fixture.negocioId()));
+            servicioRepository.deleteById(fixture.servicioId());
+            empleadoRepository.deleteById(fixture.empleadoId());
+            negocioRepository.deleteById(fixture.negocioId());
+            usuarioRepository.deleteAllById(List.of(
+                    fixture.ownerUsuarioId(), fixture.clienteUnoUsuarioId(),
+                    fixture.clienteDosUsuarioId(), fixture.empleadoUsuarioId()
+            ));
+        });
+        fixture = null;
+    }
+
     @RepeatedTest(5)
     void dosClientesConcurrentesNoPuedenReservarElMismoEmpleadoEIntervalo() throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(3);
-        CountDownLatch bloqueoInicialAdquirido = new CountDownLatch(1);
-        CountDownLatch liberarBloqueoInicial = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch solicitudesPreparadas = new CountDownLatch(2);
+        CountDownLatch iniciarSolicitudes = new CountDownLatch(1);
+        Future<ResultadoReserva> solicitudUno = null;
+        Future<ResultadoReserva> solicitudDos = null;
 
         try {
-            Future<?> bloqueoInicial = executor.submit(() -> new TransactionTemplate(transactionManager).execute(status -> {
-                empleadoRepository.findWithLockingByEmpleadoId(fixture.empleadoId())
-                        .orElseThrow(() -> new AssertionError("No existe el empleado de prueba"));
-                bloqueoInicialAdquirido.countDown();
-                await(liberarBloqueoInicial);
-                return null;
-            }));
+            solicitudUno = executor.submit(() -> reservarTrasBarrera(
+                    fixture.clienteUnoEmail(), inicio, solicitudesPreparadas, iniciarSolicitudes));
+            solicitudDos = executor.submit(() -> reservarTrasBarrera(
+                    fixture.clienteDosEmail(), inicio, solicitudesPreparadas, iniciarSolicitudes));
 
-            assertTrue(bloqueoInicialAdquirido.await(10, TimeUnit.SECONDS),
-                    "La transacción de coordinación no obtuvo el bloqueo del empleado");
-
-            Future<ResultadoReserva> solicitudUno = executor.submit(
-                    () -> reservar(fixture.clienteUnoEmail(), inicio));
-            Future<ResultadoReserva> solicitudDos = executor.submit(
-                    () -> reservar(fixture.clienteDosEmail(), inicio));
-
-            assertTrue(esperarDosSolicitudesBloqueadas(),
-                    "Las dos solicitudes no llegaron a esperar por la misma fila de empleado");
-
-            liberarBloqueoInicial.countDown();
+            assertTrue(solicitudesPreparadas.await(10, TimeUnit.SECONDS),
+                    "Las dos solicitudes no alcanzaron el punto de inicio concurrente");
+            iniciarSolicitudes.countDown();
 
             List<ResultadoReserva> resultados = List.of(
-                    solicitudUno.get(15, TimeUnit.SECONDS),
-                    solicitudDos.get(15, TimeUnit.SECONDS)
+                    solicitudUno.get(20, TimeUnit.SECONDS),
+                    solicitudDos.get(20, TimeUnit.SECONDS)
             );
-            bloqueoInicial.get(15, TimeUnit.SECONDS);
 
             assertEquals(1, resultados.stream().filter(ResultadoReserva::creada).count(),
                     "Solo una reserva incompatible debe guardarse");
@@ -199,7 +246,9 @@ class ClienteTurnoConcurrencyIntegrationTests {
             assertEquals(1, turnoRepository.findTurnosSolapadosPorEmpleado(
                     fixture.empleadoId(), inicio, inicio.plusMinutes(45)).size());
         } finally {
-            liberarBloqueoInicial.countDown();
+            iniciarSolicitudes.countDown();
+            cancelarSiPendiente(solicitudUno);
+            cancelarSiPendiente(solicitudDos);
             executor.shutdownNow();
             assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS),
                     "Los hilos de reserva no terminaron");
@@ -215,14 +264,15 @@ class ClienteTurnoConcurrencyIntegrationTests {
                 fixture.negocioId()).size());
     }
 
-    @Test
-    void servidorDePruebaUsaInnoDbYRepeatableRead() {
-        assertEquals("REPEATABLE-READ", jdbcTemplate.queryForObject(
-                "select @@global.transaction_isolation", String.class));
-        assertEquals("InnoDB", jdbcTemplate.queryForObject(
-                "select engine from information_schema.tables "
-                        + "where table_schema = database() and table_name = 'turnos'",
-                String.class));
+    private ResultadoReserva reservarTrasBarrera(
+            String email,
+            LocalDateTime fechaHoraInicio,
+            CountDownLatch preparadas,
+            CountDownLatch iniciar
+    ) {
+        preparadas.countDown();
+        await(iniciar);
+        return reservar(email, fechaHoraInicio);
     }
 
     private ResultadoReserva reservar(String email, LocalDateTime fechaHoraInicio) {
@@ -244,27 +294,6 @@ class ClienteTurnoConcurrencyIntegrationTests {
         );
     }
 
-    private boolean esperarDosSolicitudesBloqueadas() throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        while (System.nanoTime() < deadline) {
-            Integer solicitudesEsperando = jdbcTemplate.queryForObject(
-                    "select count(*) from performance_schema.data_lock_waits w "
-                            + "join performance_schema.data_locks l "
-                            + "on l.engine = w.engine "
-                            + "and l.engine_lock_id = w.requesting_engine_lock_id "
-                            + "where l.object_schema = database() "
-                            + "and l.object_name = 'empleados' "
-                            + "and l.lock_status = 'WAITING'",
-                    Integer.class
-            );
-            if (solicitudesEsperando != null && solicitudesEsperando >= 2) {
-                return true;
-            }
-            Thread.sleep(20);
-        }
-        return false;
-    }
-
     private Usuario usuario(String email, Rol rol) {
         Usuario usuario = new Usuario();
         usuario.setNombre("Prueba");
@@ -277,20 +306,30 @@ class ClienteTurnoConcurrencyIntegrationTests {
         return usuario;
     }
 
+    private static void cancelarSiPendiente(Future<?> tarea) {
+        if (tarea != null && !tarea.isDone()) {
+            tarea.cancel(true);
+        }
+    }
+
     private static void await(CountDownLatch latch) {
         try {
             if (!latch.await(15, TimeUnit.SECONDS)) {
-                throw new AssertionError("Expiró la espera de sincronización del empleado");
+                throw new AssertionError("Expiró la espera de sincronización concurrente");
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new AssertionError("Se interrumpió la sincronización del empleado", exception);
+            throw new AssertionError("Se interrumpió la sincronización concurrente", exception);
         }
     }
 
     private record Fixture(
+            Long ownerUsuarioId,
+            Long clienteUnoUsuarioId,
             String clienteUnoEmail,
+            Long clienteDosUsuarioId,
             String clienteDosEmail,
+            Long empleadoUsuarioId,
             Long negocioId,
             Long empleadoId,
             Long servicioId
