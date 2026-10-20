@@ -1,6 +1,6 @@
 package com.dev.cutly.auth.security;
 
-import com.dev.cutly.auth.controller.AuthController;
+import com.dev.cutly.admin.controller.AdminOwnerController;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
 import com.dev.cutly.auth.service.AuthService;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuthController.class)
+@WebMvcTest({AdminOwnerController.class, com.dev.cutly.auth.controller.AuthController.class})
 @Import(SecurityConfig.class)
 class OwnerRegistrationSecurityTests {
 
@@ -37,7 +37,7 @@ class OwnerRegistrationSecurityTests {
 
     @Test
     void registroOwnerRequiereAutenticacion() throws Exception {
-        mockMvc.perform(post("/auth/registro-owner")
+        mockMvc.perform(post("/api/admin/owners")
                         .contentType("application/json")
                         .content("""
                                 {
@@ -56,7 +56,7 @@ class OwnerRegistrationSecurityTests {
     @Test
     @WithMockUser(roles = "OWNER")
     void registroOwnerEsRechazadoParaUnOwnerAutenticado() throws Exception {
-        mockMvc.perform(post("/auth/registro-owner")
+        mockMvc.perform(post("/api/admin/owners")
                         .contentType("application/json")
                         .content("{}"))
                 .andExpect(status().isForbidden());
@@ -67,10 +67,20 @@ class OwnerRegistrationSecurityTests {
     @Test
     @WithMockUser(roles = "SUPER_ADMIN")
     void registroOwnerPermiteAlSuperAdministrador() throws Exception {
-        mockMvc.perform(post("/auth/registro-owner")
+        mockMvc.perform(post("/api/admin/owners")
                         .contentType("application/json")
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void rutaAnteriorDeRegistroOwnerYaNoExiste() throws Exception {
+        mockMvc.perform(post("/auth/registro-owner")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isNotFound());
 
         verifyNoInteractions(authService);
     }

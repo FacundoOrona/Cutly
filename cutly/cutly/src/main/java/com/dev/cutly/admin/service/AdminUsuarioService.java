@@ -74,6 +74,21 @@ public class AdminUsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario con id " + id));
 
+        return actualizarEstado(usuario, status, emailActor);
+    }
+
+    public AdminUsuarioDto actualizarEstadoOwner(Long id, UsuarioStatus status, String emailActor) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("No se encontró el owner con id " + id));
+        if (usuario.getRol() != Rol.OWNER) {
+            throw new NoSuchElementException("No se encontró el owner con id " + id);
+        }
+
+        return actualizarEstado(usuario, status, emailActor);
+    }
+
+    private AdminUsuarioDto actualizarEstado(Usuario usuario, UsuarioStatus status, String emailActor) {
+
         if (usuario.getRol() == Rol.SUPER_ADMIN
                 && (status == UsuarioStatus.INACTIVE || status == UsuarioStatus.BLOCKED)
                 && emailActor != null && usuario.getEmail().equalsIgnoreCase(emailActor)) {

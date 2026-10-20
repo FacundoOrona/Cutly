@@ -32,7 +32,6 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/registro-owner").hasRole("SUPER_ADMIN")
                         .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui/**",

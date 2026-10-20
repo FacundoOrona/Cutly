@@ -29,17 +29,6 @@ public class AuthController {
         }
     }
 
-    //Registro de owners - usuarios dueños
-    @PostMapping("/registro-owner")
-    public ResponseEntity<?> registroOwner (@Valid @RequestBody RegistroOwnerRequest request) {
-        try {
-            AuthResponse response = authService.registrarOwner(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
-
     @PostMapping("/iniciarSesion")
     public ResponseEntity<?> inciarSesion (@Valid @RequestBody LoginRequest request) {
         try {
