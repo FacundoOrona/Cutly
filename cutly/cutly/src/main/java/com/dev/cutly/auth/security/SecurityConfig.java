@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/registro-owner").denyAll()
+                        .requestMatchers("/auth/registro-owner").hasRole("SUPER_ADMIN")
                         .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui/**",
@@ -40,8 +40,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/api/owner/**").hasRole("OWNER")
-                        .requestMatchers("/api/employee/**").hasRole("EMPLOYEE")
-                        .requestMatchers("/api/client/**").hasRole("CLIENT")
+                        .requestMatchers("/api/empleado/**").hasRole("EMPLOYEE")
+                        .requestMatchers("/api/cliente/**").hasRole("CLIENT")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
