@@ -8,6 +8,7 @@ import AccessDeniedPage from '../pages/AccessDeniedPage.jsx'
 import { AuthProvider } from '../auth/AuthContext.jsx'
 import AdminLayout from '../layouts/AdminLayout.jsx'
 import OwnersPage from '../features/owners/pages/OwnersPage.jsx'
+import UsersPage from '../features/users/pages/UsersPage.jsx'
 
 export default function AppRoutes() {
   return (
@@ -23,6 +24,7 @@ export default function AppRoutes() {
               <Route element={<AdminLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/admin/owners" element={<OwnersPage />} />
+                <Route path="/admin/users" element={<UsersPage />} />
               </Route>
             </Route>
           </Route>

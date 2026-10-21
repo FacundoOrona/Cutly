@@ -9,7 +9,7 @@ export default function AdminLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [logoutError, setLogoutError] = useState('')
   const location = useLocation()
-  const pageTitle = location.pathname === '/admin/owners' ? 'Owners' : 'Panel principal'
+  const pageTitle = location.pathname === '/admin/owners' ? 'Owners' : location.pathname.startsWith('/admin/users') ? 'Usuarios' : 'Panel principal'
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
 
   async function handleSignOut() {
@@ -33,6 +33,7 @@ export default function AdminLayout() {
         <nav aria-label="Navegación principal">
           <NavLink end to="/dashboard" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><ShieldCheck size={17} /> Panel principal</NavLink>
           <NavLink to="/admin/owners" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Users size={17} /> Owners</NavLink>
+          <NavLink to="/admin/users" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Users size={17} /> Usuarios</NavLink>
         </nav>
         <div className="sidebar-user"><span className="user-avatar">{(user?.nombre?.[0] || user?.email?.[0] || 'C').toUpperCase()}</span><div className="user-details"><strong>{displayName}</strong><small>{user?.rol}</small></div><button className="icon-button" onClick={handleSignOut} aria-label="Cerrar sesión"><LogOut size={17} /></button></div>
       </aside>
