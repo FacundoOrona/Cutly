@@ -56,6 +56,9 @@ public class AuthService {
         if(usuarioRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("El email ya se encuentra registrado");
         }
+        if(usuarioRepository.existsByDni(request.dni())) {
+            throw new RuntimeException("El DNI ya se encuentra registrado");
+        }
 
         Usuario usuario = new Usuario();
         usuario.setNombre(request.nombre());

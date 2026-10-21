@@ -25,6 +25,29 @@ export async function createOwner(owner) {
   }
 }
 
+export async function updateOwnerStatus({ id, action }) {
+  const endpoint = {
+    activate: 'owners',
+    deactivate: 'owners',
+    block: 'usuarios',
+    unblock: 'usuarios',
+  }[action]
+  const operation = { activate: 'activar', deactivate: 'desactivar', block: 'bloquear', unblock: 'desbloquear' }[action]
+  const { data } = await apiClient.patch(`/api/admin/${endpoint}/${id}/${operation}`)
+  return data
+}
+
+export function getUpdateOwnerStatusErrorMessage(error) {
+  const status = error.response?.status
+  if (status === 404) return 'El owner no existe o la operación no corresponde a un usuario OWNER.'
+  if (status === 409) return 'Este cambio de estado no está permitido.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para cambiar el estado de este owner.'
+  if (status >= 500) return 'El servicio no está disponible en este momento. Intentá nuevamente.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  return 'No pudimos actualizar el estado del owner. Intentá nuevamente.'
+}
+
 export function getCreateOwnerErrorMessage(error) {
   const status = error.response?.status
   const body = error.response?.data
