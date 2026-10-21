@@ -31,9 +31,11 @@ export default function UserDetailPage() {
   const query = useUser(id)
   const validId = typeof id === 'string' && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id))
   const returnState = location.state?.usersListState
+  const ownerListState = location.state?.ownersListState
+  const returnTo = location.state?.returnTo === '/admin/owners' ? '/admin/owners' : '/admin/users'
 
   function backToList() {
-    navigate('/admin/users', { state: returnState ? { usersListState: returnState } : null })
+    navigate(returnTo, { state: returnState ? { usersListState: returnState } : ownerListState ? { ownersListState: ownerListState } : null })
   }
 
   return (

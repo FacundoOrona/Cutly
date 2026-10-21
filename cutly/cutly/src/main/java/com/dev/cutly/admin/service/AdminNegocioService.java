@@ -59,7 +59,10 @@ public class AdminNegocioService {
                 negocio.getDescripcion(),
                 negocio.getTelefono(),
                 negocio.getEmail(),
-                negocio.getStatus()
+                negocio.getStatus(),
+                negocio.getOwner().getNombre(),
+                negocio.getOwner().getApellido(),
+                negocio.getOwner().getEmail()
         );
     }
 }

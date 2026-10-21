@@ -36,3 +36,4 @@
 .businesses-retry-button{margin-left:auto}
 .businesses-row-actions .owners-secondary-button{white-space:nowrap}
 @media(max-width:560px){.owners-table td.businesses-row-actions{flex-wrap:wrap}}
+.business-detail-link{color:#3d6040;font-weight:600;text-decoration:none}.business-detail-link:hover{text-decoration:underline}.business-detail-link:focus-visible{outline:3px solid #91b18a;outline-offset:2px;border-radius:3px}.business-detail-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:21px;padding-top:17px;border-top:1px solid #edf0eb}.business-detail-actions .businesses-row-actions{flex-wrap:wrap}.user-detail-field-label{color:#858d81;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}@media(max-width:560px){.business-detail-actions{align-items:flex-start;flex-direction:column}}

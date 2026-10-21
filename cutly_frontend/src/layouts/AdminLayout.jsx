@@ -9,7 +9,7 @@ export default function AdminLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [logoutError, setLogoutError] = useState('')
   const location = useLocation()
-  const pageTitle = location.pathname === '/admin/owners' ? 'Owners' : location.pathname === '/admin/businesses' ? 'Negocios' : location.pathname.startsWith('/admin/users/') ? 'Detalle de usuario' : location.pathname === '/admin/users' ? 'Usuarios' : 'Panel principal'
+  const pageTitle = location.pathname === '/admin/owners' ? 'Owners' : location.pathname.startsWith('/admin/businesses/') ? 'Detalle de negocio' : location.pathname === '/admin/businesses' ? 'Negocios' : location.pathname.startsWith('/admin/users/') ? 'Detalle de usuario' : location.pathname === '/admin/users' ? 'Usuarios' : 'Panel principal'
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
 
   async function handleSignOut() {

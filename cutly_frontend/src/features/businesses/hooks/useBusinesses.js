@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchBusinesses, updateBusinessStatus } from '../api/businessesApi.js'
+import { fetchBusinessById, fetchBusinesses, updateBusinessStatus } from '../api/businessesApi.js'
 
 export const businessesQueryKey = ['businesses']
+export const businessDetailQueryKey = (id) => ['businesses', 'detail', id]
 
 export default function useBusinesses() {
   return useQuery({
@@ -10,10 +11,21 @@ export default function useBusinesses() {
   })
 }
 
+export function useBusiness(id, enabled = true) {
+  return useQuery({
+    queryKey: businessDetailQueryKey(id),
+    queryFn: () => fetchBusinessById(id),
+    enabled,
+  })
+}
+
 export function useUpdateBusinessStatus() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: updateBusinessStatus,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: businessesQueryKey }),
+    onSuccess: (_data, variables) => Promise.all([
+      queryClient.invalidateQueries({ queryKey: businessesQueryKey }),
+      queryClient.invalidateQueries({ queryKey: businessDetailQueryKey(String(variables.id)) }),
+    ]),
   })
 }

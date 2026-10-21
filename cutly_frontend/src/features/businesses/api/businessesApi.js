@@ -8,6 +8,14 @@ export async function fetchBusinesses() {
   return data
 }
 
+export async function fetchBusinessById(id) {
+  const { data } = await apiClient.get(`/api/admin/negocios/${id}`)
+  if (!data || typeof data !== 'object' || data.negocioId === undefined) {
+    throw new Error('El servidor devolvió una respuesta de negocio que no pudimos interpretar.')
+  }
+  return data
+}
+
 export async function updateBusinessStatus({ id, action }) {
   const operations = { suspend: 'suspender', reactivate: 'reactivar', deactivate: 'desactivar' }
   const operation = operations[action]
@@ -23,6 +31,16 @@ export function getBusinessesErrorMessage(error) {
   if (status >= 500) return 'El servicio no está disponible en este momento. Intentá más tarde.'
   if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
   return 'No pudimos cargar los negocios. Intentá nuevamente.'
+}
+
+export function getBusinessErrorMessage(error) {
+  const status = error.response?.status
+  if (status === 404) return 'Este negocio no existe o ya no está disponible.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para consultar este negocio.'
+  if (status >= 500) return 'El servicio no está disponible en este momento. Podés reintentar.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá nuevamente.'
+  return 'No pudimos cargar los datos del negocio.'
 }
 
 export function getUpdateBusinessStatusErrorMessage(error) {

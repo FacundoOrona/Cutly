@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CheckCircle2, LoaderCircle, RefreshCw, Search, Store, X } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import BusinessesTable from '../components/BusinessesTable.jsx'
 import { getBusinessesErrorMessage, getUpdateBusinessStatusErrorMessage } from '../api/businessesApi.js'
 import useBusinesses, { useUpdateBusinessStatus } from '../hooks/useBusinesses.js'
@@ -13,8 +14,10 @@ const statusOptions = [
 const EMPTY_BUSINESSES = []
 
 export default function BusinessesPage() {
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
+  const location = useLocation()
+  const restoredState = location.state?.businessesListState
+  const [search, setSearch] = useState(() => restoredState?.search || '')
+  const [status, setStatus] = useState(() => restoredState?.status || '')
   const [statusMessage, setStatusMessage] = useState(null)
   const query = useBusinesses()
   const statusMutation = useUpdateBusinessStatus()
@@ -27,6 +30,7 @@ export default function BusinessesPage() {
       return matchesSearch && (!status || business.status === status)
     })
   }, [businesses, search, status])
+  const businessesListState = { search, status }
 
   async function handleBusinessStatusChange(business, action) {
     const actionLabels = { suspend: 'suspender', deactivate: 'desactivar', reactivate: 'reactivar' }
@@ -63,7 +67,7 @@ export default function BusinessesPage() {
           <>
             {query.isError && <p className="owners-inline-error" role="alert">No se pudo actualizar el listado. {getBusinessesErrorMessage(query.error)}</p>}
             {query.isFetching && <p className="owners-updating" role="status"><LoaderCircle size={15} className="spin" /> Actualizando listado…</p>}
-            {filteredBusinesses.length ? <BusinessesTable businesses={filteredBusinesses} pendingBusinessId={statusMutation.isPending ? statusMutation.variables?.id : null} onChangeStatus={handleBusinessStatusChange} /> : <div className="owners-message"><Store size={20} /><p>{businesses.length ? 'No hay negocios que coincidan con estos filtros.' : 'Todavía no hay negocios registrados.'}</p></div>}
+            {filteredBusinesses.length ? <BusinessesTable businesses={filteredBusinesses} pendingBusinessId={statusMutation.isPending ? statusMutation.variables?.id : null} onChangeStatus={handleBusinessStatusChange} businessesListState={businessesListState} /> : <div className="owners-message"><Store size={20} /><p>{businesses.length ? 'No hay negocios que coincidan con estos filtros.' : 'Todavía no hay negocios registrados.'}</p></div>}
           </>
         )}
       </section>

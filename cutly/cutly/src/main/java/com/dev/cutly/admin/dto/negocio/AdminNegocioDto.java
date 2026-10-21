@@ -8,6 +8,9 @@ public record AdminNegocioDto(
         String descripcion,
         String telefono,
         String email,
-        NegocioStatus status
+        NegocioStatus status,
+        String ownerNombre,
+        String ownerApellido,
+        String ownerEmail
 ) {
 }

@@ -12,16 +12,13 @@ export default function UsersTable({ users, currentUserId, pendingUserId, onChan
         <tbody>{users.map((user) => (
           <tr key={user.usuarioId}>
             <td data-label="ID">{user.usuarioId}</td>
-            <td data-label="Nombre">{user.nombre}</td>
+            <td data-label="Nombre">{Number.isSafeInteger(Number(user.usuarioId)) && Number(user.usuarioId) > 0 ? <Link className="business-detail-link" to={generatePath('/admin/users/:id', { id: String(user.usuarioId) })} state={{ usersListState }} aria-label={`Ver detalle de ${user.nombre} ${user.apellido}`}>{user.nombre}</Link> : user.nombre}</td>
             <td data-label="Apellido">{user.apellido}</td>
             <td data-label="Email" className="owner-email">{user.email}</td>
             <td data-label="DNI">{user.dni}</td>
             <td data-label="Rol"><span className="user-role-label">{roleLabels[user.rol] || user.rol}</span></td>
             <td data-label="Estado"><span className={`owner-status owner-status-${String(user.status).toLowerCase()}`}>{statusLabels[user.status] || user.status || 'Sin estado'}</span></td>
             <td data-label="Acciones" className="owner-row-actions users-row-actions">
-              {Number.isSafeInteger(Number(user.usuarioId)) && Number(user.usuarioId) > 0
-                ? <Link className="owners-secondary-button owner-status-action" to={generatePath('/admin/users/:id', { id: String(user.usuarioId) })} state={{ usersListState }} aria-label={`Ver detalle de ${user.email}`}>Ver detalle</Link>
-                : <span className="owner-action-note">ID no disponible</span>}
               {user.status === 'ACTIVE' && <>
                 <button type="button" className="owners-secondary-button owner-status-action" onClick={() => onChangeStatus(user, 'deactivate')} disabled={pendingUserId === user.usuarioId || (user.rol === 'SUPER_ADMIN' && user.usuarioId === currentUserId)} aria-label={`Desactivar a ${user.email}`}>
                   {pendingUserId === user.usuarioId ? <LoaderCircle size={14} className="spin" /> : <PowerOff size={14} />} Desactivar

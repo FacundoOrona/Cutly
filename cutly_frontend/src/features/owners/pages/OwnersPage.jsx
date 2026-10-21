@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { CheckCircle2, LoaderCircle, Plus, RefreshCw, Users, X } from 'lucide-react'
 import OwnerFilters from '../components/OwnerFilters.jsx'
 import OwnersTable from '../components/OwnersTable.jsx'
@@ -10,15 +11,17 @@ const PAGE_SIZE = 20
 const DEBOUNCE_MS = 350
 
 export default function OwnersPage() {
+  const location = useLocation()
+  const restoredState = location.state?.ownersListState
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createdMessage, setCreatedMessage] = useState('')
   const [statusMessage, setStatusMessage] = useState(null)
-  const [nombreInput, setNombreInput] = useState('')
-  const [emailInput, setEmailInput] = useState('')
-  const [nombre, setNombre] = useState('')
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(0)
+  const [nombreInput, setNombreInput] = useState(() => restoredState?.nombreInput || '')
+  const [emailInput, setEmailInput] = useState(() => restoredState?.emailInput || '')
+  const [nombre, setNombre] = useState(() => restoredState?.nombre || '')
+  const [email, setEmail] = useState(() => restoredState?.email || '')
+  const [status, setStatus] = useState(() => restoredState?.status || '')
+  const [page, setPage] = useState(() => restoredState?.page || 0)
   const query = useOwners({ nombre, email, status, page, size: PAGE_SIZE })
   const statusMutation = useUpdateOwnerStatus()
 
@@ -68,6 +71,7 @@ export default function OwnersPage() {
   const owners = data?.content || []
   const totalPages = data?.totalPages || 0
   const totalElements = data?.totalElements
+  const ownersListState = { nombreInput, emailInput, nombre, email, status, page }
 
   return (
     <>
@@ -86,7 +90,7 @@ export default function OwnersPage() {
           <>
             {query.isError && <p className="owners-inline-error" role="alert">No se pudo actualizar el listado. {getOwnersErrorMessage(query.error)}</p>}
             {query.isFetching && <p className="owners-updating" role="status"><LoaderCircle size={15} className="spin" /> Actualizando listado…</p>}
-            {owners.length ? <OwnersTable owners={owners} pendingOwnerId={statusMutation.isPending ? statusMutation.variables?.id : null} onChangeStatus={handleOwnerStatusChange} /> : <div className="owners-message"><Users size={20} /><p>No hay owners que coincidan con estos filtros.</p></div>}
+            {owners.length ? <OwnersTable owners={owners} pendingOwnerId={statusMutation.isPending ? statusMutation.variables?.id : null} onChangeStatus={handleOwnerStatusChange} ownersListState={ownersListState} /> : <div className="owners-message"><Users size={20} /><p>No hay owners que coincidan con estos filtros.</p></div>}
             {owners.length > 0 && <div className="owners-pagination"><span>{data.number * data.size + 1}–{Math.min((data.number + 1) * data.size, totalElements ?? (data.number + 1) * data.size)}{typeof totalElements === 'number' ? ` de ${totalElements}` : ''}</span><div><button className="owners-secondary-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0 || query.isFetching}>Anterior</button><span className="owners-page-number">Página {page + 1}{totalPages ? ` de ${totalPages}` : ''}</span><button className="owners-secondary-button" onClick={() => setPage((current) => current + 1)} disabled={query.isFetching || (totalPages ? page + 1 >= totalPages : !data.last)}>Siguiente</button></div></div>}
           </>
         )}
