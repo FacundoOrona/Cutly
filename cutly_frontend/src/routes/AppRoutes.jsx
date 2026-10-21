@@ -12,6 +12,18 @@ import UsersPage from '../features/users/pages/UsersPage.jsx'
 import UserDetailPage from '../features/users/pages/UserDetailPage.jsx'
 import BusinessesPage from '../features/businesses/pages/BusinessesPage.jsx'
 import BusinessDetailPage from '../features/businesses/pages/BusinessDetailPage.jsx'
+import OwnerLayout from '../layouts/OwnerLayout.jsx'
+import OwnerBusinessesPage from '../features/owner/pages/OwnerBusinessesPage.jsx'
+import OwnerBusinessPage from '../features/owner/pages/OwnerBusinessPage.jsx'
+import useAuth from '../auth/useAuth.js'
+
+function HomeRedirect() {
+  const { isAuthenticated, role } = useAuth()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (role === 'SUPER_ADMIN') return <Navigate to="/dashboard" replace />
+  if (role === 'OWNER') return <Navigate to="/owner" replace />
+  return <Navigate to="/acceso-denegado" replace />
+}
 
 export default function AppRoutes() {
   return (
@@ -19,7 +31,7 @@ export default function AppRoutes() {
       <AuthProvider>
         <Routes>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/acceso-denegado" element={<AccessDeniedPage />} />
           <Route element={<RequireAuth />}>
@@ -31,6 +43,12 @@ export default function AppRoutes() {
                 <Route path="/admin/businesses/:id" element={<BusinessDetailPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
                 <Route path="/admin/users/:id" element={<UserDetailPage />} />
+              </Route>
+            </Route>
+            <Route element={<RequireRole role="OWNER" />}>
+              <Route element={<OwnerLayout />}>
+                <Route path="/owner" element={<OwnerBusinessesPage />} />
+                <Route path="/owner/negocios/:negocioId" element={<OwnerBusinessPage />} />
               </Route>
             </Route>
           </Route>

@@ -21,9 +21,15 @@ export default function LoginPage() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  function getRoleDestination(currentRole) {
+    if (currentRole === 'SUPER_ADMIN') return '/dashboard'
+    if (currentRole === 'OWNER') return '/owner'
+    return '/acceso-denegado'
+  }
+
   if (isInitializing) return <main className="session-loading" role="status">Verificando sesión…</main>
   if (isAuthenticated) {
-    navigate(role === 'SUPER_ADMIN' ? '/dashboard' : '/acceso-denegado', { replace: true })
+    navigate(getRoleDestination(role), { replace: true })
     return null
   }
 
@@ -84,7 +90,7 @@ export default function LoginPage() {
               {isSubmitting ? <><LoaderCircle size={17} className="spin" /> Ingresando…</> : <>Iniciar sesión <ArrowRight size={17} /> </>}
             </button>
           </form>
-          <p className="login-disclaimer">El panel está disponible únicamente para cuentas con rol SUPER_ADMIN.</p>
+          <p className="login-disclaimer">El espacio disponible depende del rol asociado a tu cuenta.</p>
         </div>
         <footer className="panel-footer"><span>© 2026 Cutly</span><span>Hecho para hacer crecer tu salón.</span></footer>
       </section>
