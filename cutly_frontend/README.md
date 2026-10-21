@@ -1,4 +1,22 @@
-# React + Vite
+# Cutly Frontend
+
+## Configuración local
+
+Copiá `.env.example` a `.env.local` y configurá `VITE_API_BASE_URL` con la URL base del backend, sin agregar la ruta `/auth`. Por ejemplo, si Spring Boot escucha en `http://localhost:8080`, usá:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+Reiniciá Vite después de cambiar variables `VITE_*`. El backend debe permitir las solicitudes del origen local de Vite mediante su configuración CORS.
+
+La sesión se conserva en `sessionStorage` durante la pestaña del navegador. El token sigue siendo accesible para JavaScript y, por lo tanto, ante una vulnerabilidad XSS; no equivale a una cookie HttpOnly. La respuesta del backend incluye `fechaExpiracion`, pero el frontend no la interpreta hasta confirmar su formato y semántica.
+
+## Desarrollo
+
+```sh
+npm run dev
+```
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

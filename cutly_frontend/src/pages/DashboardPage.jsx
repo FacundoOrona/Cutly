@@ -1,26 +1,44 @@
-import { ArrowUpRight, CalendarDays, Clock3, Scissors, Sparkles, UsersRound } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { LogOut, Menu, Scissors, ShieldCheck, X } from 'lucide-react'
 import BrandMark from '../components/BrandMark.jsx'
-
-const highlights = [
-  { icon: CalendarDays, title: 'Agenda del día', text: 'Tu jornada, organizada de un vistazo.', tag: 'PRÓXIMAMENTE' },
-  { icon: UsersRound, title: 'Tu equipo', text: 'Todo listo para trabajar en equipo.', tag: 'PRÓXIMAMENTE' },
-  { icon: Clock3, title: 'Más tiempo', text: 'Menos tareas manuales, más salón.', tag: 'PRÓXIMAMENTE' },
-]
+import useAuth from '../auth/useAuth.js'
 
 export default function DashboardPage() {
+  const { user, signOut } = useAuth()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+
+  async function handleSignOut() {
+    setLogoutError('')
+    try {
+      await signOut()
+    } catch {
+      setLogoutError('La sesión local se cerró, pero no pudimos confirmar el cierre en el servidor.')
+    }
+  }
+
+  const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
+
   return (
-    <main className="dashboard-page">
-      <header className="dashboard-nav"><BrandMark /><Link className="nav-link" to="/login">Vista de acceso <ArrowUpRight size={15} /></Link></header>
-      <section className="dashboard-content">
-        <span className="eyebrow"><span className="eyebrow-dot" /> TU SALÓN, MÁS SIMPLE</span>
-        <h1>Un buen día<br />empieza <span>por acá.</span></h1>
-        <p className="dashboard-lead">Estamos preparando un espacio más simple para organizar tu peluquería. Pronto, todo lo que necesitás va a estar en un mismo lugar.</p>
-        <div className="dashboard-note"><span className="note-icon"><Sparkles size={17} /></span><div><strong>Tu espacio está tomando forma</strong><p>Las funciones de gestión se habilitarán al conectar los servicios reales del backend.</p></div></div>
-        <div className="feature-grid">{highlights.map(({ icon: Icon, title, text, tag }) => <article className="feature-card" key={title}><span className="feature-icon"><Icon size={19} /></span><span className="feature-tag">{tag}</span><h2>{title}</h2><p>{text}</p></article>)}</div>
-        <Link className="login-cta" to="/login">Volver a la pantalla de acceso <ArrowUpRight size={16} /></Link>
+    <main className="admin-page">
+      <aside className={`admin-sidebar${isMenuOpen ? ' admin-sidebar-open' : ''}`}>
+        <div className="admin-sidebar-top"><BrandMark /><button className="icon-button mobile-menu-close" onClick={() => setIsMenuOpen(false)} aria-label="Cerrar menú"><X size={20} /></button></div>
+        <p className="sidebar-label">ADMINISTRACIÓN</p>
+        <nav aria-label="Navegación principal"><a className="sidebar-item sidebar-item-active" href="/dashboard" aria-current="page"><ShieldCheck size={17} /> Panel principal</a></nav>
+        <div className="sidebar-user"><span className="user-avatar">{(user?.nombre?.[0] || user?.email?.[0] || 'C').toUpperCase()}</span><div className="user-details"><strong>{displayName}</strong><small>{user?.rol}</small></div><button className="icon-button" onClick={handleSignOut} aria-label="Cerrar sesión"><LogOut size={17} /></button></div>
+      </aside>
+      {isMenuOpen && <button className="sidebar-backdrop" aria-label="Cerrar menú" onClick={() => setIsMenuOpen(false)} />}
+      <section className="admin-main">
+        <header className="admin-header"><button className="icon-button mobile-menu-open" onClick={() => setIsMenuOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button><span>Panel principal</span><button className="header-signout" onClick={handleSignOut}><LogOut size={16} /> Cerrar sesión</button></header>
+        <div className="admin-content">
+          {logoutError && <p className="form-error" role="alert">{logoutError}</p>}
+          <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO ADMINISTRATIVO</span>
+          <h1>Hola, <span>{user?.nombre || 'bienvenido'}.</span></h1>
+          <p className="dashboard-lead">Sesión iniciada como {user?.email}. Desde aquí vas a poder administrar Cutly.</p>
+          <section className="admin-welcome"><span className="admin-welcome-icon"><Scissors size={20} /></span><div><strong>Tu panel está listo</strong><p>Los módulos administrativos estarán disponibles a medida que se conecten sus servicios.</p></div></section>
+        </div>
+        <footer className="dashboard-footer"><span><Scissors size={14} /> CUTLY</span><span>Acceso seguro para SUPER_ADMIN</span></footer>
       </section>
-      <footer className="dashboard-footer"><span><Scissors size={14} /> CUTLY</span><span>Simple para vos. Mejor para tu salón.</span></footer>
     </main>
   )
 }

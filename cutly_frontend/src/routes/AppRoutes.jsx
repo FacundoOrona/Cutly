@@ -3,18 +3,28 @@ import AppLayout from '../layouts/AppLayout.jsx'
 import DashboardPage from '../pages/DashboardPage.jsx'
 import LoginPage from '../pages/LoginPage.jsx'
 import NotFoundPage from '../pages/NotFoundPage.jsx'
+import { RequireAuth, RequireRole } from '../auth/RouteGuards.jsx'
+import AccessDeniedPage from '../pages/AccessDeniedPage.jsx'
+import { AuthProvider } from '../auth/AuthContext.jsx'
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
+      <AuthProvider>
+        <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/acceso-denegado" element={<AccessDeniedPage />} />
+          <Route element={<RequireAuth />}>
+            <Route element={<RequireRole role="SUPER_ADMIN" />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+            </Route>
+          </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Route>
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }
