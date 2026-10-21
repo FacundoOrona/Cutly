@@ -9,6 +9,8 @@ import { AuthProvider } from '../auth/AuthContext.jsx'
 import AdminLayout from '../layouts/AdminLayout.jsx'
 import OwnersPage from '../features/owners/pages/OwnersPage.jsx'
 import UsersPage from '../features/users/pages/UsersPage.jsx'
+import UserDetailPage from '../features/users/pages/UserDetailPage.jsx'
+import BusinessesPage from '../features/businesses/pages/BusinessesPage.jsx'
 
 export default function AppRoutes() {
   return (
@@ -24,7 +26,9 @@ export default function AppRoutes() {
               <Route element={<AdminLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/admin/owners" element={<OwnersPage />} />
+                <Route path="/admin/businesses" element={<BusinessesPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
+                <Route path="/admin/users/:id" element={<UserDetailPage />} />
               </Route>
             </Route>
           </Route>
