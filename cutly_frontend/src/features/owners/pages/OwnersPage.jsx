@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { LoaderCircle, RefreshCw, Users } from 'lucide-react'
+import { CheckCircle2, LoaderCircle, Plus, RefreshCw, Users, X } from 'lucide-react'
 import OwnerFilters from '../components/OwnerFilters.jsx'
 import OwnersTable from '../components/OwnersTable.jsx'
+import CreateOwnerForm from '../components/CreateOwnerForm.jsx'
 import { getOwnersErrorMessage } from '../api/ownersApi.js'
 import useOwners from '../hooks/useOwners.js'
 
@@ -9,6 +10,8 @@ const PAGE_SIZE = 20
 const DEBOUNCE_MS = 350
 
 export default function OwnersPage() {
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [createdMessage, setCreatedMessage] = useState('')
   const [nombreInput, setNombreInput] = useState('')
   const [emailInput, setEmailInput] = useState('')
   const [nombre, setNombre] = useState('')
@@ -31,6 +34,17 @@ export default function OwnersPage() {
     setPage(0)
   }
 
+  function handleOwnerCreated(owner) {
+    setIsCreateOpen(false)
+    setNombreInput('')
+    setEmailInput('')
+    setNombre('')
+    setEmail('')
+    setStatus('')
+    setPage(0)
+    setCreatedMessage(owner?.email ? `Se creó el owner ${owner.email}.` : 'El owner se creó correctamente.')
+  }
+
   const data = query.data
   const owners = data?.content || []
   const totalPages = data?.totalPages || 0
@@ -39,7 +53,9 @@ export default function OwnersPage() {
   return (
     <>
       <span className="eyebrow"><span className="eyebrow-dot" /> ADMINISTRACIÓN</span>
-      <div className="owners-heading"><div><h1>Owners</h1><p className="owners-description">Consultá y filtrá las cuentas de propietarios registradas.</p></div><div className="owners-count"><Users size={17} />{typeof totalElements === 'number' ? `${totalElements} ${totalElements === 1 ? 'owner' : 'owners'}` : 'Listado'}</div></div>
+      <div className="owners-heading"><div><h1>Owners</h1><p className="owners-description">Consultá y filtrá las cuentas de propietarios registradas.</p></div><div className="owners-heading-actions"><div className="owners-count"><Users size={17} />{typeof totalElements === 'number' ? `${totalElements} ${totalElements === 1 ? 'owner' : 'owners'}` : 'Listado'}</div><button className="owner-create-button" type="button" onClick={() => { setCreatedMessage(''); setIsCreateOpen((open) => !open) }}>{isCreateOpen ? <X size={15} /> : <Plus size={15} />}{isCreateOpen ? 'Cerrar' : 'Crear owner'}</button></div></div>
+      {createdMessage && <div className="owner-created-notice" role="status"><CheckCircle2 size={17} />{createdMessage}<button type="button" className="icon-button" onClick={() => setCreatedMessage('')} aria-label="Cerrar confirmación"><X size={16} /></button></div>}
+      {isCreateOpen && <CreateOwnerForm onCancel={() => setIsCreateOpen(false)} onCreated={handleOwnerCreated} />}
       <OwnerFilters nombre={nombreInput} email={emailInput} status={status} onNombreChange={setNombreInput} onEmailChange={setEmailInput} onStatusChange={changeStatus} />
       <section className="owners-results" aria-label="Listado de owners" aria-busy={query.isFetching}>
         {query.isError && !data ? (
