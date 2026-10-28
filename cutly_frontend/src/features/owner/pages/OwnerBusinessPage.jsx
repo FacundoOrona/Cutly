@@ -5,6 +5,8 @@ import { getOwnerBusiness, getOwnerBusinessErrorMessage } from '../api/ownerBusi
 import EditOwnerBusinessForm from '../components/EditOwnerBusinessForm.jsx'
 import { useQueryClient } from '@tanstack/react-query'
 import { ownerBusinessDetailQueryKey } from '../hooks/useOwnerBusinesses.js'
+import OwnerBusinessAddressSection from '../components/OwnerBusinessAddressSection.jsx'
+import OwnerBusinessHoursSection from '../components/OwnerBusinessHoursSection.jsx'
 
 export default function OwnerBusinessPage() {
   const { negocioId } = useParams()
@@ -73,6 +75,8 @@ export default function OwnerBusinessPage() {
               <dl className="user-detail-grid">{fields.map(([label, value]) => <div className="user-detail-field" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
             </section>
           )}
+          <OwnerBusinessAddressSection negocioId={negocioId} />
+          <OwnerBusinessHoursSection negocioId={negocioId} />
         </>
       ) : (
         <div className="owner-business-state"><p>No hay datos disponibles para este negocio.</p></div>

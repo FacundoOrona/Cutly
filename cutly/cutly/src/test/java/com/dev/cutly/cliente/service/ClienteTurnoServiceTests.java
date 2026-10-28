@@ -228,6 +228,41 @@ class ClienteTurnoServiceTests {
     }
 
     @Test
+    void puedeReservarEnElSegundoTramoDelDia() {
+        HorarioNegocio segundoTramo = horario(inicio.getDayOfWeek(), LocalTime.of(17, 0), LocalTime.of(20, 0), false);
+        when(horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(NEGOCIO_ID))
+                .thenReturn(List.of(horario(inicio.getDayOfWeek(), LocalTime.of(9, 0), LocalTime.NOON, false), segundoTramo));
+        LocalDateTime segundoInicio = inicio.toLocalDate().atTime(17, 0);
+
+        ClienteTurnoDto dto = service.crear(request(null, segundoInicio, null), EMAIL);
+
+        assertEquals(segundoInicio, dto.fechaHoraInicio());
+        verify(turnoRepository).save(any(Turno.class));
+    }
+
+    @Test
+    void rechazaReservaEnLaPausaEntreTramos() {
+        when(horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(NEGOCIO_ID))
+                .thenReturn(List.of(horario(inicio.getDayOfWeek(), LocalTime.of(9, 0), LocalTime.NOON, false),
+                        horario(inicio.getDayOfWeek(), LocalTime.of(17, 0), LocalTime.of(20, 0), false)));
+
+        assertStatus(HttpStatus.CONFLICT, () -> service.crear(
+                request(null, inicio.toLocalDate().atTime(13, 0), null), EMAIL));
+        verify(turnoRepository, never()).save(any());
+    }
+
+    @Test
+    void rechazaServicioQueAtraviesaElFinDelPrimerTramoAunqueElSegundoEsteAbierto() {
+        when(horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(NEGOCIO_ID))
+                .thenReturn(List.of(horario(inicio.getDayOfWeek(), LocalTime.of(9, 0), LocalTime.NOON, false),
+                        horario(inicio.getDayOfWeek(), LocalTime.of(17, 0), LocalTime.of(20, 0), false)));
+
+        assertStatus(HttpStatus.CONFLICT, () -> service.crear(
+                request(null, inicio.toLocalDate().atTime(11, 30), null), EMAIL));
+        verify(turnoRepository, never()).save(any());
+    }
+
+    @Test
     void seleccionaSegundoEmpleadoSiPrimeroTieneSolapamiento() {
         Empleado segundo = empleado(21L, negocio, true, "Luz", "Estilista");
         when(empleadoRepository.findByNegocio_NegocioIdAndActivoTrueOrderByEmpleadoIdAsc(NEGOCIO_ID))

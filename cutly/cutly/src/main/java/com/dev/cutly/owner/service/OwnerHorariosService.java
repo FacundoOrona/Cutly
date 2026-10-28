@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -42,13 +44,10 @@ public class OwnerHorariosService {
             String emailOwner
     ) {
         Negocio negocio = ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        if (horarioRepository.existsByNegocio_NegocioIdAndDiaSemana(negocioId, request.diaSemana())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Ya existe un horario para " + request.diaSemana());
-        }
         LocalTime apertura = request.cerrado() ? LocalTime.MIDNIGHT : request.horaApertura();
         LocalTime cierre = request.cerrado() ? LocalTime.MIDNIGHT : request.horaCierre();
         validarHorario(request.cerrado(), apertura, cierre);
+        validarSinSolapamientos(negocioId, request.diaSemana(), request.cerrado(), apertura, cierre, null);
 
         HorarioNegocio horario = new HorarioNegocio();
         horario.setDiaSemana(request.diaSemana());
@@ -77,13 +76,7 @@ public class OwnerHorariosService {
             cierre = LocalTime.MIDNIGHT;
         }
         validarHorario(cerrado, apertura, cierre);
-        if (!diaSemana.equals(horario.getDiaSemana())
-                && horarioRepository.existsByNegocio_NegocioIdAndDiaSemanaAndHorarioIdNot(
-                negocioId, diaSemana, horarioId
-        )) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Ya existe un horario para " + diaSemana);
-        }
+        validarSinSolapamientos(negocioId, diaSemana, cerrado, apertura, cierre, horarioId);
 
         horario.setDiaSemana(diaSemana);
         horario.setCerrado(cerrado);
@@ -107,6 +100,37 @@ public class OwnerHorariosService {
         if (!cerrado && (apertura == null || cierre == null || !apertura.isBefore(cierre))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "La hora de apertura debe ser anterior a la hora de cierre");
+        }
+    }
+
+    private void validarSinSolapamientos(
+            Long negocioId, DiaSemana diaSemana, boolean cerrado,
+            LocalTime apertura, LocalTime cierre, Long horarioIdExcluido
+    ) {
+        List<HorarioNegocio> horarios = new ArrayList<>(
+                horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(negocioId)
+        );
+        if (horarioIdExcluido != null) {
+            horarios.removeIf(h -> h.getHorarioId().equals(horarioIdExcluido));
+        }
+        List<HorarioNegocio> mismoDia = horarios.stream()
+                .filter(h -> h.getDiaSemana() == diaSemana)
+                .sorted(Comparator.comparing(HorarioNegocio::getHoraApertura))
+                .toList();
+        if (cerrado && !mismoDia.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede marcar el día cerrado mientras tenga otros horarios");
+        }
+        if (!cerrado && mismoDia.stream().anyMatch(HorarioNegocio::isCerrado)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El día ya está marcado como cerrado; eliminá ese registro antes de agregar un tramo");
+        }
+        for (HorarioNegocio existente : mismoDia) {
+            if (!cerrado && apertura.isBefore(existente.getHoraCierre())
+                    && cierre.isAfter(existente.getHoraApertura())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El horario se superpone con otro tramo del mismo día");
+            }
         }
     }
 

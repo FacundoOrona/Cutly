@@ -90,32 +90,32 @@ public class ClienteDisponibilidadService {
     private List<ClienteDisponibilidadDto> generarDisponibilidad(
             Long negocioId, LocalDate fecha, Servicio servicio, List<Empleado> empleados
     ) {
-        HorarioNegocio horario = horarioRepository
+        List<HorarioNegocio> horarios = horarioRepository
                 .findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(negocioId).stream()
                 .filter(h -> h.getDiaSemana().name().equals(fecha.getDayOfWeek().name()))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No existe un horario configurado para la fecha solicitada"));
-        if (horario.isCerrado()) return List.of();
-
-        LocalDateTime desde = fecha.atTime(horario.getHoraApertura());
-        LocalDateTime hasta = fecha.atTime(horario.getHoraCierre());
-        List<Turno> turnos = turnoRepository
-                .findTurnosSolapados(negocioId, desde, hasta)
-                .stream().filter(this::bloqueaHorario).toList();
+                .toList();
+        if (horarios.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "No existe un horario configurado para la fecha solicitada");
         List<ClienteDisponibilidadDto> resultado = new java.util.ArrayList<>();
-        LocalTime inicio = horario.getHoraApertura();
-        while (!inicio.plusMinutes(servicio.getDuracionMinutos()).isAfter(horario.getHoraCierre())) {
-            LocalDateTime slotInicio = fecha.atTime(inicio);
-            LocalDateTime slotFin = slotInicio.plusMinutes(servicio.getDuracionMinutos());
-            Empleado empleado = empleados.stream()
-                    .filter(e -> turnos.stream().noneMatch(t -> t.getEmpleado().getEmpleadoId().equals(e.getEmpleadoId())
-                            && t.getFechaHoraInicio().isBefore(slotFin) && t.getFechaHoraFin().isAfter(slotInicio)))
-                    .findFirst().orElse(null);
-            if (empleado != null) {
-                resultado.add(new ClienteDisponibilidadDto(slotInicio, slotFin, servicio.getServicioId(), empleado.getEmpleadoId()));
+        for (HorarioNegocio horario : horarios) {
+            if (horario.isCerrado()) continue;
+            LocalDateTime desde = fecha.atTime(horario.getHoraApertura());
+            LocalDateTime hasta = fecha.atTime(horario.getHoraCierre());
+            List<Turno> turnos = turnoRepository.findTurnosSolapados(negocioId, desde, hasta)
+                    .stream().filter(this::bloqueaHorario).toList();
+            LocalTime inicio = horario.getHoraApertura();
+            while (!inicio.plusMinutes(servicio.getDuracionMinutos()).isAfter(horario.getHoraCierre())) {
+                LocalDateTime slotInicio = fecha.atTime(inicio);
+                LocalDateTime slotFin = slotInicio.plusMinutes(servicio.getDuracionMinutos());
+                Empleado empleado = empleados.stream()
+                        .filter(e -> turnos.stream().noneMatch(t -> t.getEmpleado().getEmpleadoId().equals(e.getEmpleadoId())
+                                && t.getFechaHoraInicio().isBefore(slotFin) && t.getFechaHoraFin().isAfter(slotInicio)))
+                        .findFirst().orElse(null);
+                if (empleado != null) {
+                    resultado.add(new ClienteDisponibilidadDto(slotInicio, slotFin, servicio.getServicioId(), empleado.getEmpleadoId()));
+                }
+                inicio = inicio.plusMinutes(servicio.getDuracionMinutos());
             }
-            inicio = inicio.plusMinutes(servicio.getDuracionMinutos());
         }
         return resultado;
     }
