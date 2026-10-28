@@ -3,8 +3,8 @@ import { createOwnerBusinessService, getOwnerBusinessServices, updateOwnerBusine
 
 export const ownerBusinessServicesQueryKey = (id) => ['ownerBusinesses', 'detail', String(id), 'services']
 
-export function useOwnerBusinessServices(id) {
-  return useQuery({ queryKey: ownerBusinessServicesQueryKey(id), queryFn: () => getOwnerBusinessServices(id), enabled: Boolean(id) })
+export function useOwnerBusinessServices(id, options = {}) {
+  return useQuery({ queryKey: ownerBusinessServicesQueryKey(id), queryFn: () => getOwnerBusinessServices(id), enabled: Boolean(id) && (options.enabled ?? true) })
 }
 
 function useOwnerBusinessServiceMutation(mutationFn, updateCache) {

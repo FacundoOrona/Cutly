@@ -4,8 +4,8 @@ import { assignOwnerBusinessEmployeeService, createOwnerBusinessEmployee, getOwn
 export const ownerBusinessEmployeesQueryKey = (id) => ['ownerBusinesses', 'detail', String(id), 'employees']
 export const ownerBusinessEmployeeServicesQueryKey = (id, empleadoId) => ['ownerBusinesses', 'detail', String(id), 'employees', String(empleadoId), 'services']
 
-export function useOwnerBusinessEmployees(id) {
-  return useQuery({ queryKey: ownerBusinessEmployeesQueryKey(id), queryFn: () => getOwnerBusinessEmployees(id), enabled: Boolean(id) })
+export function useOwnerBusinessEmployees(id, options = {}) {
+  return useQuery({ queryKey: ownerBusinessEmployeesQueryKey(id), queryFn: () => getOwnerBusinessEmployees(id), enabled: Boolean(id) && (options.enabled ?? true) })
 }
 
 export function useOwnerBusinessEmployeeServices(id, empleadoId) {
