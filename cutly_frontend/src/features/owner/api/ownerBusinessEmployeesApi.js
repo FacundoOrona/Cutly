@@ -1,6 +1,7 @@
 import apiClient from '../../../services/apiClient.js'
 
 const employeesEndpoint = (id) => `/api/owner/negocios/${id}/empleados`
+const employeeServicesEndpoint = (negocioId, empleadoId) => `${employeesEndpoint(negocioId)}/${empleadoId}/servicios`
 
 export async function getOwnerBusinessEmployees(id) {
   const { data } = await apiClient.get(employeesEndpoint(id))
@@ -23,6 +24,20 @@ export async function updateOwnerBusinessEmployeeStatus({ id, empleadoId, activo
   return data
 }
 
+export async function getOwnerBusinessEmployeeServices({ id, empleadoId }) {
+  const { data } = await apiClient.get(employeeServicesEndpoint(id, empleadoId))
+  return data
+}
+
+export async function assignOwnerBusinessEmployeeService({ id, empleadoId, servicioId }) {
+  const { data } = await apiClient.post(`${employeeServicesEndpoint(id, empleadoId)}/${servicioId}`)
+  return data
+}
+
+export async function removeOwnerBusinessEmployeeService({ id, empleadoId, servicioId }) {
+  await apiClient.delete(`${employeeServicesEndpoint(id, empleadoId)}/${servicioId}`)
+}
+
 export function getOwnerBusinessEmployeesErrorMessage(error, action = 'consultar') {
   const status = error.response?.status
   const body = error.response?.data
@@ -31,7 +46,11 @@ export function getOwnerBusinessEmployeesErrorMessage(error, action = 'consultar
   if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
   if (status === 403) return 'Tu cuenta no tiene acceso a este negocio.'
   if (status === 404) return 'No se encontró el negocio o el empleado solicitado.'
-  if (status === 409) return message || 'El email o el DNI ya pertenece a otro usuario.'
+  if (status === 409) {
+    return message || (action === 'asignar'
+      ? 'El servicio ya está asignado a este empleado.'
+      : 'El email o el DNI ya pertenece a otro usuario.')
+  }
   if (status === 400) {
     const validationMessages = Array.isArray(body?.errors)
       ? body.errors.map((item) => item?.defaultMessage || item?.message).filter((item) => typeof item === 'string')

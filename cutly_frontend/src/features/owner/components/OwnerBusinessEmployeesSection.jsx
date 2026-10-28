@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { CheckCircle2, LoaderCircle, Pencil, Plus, RefreshCw, ToggleLeft, ToggleRight, UserRound, X } from 'lucide-react'
+import { CheckCircle2, LoaderCircle, Pencil, Plus, RefreshCw, Scissors, ToggleLeft, ToggleRight, UserRound, X } from 'lucide-react'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
 import { useOwnerBusinessEmployees, useUpdateOwnerBusinessEmployeeStatus } from '../hooks/useOwnerBusinessEmployees.js'
 import OwnerBusinessEmployeeForm from './OwnerBusinessEmployeeForm.jsx'
+import OwnerBusinessEmployeeServices from './OwnerBusinessEmployeeServices.jsx'
 
 export default function OwnerBusinessEmployeesSection({ negocioId }) {
   const query = useOwnerBusinessEmployees(negocioId)
@@ -12,6 +13,7 @@ export default function OwnerBusinessEmployeesSection({ negocioId }) {
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [pendingEmployeeId, setPendingEmployeeId] = useState(null)
+  const [servicesEmployeeId, setServicesEmployeeId] = useState(null)
 
   async function handleStatusChange(employee) {
     const activate = !employee.activo
@@ -55,11 +57,13 @@ export default function OwnerBusinessEmployeesSection({ negocioId }) {
                 </div>
                 <div className="owner-service-actions">
                   <button type="button" className="owners-secondary-button" onClick={() => { setNotice(''); setEditingEmployeeId(employee.empleadoId) }} disabled={pendingEmployeeId !== null}><Pencil size={14} /> Editar</button>
+                  <button type="button" className="owners-secondary-button" aria-expanded={servicesEmployeeId === employee.empleadoId} aria-controls={`employee-services-${negocioId}-${employee.empleadoId}`} onClick={() => setServicesEmployeeId((current) => current === employee.empleadoId ? null : employee.empleadoId)}><Scissors size={14} /> Servicios</button>
                   <button type="button" className="owners-secondary-button" onClick={() => void handleStatusChange(employee)} disabled={pendingEmployeeId !== null}>
                     {pendingEmployeeId === employee.empleadoId ? <LoaderCircle size={14} className="spin" /> : employee.activo ? <ToggleLeft size={15} /> : <ToggleRight size={15} />}
                     {pendingEmployeeId === employee.empleadoId ? 'Actualizando…' : employee.activo ? 'Desactivar' : 'Activar'}
                   </button>
                 </div>
+                {servicesEmployeeId === employee.empleadoId && <div id={`employee-services-${negocioId}-${employee.empleadoId}`} className="owner-employee-services-wrap"><OwnerBusinessEmployeeServices key={`${negocioId}-${employee.empleadoId}`} negocioId={negocioId} empleadoId={employee.empleadoId} /></div>}
               </>}
             </li>)}</ul>}
         </>}
