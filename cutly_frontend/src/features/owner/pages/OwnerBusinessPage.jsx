@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ownerBusinessDetailQueryKey } from '../hooks/useOwnerBusinesses.js'
 import OwnerBusinessAddressSection from '../components/OwnerBusinessAddressSection.jsx'
 import OwnerBusinessHoursSection from '../components/OwnerBusinessHoursSection.jsx'
+import OwnerBusinessServicesSection from '../components/OwnerBusinessServicesSection.jsx'
 
 export default function OwnerBusinessPage() {
   const { negocioId } = useParams()
@@ -77,6 +78,7 @@ export default function OwnerBusinessPage() {
           )}
           <OwnerBusinessAddressSection negocioId={negocioId} />
           <OwnerBusinessHoursSection negocioId={negocioId} />
+          <OwnerBusinessServicesSection key={negocioId} negocioId={negocioId} />
         </>
       ) : (
         <div className="owner-business-state"><p>No hay datos disponibles para este negocio.</p></div>
