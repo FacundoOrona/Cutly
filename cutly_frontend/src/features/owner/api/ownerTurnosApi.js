@@ -10,6 +10,13 @@ export async function getOwnerTurnos({ negocioId, fecha, empleadoId, status }) {
   return data
 }
 
+export async function updateOwnerTurnoStatus({ negocioId, turnoId, action }) {
+  const allowedActions = ['confirmar', 'rechazar', 'cancelar', 'completar', 'no-show']
+  if (!allowedActions.includes(action)) throw new Error('Acción de turno no válida.')
+  const { data } = await apiClient.patch(`/api/owner/negocios/${negocioId}/turnos/${turnoId}/${action}`)
+  return data
+}
+
 export function getOwnerTurnosErrorMessage(error) {
   const status = error.response?.status
   const body = error.response?.data
@@ -22,4 +29,18 @@ export function getOwnerTurnosErrorMessage(error) {
   if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
   if (status >= 500) return 'El servicio no está disponible en este momento. Intentá más tarde.'
   return message || 'No pudimos cargar los turnos. Intentá nuevamente.'
+}
+
+export function getUpdateOwnerTurnoErrorMessage(error, actionLabel) {
+  const status = error.response?.status
+  const body = error.response?.data
+  const serverMessage = typeof body === 'string' ? body : body?.mensaje || body?.message
+
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permiso para actualizar este turno.'
+  if (status === 404) return 'El turno ya no está disponible para este negocio. Actualizá el listado.'
+  if (status === 409) return serverMessage || 'El estado del turno cambió o no permite esta acción. Actualizamos el listado.'
+  if (!error.response) return `No pudimos ${actionLabel} el turno por un problema de conexión.`
+  if (status >= 500) return `No pudimos ${actionLabel} el turno por un problema del servidor.`
+  return serverMessage || `No pudimos ${actionLabel} el turno. Intentá nuevamente.`
 }
