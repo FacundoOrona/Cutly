@@ -51,6 +51,25 @@ export async function searchOwnerClientesLocales({ negocioId, query }) {
   return data
 }
 
+export async function createOwnerClienteLocal({ negocioId, cliente }) {
+  const { data } = await apiClient.post(`/api/owner/negocios/${negocioId}/clientes-locales`, cliente)
+  return data
+}
+
+export function getCreateOwnerClienteLocalErrorMessage(error) {
+  const status = error.response?.status
+  const body = error.response?.data
+  const message = typeof body === 'string' ? body : body?.mensaje || body?.message
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'Tu cuenta no tiene permiso para registrar clientes en este negocio.'
+  if (status === 404) return 'No se encontró el negocio solicitado.'
+  if (status === 409) return message || 'Ya existe un cliente local con ese DNI en este negocio.'
+  if (status === 400) return message || 'Revisá los datos ingresados. El DNI debe contener 7 u 8 dígitos ASCII; se permiten puntos, guiones y espacios.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return message || 'El servicio no está disponible en este momento. Intentá más tarde.'
+  return message || 'No pudimos registrar el cliente. Intentá nuevamente.'
+}
+
 export async function updateOwnerTurnoStatus({ negocioId, turnoId, action }) {
   const allowedActions = ['confirmar', 'rechazar', 'cancelar', 'completar', 'no-show']
   if (!allowedActions.includes(action)) throw new Error('Acción de turno no válida.')

@@ -16,6 +16,7 @@ import OwnerLayout from '../layouts/OwnerLayout.jsx'
 import OwnerBusinessesPage from '../features/owner/pages/OwnerBusinessesPage.jsx'
 import OwnerBusinessPage from '../features/owner/pages/OwnerBusinessPage.jsx'
 import OwnerTurnosPage, { LegacyOwnerTurnosRedirect } from '../features/owner/pages/OwnerTurnosPage.jsx'
+import OwnerClientesPage from '../features/owner/pages/OwnerClientesPage.jsx'
 import useAuth from '../auth/useAuth.js'
 
 function HomeRedirect() {
@@ -52,6 +53,7 @@ export default function AppRoutes() {
                 <Route path="/owner/negocios/:negocioId" element={<OwnerBusinessPage />} />
                 <Route path="/owner/negocios/:negocioId/turnos" element={<LegacyOwnerTurnosRedirect />} />
                 <Route path="/owner/turnos" element={<OwnerTurnosPage />} />
+                <Route path="/owner/clientes" element={<OwnerClientesPage />} />
               </Route>
             </Route>
           </Route>

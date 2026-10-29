@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, CalendarDays, LogOut, Menu, X } from 'lucide-react'
+import { Building2, CalendarDays, LogOut, Menu, UsersRound, X } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
@@ -26,7 +26,7 @@ export default function OwnerLayout() {
       <aside className={`admin-sidebar${isMenuOpen ? ' admin-sidebar-open' : ''}`}>
         <div className="admin-sidebar-top"><BrandMark /><button className="icon-button mobile-menu-close" onClick={closeMenu} aria-label="Cerrar menú"><X size={20} /></button></div>
         <p className="sidebar-label">MI ESPACIO</p>
-        <nav aria-label="Navegación principal"><NavLink end to="/owner" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Building2 size={17} /> Mis negocios</NavLink><NavLink to="/owner/turnos" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><CalendarDays size={17} /> Turnos</NavLink></nav>
+        <nav aria-label="Navegación principal"><NavLink end to="/owner" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Building2 size={17} /> Mis negocios</NavLink><NavLink to="/owner/turnos" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><CalendarDays size={17} /> Turnos</NavLink><NavLink to="/owner/clientes" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><UsersRound size={17} /> Clientes</NavLink></nav>
         <div className="sidebar-user"><span className="user-avatar">{(user?.nombre?.[0] || user?.email?.[0] || 'C').toUpperCase()}</span><div className="user-details"><strong>{displayName}</strong><small>OWNER</small></div><button className="icon-button" onClick={handleSignOut} aria-label="Cerrar sesión"><LogOut size={17} /></button></div>
       </aside>
       {isMenuOpen && <button className="sidebar-backdrop" aria-label="Cerrar menú" onClick={closeMenu} />}
