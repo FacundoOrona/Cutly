@@ -14,7 +14,7 @@ function toTimeInput(value) {
   return typeof value === 'string' ? value.slice(0, 5) : ''
 }
 
-function HourForm({ id, hours, hour, onCancel, onSaved }) {
+function HourForm({ negocioId, formId, hours, hour, onCancel, onSaved }) {
   const editing = Boolean(hour)
   const [values, setValues] = useState(() => hour ? { diaSemana: hour.diaSemana, horaApertura: toTimeInput(hour.horaApertura), horaCierre: toTimeInput(hour.horaCierre), cerrado: hour.cerrado } : emptyForm)
   const [fieldError, setFieldError] = useState('')
@@ -43,21 +43,21 @@ function HourForm({ id, hours, hour, onCancel, onSaved }) {
     }
     const payload = { diaSemana: values.diaSemana, horaApertura: values.cerrado ? null : `${values.horaApertura}:00`, horaCierre: values.cerrado ? null : `${values.horaCierre}:00`, cerrado: values.cerrado }
     try {
-      if (editing) await mutation.mutateAsync({ id, horarioId: hour.horarioId, changes: payload })
-      else await mutation.mutateAsync({ id, hour: payload })
+      if (editing) await mutation.mutateAsync({ id: negocioId, horarioId: hour.horarioId, changes: payload })
+      else await mutation.mutateAsync({ id: negocioId, hour: payload })
       onSaved()
     } catch (error) { setSubmitError(getOwnerBusinessHoursErrorMessage(error, editing ? 'actualizar' : 'registrar')) }
   }
 
   return <form className="owner-form owner-hours-form" onSubmit={handleSubmit} noValidate>
     <div className="owner-form-grid">
-      <label className="owner-form-field" htmlFor={`hours-day-${id}`}><span>Día *</span><select id={`hours-day-${id}`} value={values.diaSemana} onChange={(event) => setField('diaSemana', event.target.value)} required>
+      <label className="owner-form-field" htmlFor={`hours-day-${formId}`}><span>Día *</span><select id={`hours-day-${formId}`} value={values.diaSemana} onChange={(event) => setField('diaSemana', event.target.value)} required>
         <option value="">Seleccioná un día</option>{days.map(([value, label]) => <option key={value} value={value} disabled={closedDays.has(value)}>{label}{closedDays.has(value) ? ' · cerrado' : ''}</option>)}
       </select></label>
       <label className="owner-hours-closed"><input type="checkbox" checked={values.cerrado} onChange={(event) => setField('cerrado', event.target.checked)} /> Día cerrado</label>
       {!values.cerrado && <>
-        <label className="owner-form-field" htmlFor={`hours-open-${id}`}><span>Hora de apertura *</span><input id={`hours-open-${id}`} type="time" value={values.horaApertura} onChange={(event) => setField('horaApertura', event.target.value)} required /></label>
-        <label className="owner-form-field" htmlFor={`hours-close-${id}`}><span>Hora de cierre *</span><input id={`hours-close-${id}`} type="time" value={values.horaCierre} onChange={(event) => setField('horaCierre', event.target.value)} required /></label>
+        <label className="owner-form-field" htmlFor={`hours-open-${formId}`}><span>Hora de apertura *</span><input id={`hours-open-${formId}`} type="time" value={values.horaApertura} onChange={(event) => setField('horaApertura', event.target.value)} required /></label>
+        <label className="owner-form-field" htmlFor={`hours-close-${formId}`}><span>Hora de cierre *</span><input id={`hours-close-${formId}`} type="time" value={values.horaCierre} onChange={(event) => setField('horaCierre', event.target.value)} required /></label>
       </>}
     </div>
     {fieldError && <p className="owner-form-submit-error" role="alert">{fieldError}</p>}
@@ -100,10 +100,10 @@ export default function OwnerBusinessHoursSection({ negocioId }) {
     {query.isPending ? <div className="owner-business-state" role="status"><LoaderCircle size={19} className="spin" /> Cargando horarios…</div>
       : query.isError ? <div className="owner-business-state user-detail-error" role="alert"><p>{getOwnerBusinessHoursErrorMessage(query.error)}</p><button type="button" className="owners-secondary-button" onClick={() => query.refetch()} disabled={query.isFetching}><RefreshCw size={15} /> Reintentar</button></div>
         : <>
-          {isCreating && <HourForm id={negocioId} hours={query.data} onCancel={() => setIsCreating(false)} onSaved={() => handleSaved('El horario se registró correctamente.')} />}
+          {isCreating && <HourForm negocioId={negocioId} formId={negocioId} hours={query.data} onCancel={() => setIsCreating(false)} onSaved={() => handleSaved('El horario se registró correctamente.')} />}
           {!query.data.length && !isCreating ? <div className="owner-business-state"><p>Todavía no hay horarios registrados.</p><button type="button" className="owner-create-button" onClick={() => setIsCreating(true)}><Plus size={15} /> Registrar primer horario</button></div>
             : <ul className="owner-hours-list">{query.data.slice().sort((a, b) => days.findIndex(([key]) => key === a.diaSemana) - days.findIndex(([key]) => key === b.diaSemana)).map((hour) => <li className="owner-hours-row" key={hour.horarioId}>
-              {editingHour?.horarioId === hour.horarioId ? <HourForm id={`${negocioId}-${hour.horarioId}`} hours={query.data} hour={hour} onCancel={() => setEditingHour(null)} onSaved={() => handleSaved('El horario se actualizó correctamente.')} /> : <><div className="owner-hours-day"><strong>{dayNames[hour.diaSemana] || hour.diaSemana}</strong><span className={hour.cerrado ? 'owner-hours-badge is-closed' : 'owner-hours-badge'}>{hour.cerrado ? 'Cerrado' : `${toTimeInput(hour.horaApertura)} – ${toTimeInput(hour.horaCierre)}`}</span></div><div className="owner-hours-actions"><button type="button" className="owners-secondary-button" onClick={() => { setNotice(''); setEditingHour(hour) }}><Pencil size={14} /> Editar</button><button type="button" className="owners-secondary-button owner-hours-delete" onClick={() => void handleDelete(hour)} disabled={deletingId === hour.horarioId}><Trash2 size={14} /> {deletingId === hour.horarioId ? 'Eliminando…' : 'Eliminar'}</button></div></>}
+              {editingHour?.horarioId === hour.horarioId ? <HourForm negocioId={negocioId} formId={`${negocioId}-${hour.horarioId}`} hours={query.data} hour={hour} onCancel={() => setEditingHour(null)} onSaved={() => handleSaved('El horario se actualizó correctamente.')} /> : <><div className="owner-hours-day"><strong>{dayNames[hour.diaSemana] || hour.diaSemana}</strong><span className={hour.cerrado ? 'owner-hours-badge is-closed' : 'owner-hours-badge'}>{hour.cerrado ? 'Cerrado' : `${toTimeInput(hour.horaApertura)} – ${toTimeInput(hour.horaCierre)}`}</span></div><div className="owner-hours-actions"><button type="button" className="owners-secondary-button" onClick={() => { setNotice(''); setEditingHour(hour) }}><Pencil size={14} /> Editar</button><button type="button" className="owners-secondary-button owner-hours-delete" onClick={() => void handleDelete(hour)} disabled={deletingId === hour.horarioId}><Trash2 size={14} /> {deletingId === hour.horarioId ? 'Eliminando…' : 'Eliminar'}</button></div></>}
             </li>)}</ul>}
         </>}
   </section>
