@@ -13,6 +13,7 @@ import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.usuario.entity.Usuario;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional(readOnly = true)
@@ -108,7 +110,7 @@ public class ClienteDisponibilidadService {
                 LocalDateTime slotInicio = fecha.atTime(inicio);
                 LocalDateTime slotFin = slotInicio.plusMinutes(servicio.getDuracionMinutos());
                 Empleado empleado = empleados.stream()
-                        .filter(e -> turnos.stream().noneMatch(t -> t.getEmpleado().getEmpleadoId().equals(e.getEmpleadoId())
+                        .filter(e -> turnos.stream().noneMatch(t -> mismoResponsable(t, e)
                                 && t.getFechaHoraInicio().isBefore(slotFin) && t.getFechaHoraFin().isAfter(slotInicio)))
                         .findFirst().orElse(null);
                 if (empleado != null) {
@@ -118,6 +120,16 @@ public class ClienteDisponibilidadService {
             }
         }
         return resultado;
+    }
+
+    private boolean mismoResponsable(Turno turno, Empleado empleado) {
+        if (turno.getEmpleado() != null) {
+            return turno.getEmpleado().getEmpleadoId().equals(empleado.getEmpleadoId());
+        }
+        Usuario ownerResponsable = turno.getOwnerResponsable();
+        return ownerResponsable != null
+                && empleado.getUsuario() != null
+                && Objects.equals(ownerResponsable.getUsuarioId(), empleado.getUsuario().getUsuarioId());
     }
 
     private boolean bloqueaHorario(Turno turno) {

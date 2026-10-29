@@ -5,6 +5,7 @@ import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.empleado.dto.turno.EmpleadoTurnoDto;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
+import com.dev.cutly.turno.enums.TipoClienteTurno;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
@@ -129,9 +130,15 @@ public class EmpleadoTurnoService {
 
     private EmpleadoTurnoDto aDto(Turno turno) {
         Usuario cliente = turno.getCliente();
+        var clienteLocal = turno.getClienteLocal();
         return new EmpleadoTurnoDto(turno.getTurnoId(), turno.getNegocio().getNegocioId(), turno.getNegocio().getNombre(),
-                cliente.getUsuarioId(), cliente.getNombre(), cliente.getApellido(), turno.getEmpleado().getEmpleadoId(),
+                cliente == null ? null : cliente.getUsuarioId(),
+                cliente != null ? cliente.getNombre() : clienteLocal.getNombre(),
+                cliente != null ? cliente.getApellido() : clienteLocal.getApellido(),
+                turno.getEmpleado().getEmpleadoId(),
                 turno.getServicio().getServicioId(), turno.getServicio().getNombre(), turno.getFechaHoraInicio(),
-                turno.getFechaHoraFin(), turno.getStatus(), turno.getPrecio(), turno.getObservaciones());
+                turno.getFechaHoraFin(), turno.getStatus(), turno.getPrecio(), turno.getObservaciones(),
+                clienteLocal == null ? null : clienteLocal.getClienteLocalId(),
+                cliente == null ? TipoClienteTurno.LOCAL : TipoClienteTurno.USUARIO);
     }
 }

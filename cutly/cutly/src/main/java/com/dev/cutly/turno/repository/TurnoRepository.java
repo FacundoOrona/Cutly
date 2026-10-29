@@ -41,6 +41,15 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
             @Param("hasta") LocalDateTime hasta
     );
 
+    @Query("select t from Turno t where t.ownerResponsable.usuarioId = :ownerId "
+            + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "
+            + "and t.fechaHoraInicio < :hasta and t.fechaHoraFin > :desde")
+    List<Turno> findTurnosSolapadosPorOwner(
+            @Param("ownerId") Long ownerId,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta
+    );
+
     @Query("select t from Turno t "
             + "where t.cliente.usuarioId = :clienteId "
             + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "

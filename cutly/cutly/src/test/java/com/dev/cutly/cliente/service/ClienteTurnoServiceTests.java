@@ -17,6 +17,7 @@ import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.turno.service.TurnoHorarioValidator;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -67,7 +68,8 @@ class ClienteTurnoServiceTests {
     @BeforeEach
     void setUp() {
         service = new ClienteTurnoService(turnoRepository, usuarioRepository, negocioRepository,
-                servicioRepository, empleadoRepository, empleadoServicioRepository, horarioRepository);
+                servicioRepository, empleadoRepository, empleadoServicioRepository,
+                new TurnoHorarioValidator(horarioRepository));
         cliente = usuario(CLIENTE_ID, Rol.CLIENT, "Carla", "Cliente");
         Usuario owner = usuario(10L, Rol.OWNER, "Olga", "Owner");
         negocio = new Negocio();

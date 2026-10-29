@@ -4,11 +4,8 @@ import com.dev.cutly.cliente.dto.cliente.ClienteTurnoDto;
 import com.dev.cutly.cliente.dto.cliente.CrearTurnoRequestDto;
 import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
-import com.dev.cutly.negocio.entity.HorarioNegocio;
 import com.dev.cutly.negocio.entity.Negocio;
-import com.dev.cutly.negocio.enums.DiaSemana;
 import com.dev.cutly.negocio.enums.NegocioStatus;
-import com.dev.cutly.negocio.repository.HorarioNegocioRepository;
 import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
@@ -16,6 +13,7 @@ import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.turno.service.TurnoHorarioValidator;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -42,19 +40,19 @@ public class ClienteTurnoService {
     private final ServicioRepository servicioRepository;
     private final EmpleadoRepository empleadoRepository;
     private final EmpleadoServiciorRepository empleadoServicioRepository;
-    private final HorarioNegocioRepository horarioRepository;
+    private final TurnoHorarioValidator horarioValidator;
 
     public ClienteTurnoService(TurnoRepository turnoRepository, UsuarioRepository usuarioRepository,
                                NegocioRepository negocioRepository, ServicioRepository servicioRepository,
                                EmpleadoRepository empleadoRepository, EmpleadoServiciorRepository empleadoServicioRepository,
-                               HorarioNegocioRepository horarioRepository) {
+                               TurnoHorarioValidator horarioValidator) {
         this.turnoRepository = turnoRepository;
         this.usuarioRepository = usuarioRepository;
         this.negocioRepository = negocioRepository;
         this.servicioRepository = servicioRepository;
         this.empleadoRepository = empleadoRepository;
         this.empleadoServicioRepository = empleadoServicioRepository;
-        this.horarioRepository = horarioRepository;
+        this.horarioValidator = horarioValidator;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -72,7 +70,7 @@ public class ClienteTurnoService {
                 .filter(Servicio::isActivo)
                 .orElseThrow(() -> noEncontrado("No se encontró el servicio activo solicitado"));
         LocalDateTime fin = inicio.plusMinutes(servicio.getDuracionMinutos());
-        validarHorario(negocio.getNegocioId(), inicio, fin);
+        horarioValidator.validar(negocio.getNegocioId(), inicio, fin);
 
         if (haySolapamientoCliente(cliente.getUsuarioId(), inicio, fin)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El horario solicitado ya no está disponible");
@@ -160,18 +158,6 @@ public class ClienteTurnoService {
 
     private boolean haySolapamientoCliente(Long clienteId, LocalDateTime inicio, LocalDateTime fin) {
         return !turnoRepository.findTurnosClienteSolapados(clienteId, inicio, fin).isEmpty();
-    }
-
-    private void validarHorario(Long negocioId, LocalDateTime inicio, LocalDateTime fin) {
-        if (inicio == null || fin == null || !fin.isAfter(inicio)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La duración del turno debe ser positiva");
-        if (inicio.isBefore(LocalDateTime.now())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha del turno debe ser futura");
-        if (!inicio.toLocalDate().equals(fin.toLocalDate())) throw new ResponseStatusException(HttpStatus.CONFLICT, "El turno no puede atravesar el cierre diario");
-        horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(negocioId).stream()
-                .filter(h -> h.getDiaSemana() == DiaSemana.valueOf(inicio.getDayOfWeek().name()))
-                .filter(h -> !h.isCerrado())
-                .filter(h -> !inicio.toLocalTime().isBefore(h.getHoraApertura()) && !fin.toLocalTime().isAfter(h.getHoraCierre()))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No hay horario laboral para la fecha solicitada"));
     }
 
     private Usuario obtenerCliente(String email) {

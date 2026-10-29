@@ -1,5 +1,6 @@
 package com.dev.cutly.turno.entity;
 
+import com.dev.cutly.cliente.entity.ClienteLocal;
 import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.servicio.entity.Servicio;
@@ -38,17 +39,25 @@ public class Turno {
     @Column(precision = 10, scale = 2)
     private BigDecimal precio;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_id")
     private Usuario cliente;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cliente_local_id")
+    private ClienteLocal clienteLocal;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "negocio_id", nullable = false)
     private Negocio negocio;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "empleado_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empleado_id")
     private Empleado empleado;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_responsable_id")
+    private Usuario ownerResponsable;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "servicio_id", nullable = false)
@@ -56,4 +65,15 @@ public class Turno {
 
     @Column(length = 500)
     private String observaciones;
+
+    @PrePersist
+    @PreUpdate
+    void validarRelacionesClienteYResponsable() {
+        if ((cliente != null) == (clienteLocal != null)) {
+            throw new IllegalStateException("El turno debe tener exactamente un tipo de cliente");
+        }
+        if ((empleado != null) == (ownerResponsable != null)) {
+            throw new IllegalStateException("El turno debe tener exactamente un responsable");
+        }
+    }
 }

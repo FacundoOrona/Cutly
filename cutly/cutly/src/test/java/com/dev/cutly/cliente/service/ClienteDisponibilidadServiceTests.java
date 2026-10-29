@@ -14,6 +14,9 @@ import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.turno.entity.Turno;
+import com.dev.cutly.turno.enums.TurnoStatus;
+import com.dev.cutly.usuario.entity.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +73,9 @@ class ClienteDisponibilidadServiceTests {
         empleado.setEmpleadoId(5L);
         empleado.setActivo(true);
         empleado.setNegocio(negocio);
+        Usuario usuarioEmpleado = new Usuario();
+        usuarioEmpleado.setUsuarioId(50L);
+        empleado.setUsuario(usuarioEmpleado);
         when(empleadoRepository.findByNegocio_NegocioIdAndActivoTrueOrderByEmpleadoIdAsc(NEGOCIO_ID))
                 .thenReturn(List.of(empleado));
         when(empleadoServicioRepository.findByEmpleado_EmpleadoIdAndServicio_ServicioId(5L, SERVICIO_ID))
@@ -107,6 +113,42 @@ class ClienteDisponibilidadServiceTests {
                 .thenReturn(List.of(horario("00:00", "00:00", true)));
 
         assertTrue(service.listar(NEGOCIO_ID, lunes, SERVICIO_ID, null).isEmpty());
+    }
+
+    @Test
+    void turnoDelOwnerBloqueaSuIntervaloCuandoCoincideConElResponsableConsultado() {
+        Usuario owner = new Usuario();
+        owner.setUsuarioId(50L);
+        Turno turnoOwner = turnoOwner(owner);
+        when(horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(NEGOCIO_ID))
+                .thenReturn(List.of(horario("09:00", "10:00", false)));
+        when(turnoRepository.findTurnosSolapados(any(), any(), any())).thenReturn(List.of(turnoOwner));
+
+        assertTrue(service.listar(NEGOCIO_ID, lunes, SERVICIO_ID, null).isEmpty());
+    }
+
+    @Test
+    void turnoDelOwnerNoBloqueaEmpleadosDistintos() {
+        Usuario owner = new Usuario();
+        owner.setUsuarioId(99L);
+        Turno turnoOwner = turnoOwner(owner);
+        when(horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(NEGOCIO_ID))
+                .thenReturn(List.of(horario("09:00", "10:00", false)));
+        when(turnoRepository.findTurnosSolapados(any(), any(), any())).thenReturn(List.of(turnoOwner));
+
+        List<ClienteDisponibilidadDto> slots = service.listar(NEGOCIO_ID, lunes, SERVICIO_ID, null);
+
+        assertEquals(1, slots.size());
+        assertEquals(5L, slots.get(0).empleadoId());
+    }
+
+    private Turno turnoOwner(Usuario owner) {
+        Turno turno = new Turno();
+        turno.setFechaHoraInicio(lunes.atTime(9, 0));
+        turno.setFechaHoraFin(lunes.atTime(10, 0));
+        turno.setStatus(TurnoStatus.CONFIRMED);
+        turno.setOwnerResponsable(owner);
+        return turno;
     }
 
     private HorarioNegocio horario(String apertura, String cierre, boolean cerrado) {

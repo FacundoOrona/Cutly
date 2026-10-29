@@ -1,6 +1,7 @@
 package com.dev.cutly.owner.controller;
 
 import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
+import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
 import com.dev.cutly.owner.service.OwnerTurnosService;
 import org.springframework.dao.DataAccessException;
@@ -10,11 +11,14 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -28,6 +32,23 @@ public class OwnerTurnosController {
 
     public OwnerTurnosController(OwnerTurnosService ownerTurnosService) {
         this.ownerTurnosService = ownerTurnosService;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> crearTurnoManual(
+            @PathVariable Long negocioId,
+            @Valid @RequestBody CrearOwnerTurnoManualRequestDto request
+    ) {
+        try {
+            OwnerTurnoDto turno = ownerTurnosService.crearManual(
+                    negocioId, request, emailOwnerAutenticado()
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(turno);
+        } catch (ResponseStatusException exception) {
+            return respuestaError(exception);
+        } catch (DataAccessException exception) {
+            return errorInterno("No se pudo crear el turno manual");
+        }
     }
 
     @GetMapping

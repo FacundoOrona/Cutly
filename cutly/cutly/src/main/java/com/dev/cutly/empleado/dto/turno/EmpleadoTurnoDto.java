@@ -1,6 +1,7 @@
 package com.dev.cutly.empleado.dto.turno;
 
 import com.dev.cutly.turno.enums.TurnoStatus;
+import com.dev.cutly.turno.enums.TipoClienteTurno;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -18,6 +19,8 @@ public record EmpleadoTurnoDto(
         LocalDateTime fechaHoraFin,
         TurnoStatus status,
         BigDecimal precio,
-        String observaciones
+        String observaciones,
+        Long clienteLocalId,
+        TipoClienteTurno tipoCliente
 ) {
 }
