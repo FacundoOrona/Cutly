@@ -2,6 +2,7 @@ package com.dev.cutly.owner.controller;
 
 import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
+import com.dev.cutly.owner.dto.cliente.ClienteLocalPageDto;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.service.OwnerClienteLocalService;
 import jakarta.validation.Valid;
@@ -45,6 +46,25 @@ public class OwnerClienteLocalController {
             return respuestaError(exception);
         } catch (DataAccessException exception) {
             return errorInterno("No se pudo buscar clientes locales");
+        }
+    }
+
+    @GetMapping("/paginado")
+    public ResponseEntity<?> listarPaginado(
+            @PathVariable Long negocioId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String q
+    ) {
+        try {
+            ClienteLocalPageDto clientes = ownerClienteLocalService.listarPaginado(
+                    negocioId, page, size, q, emailOwnerAutenticado()
+            );
+            return ResponseEntity.ok(clientes);
+        } catch (ResponseStatusException exception) {
+            return respuestaError(exception);
+        } catch (DataAccessException exception) {
+            return errorInterno("No se pudo listar clientes locales");
         }
     }
 

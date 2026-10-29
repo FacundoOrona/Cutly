@@ -14,6 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -148,6 +151,80 @@ class OwnerClienteLocalServiceTests {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verify(clienteLocalRepository, never()).buscarPorNombreOApellido(any(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void listaMasDeCincuentaClientesConMetadatosYOrdenEstable() {
+        when(clienteLocalRepository.listarPorNegocio(eq(NEGOCIO_ID), any(Pageable.class)))
+                .thenAnswer(invocation -> {
+                    Pageable pageable = invocation.getArgument(1);
+                    List<ClienteLocal> todos = java.util.stream.IntStream.range(0, 65)
+                            .mapToObj(i -> cliente((long) i + 1, "Nombre" + i, "Apellido" + i))
+                            .toList();
+                    int desde = (int) pageable.getOffset();
+                    return new PageImpl<>(todos.subList(desde, Math.min(desde + pageable.getPageSize(), todos.size())),
+                            pageable, todos.size());
+                });
+
+        var primera = service.listarPaginado(NEGOCIO_ID, 0, 10, null, EMAIL_OWNER);
+        var segunda = service.listarPaginado(NEGOCIO_ID, 1, 10, null, EMAIL_OWNER);
+
+        assertEquals(10, primera.content().size());
+        assertEquals(65, primera.totalElements());
+        assertEquals(7, primera.totalPages());
+        assertEquals(0, primera.page());
+        assertEquals(10, primera.size());
+        assertTrue(primera.content().stream().map(ClienteLocalDto::clienteLocalId)
+                .noneMatch(id -> segunda.content().stream().anyMatch(dto -> dto.clienteLocalId().equals(id))));
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(clienteLocalRepository, atLeastOnce()).listarPorNegocio(eq(NEGOCIO_ID), pageable.capture());
+        assertEquals(List.of("apellido", "nombre", "clienteLocalId"),
+                pageable.getValue().getSort().stream().map(order -> order.getProperty()).toList());
+    }
+
+    @Test
+    void listaVacioYFiltraPorNombreOApellidoDespuesDeNormalizar() {
+        when(clienteLocalRepository.listarPorNegocio(eq(NEGOCIO_ID), any(Pageable.class)))
+                .thenReturn(Page.empty(PageRequest.of(0, 10)));
+        assertEquals(0, service.listarPaginado(NEGOCIO_ID, 0, 10, null, EMAIL_OWNER).totalElements());
+
+        when(clienteLocalRepository.listarPorNegocioYNombreOApellido(eq(NEGOCIO_ID), eq("Ana"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(cliente(4L, "Ana", "Pérez")), PageRequest.of(0, 10), 1));
+        assertEquals("Ana", service.listarPaginado(NEGOCIO_ID, 0, 10, " Ana ", EMAIL_OWNER)
+                .content().get(0).nombre());
+        verify(clienteLocalRepository).listarPorNegocioYNombreOApellido(eq(NEGOCIO_ID), eq("Ana"), any(Pageable.class));
+    }
+
+    @Test
+    void validaPaginaTamanoYFiltroOpcional() {
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> service.listarPaginado(NEGOCIO_ID, -1, 10, null, EMAIL_OWNER)).getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> service.listarPaginado(NEGOCIO_ID, 0, 101, null, EMAIL_OWNER)).getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> service.listarPaginado(NEGOCIO_ID, 0, 10, " a ", EMAIL_OWNER)).getStatusCode());
+        verify(clienteLocalRepository, never()).listarPorNegocio(any(), any(Pageable.class));
+        verify(clienteLocalRepository, never()).listarPorNegocioYNombreOApellido(any(), any(), any(Pageable.class));
+    }
+
+    @Test
+    void negocioAjenoOInexistenteNoConsultaClientes() {
+        when(ownerNegocioService.obtenerEntidadNegocioPropio(NEGOCIO_ID, EMAIL_OWNER))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el negocio solicitado"));
+        assertEquals(HttpStatus.NOT_FOUND, assertThrows(ResponseStatusException.class,
+                () -> service.listarPaginado(NEGOCIO_ID, 0, 10, null, EMAIL_OWNER)).getStatusCode());
+        verifyNoInteractions(clienteLocalRepository);
+    }
+
+    private ClienteLocal cliente(Long id, String nombre, String apellido) {
+        ClienteLocal cliente = new ClienteLocal();
+        cliente.setClienteLocalId(id);
+        cliente.setNombre(nombre);
+        cliente.setApellido(apellido);
+        cliente.setDniPresentado("12345678");
+        cliente.setDniNormalizado("12345678");
+        cliente.setTelefono("5555");
+        return cliente;
     }
 
     @Test

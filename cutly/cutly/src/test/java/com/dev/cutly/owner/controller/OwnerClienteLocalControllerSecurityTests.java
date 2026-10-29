@@ -55,6 +55,22 @@ class OwnerClienteLocalControllerSecurityTests {
     }
 
     @Test
+    @WithMockUser(roles = "CLIENT")
+    void elListadoPaginadoRequiereRolOwner() throws Exception {
+        mockMvc.perform(get("/api/owner/negocios/20/clientes-locales/paginado"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(ownerClienteLocalService);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "OWNER")
+    void elListadoPaginadoRechazaPageNoNumerico() throws Exception {
+        mockMvc.perform(get("/api/owner/negocios/20/clientes-locales/paginado?page=x"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(ownerClienteLocalService);
+    }
+
+    @Test
     @WithMockUser(username = "owner@example.com", roles = "OWNER")
     void rechazaCreacionConCamposInvalidosAntesDeLlamarAlServicio() throws Exception {
         mockMvc.perform(post("/api/owner/negocios/20/clientes-locales")

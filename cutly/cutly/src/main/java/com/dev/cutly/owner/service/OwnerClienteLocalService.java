@@ -5,10 +5,12 @@ import com.dev.cutly.cliente.repository.ClienteLocalRepository;
 import com.dev.cutly.cliente.service.DniLocalNormalizer;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
+import com.dev.cutly.owner.dto.cliente.ClienteLocalPageDto;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,38 @@ public class OwnerClienteLocalService {
                 ).stream()
                 .map(this::aDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteLocalPageDto listarPaginado(
+            Long negocioId, int page, int size, String texto, String emailOwner
+    ) {
+        ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La página debe ser >= 0 y el tamaño debe estar entre 1 y 100");
+        }
+        Sort orden = Sort.by(
+                Sort.Order.asc("apellido"),
+                Sort.Order.asc("nombre"),
+                Sort.Order.asc("clienteLocalId")
+        );
+        PageRequest pageable = PageRequest.of(page, size, orden);
+        Page<ClienteLocal> resultado;
+        if (texto == null) {
+            resultado = clienteLocalRepository.listarPorNegocio(negocioId, pageable);
+        } else {
+            resultado = clienteLocalRepository.listarPorNegocioYNombreOApellido(
+                    negocioId, validarTextoBusqueda(texto), pageable
+            );
+        }
+        return new ClienteLocalPageDto(
+                resultado.map(this::aDto).getContent(),
+                resultado.getNumber(),
+                resultado.getSize(),
+                resultado.getTotalElements(),
+                resultado.getTotalPages()
+        );
     }
 
     public ClienteLocalDto registrar(
