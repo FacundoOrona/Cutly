@@ -10,6 +10,42 @@ export async function getOwnerTurnos({ negocioId, fecha, empleadoId, status }) {
   return data
 }
 
+export async function createOwnerTurno({ negocioId, turno }) {
+  const { data } = await apiClient.post(`/api/owner/negocios/${negocioId}/turnos`, turno)
+  return data
+}
+
+export function getOwnerClientesLocalesErrorMessage(error) {
+  const status = error.response?.status
+  const body = error.response?.data
+  const message = typeof body === 'string' ? body : body?.mensaje || body?.message
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'Tu cuenta no tiene acceso a los clientes de este negocio.'
+  if (status === 404) return 'No se encontró el negocio solicitado.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return message || 'El servicio no está disponible en este momento. Intentá más tarde.'
+  return message || 'No pudimos buscar los clientes. Intentá nuevamente.'
+}
+
+export function getCreateOwnerTurnoErrorMessage(error) {
+  const status = error.response?.status
+  const body = error.response?.data
+  const message = typeof body === 'string' ? body : body?.mensaje || body?.message
+  if (status === 400) return message || 'Revisá los datos ingresados, el servicio y el horario elegido.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return message || 'Tu cuenta no tiene permiso para crear turnos en este negocio.'
+  if (status === 404) return message || 'No se encontró el negocio, servicio, empleado o cliente seleccionado.'
+  if (status === 409) return message || 'Ese horario ya no está disponible. Elegí otro horario.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return message || 'No pudimos crear el turno por un problema del servidor. Intentá más tarde.'
+  return message || 'No pudimos crear el turno. Intentá nuevamente.'
+}
+
+export async function searchOwnerClientesLocales({ negocioId, query }) {
+  const { data } = await apiClient.get(`/api/owner/negocios/${negocioId}/clientes-locales`, { params: { q: query } })
+  return data
+}
+
 export async function updateOwnerTurnoStatus({ negocioId, turnoId, action }) {
   const allowedActions = ['confirmar', 'rechazar', 'cancelar', 'completar', 'no-show']
   if (!allowedActions.includes(action)) throw new Error('Acción de turno no válida.')

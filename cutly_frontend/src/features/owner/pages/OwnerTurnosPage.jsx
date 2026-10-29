@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Ban, CalendarDays, Check, CircleAlert, LoaderCircle, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
+import { Ban, CalendarDays, Check, CircleAlert, LoaderCircle, Plus, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
@@ -9,6 +9,7 @@ import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
 import { useOwnerBusinessEmployees } from '../hooks/useOwnerBusinessEmployees.js'
 import { useOwnerBusinessServices } from '../hooks/useOwnerBusinessServices.js'
 import { ownerTurnosQueryKey } from '../hooks/useOwnerTurnos.js'
+import OwnerTurnoCreateForm from '../components/OwnerTurnoCreateForm.jsx'
 
 const statusLabels = {
   PENDING: 'Pendiente', CONFIRMED: 'Confirmado', IN_PROGRESS: 'En curso',
@@ -77,6 +78,9 @@ export default function OwnerTurnosPage() {
   const [empleadoId, setEmpleadoId] = useState('')
   const [status, setStatus] = useState('')
   const [servicioId, setServicioId] = useState('')
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createBusinessId, setCreateBusinessId] = useState('')
+  const [createNotice, setCreateNotice] = useState('')
   const [pendingActionKeys, setPendingActionKeys] = useState(() => new Set())
   const [actionErrors, setActionErrors] = useState({})
   const pendingActionKeysRef = useRef(new Set())
@@ -228,7 +232,20 @@ export default function OwnerTurnosPage() {
     <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO OWNER</span>
     <div className="owners-heading">
       <div><h1>Turnos</h1><p className="owners-description">Consultá los turnos diarios de tus negocios.</p></div>
+      <button className="owner-create-button" type="button" onClick={() => { setCreateNotice(''); setCreateBusinessId(individualBusinessId); setShowCreateForm((current) => !current) }} aria-expanded={showCreateForm}><Plus size={15} /> Nuevo turno</button>
     </div>
+
+    {createNotice && <div className="owner-created-notice" role="status"><Check size={16} /><span>{createNotice}</span><button type="button" className="icon-button" aria-label="Cerrar confirmación" onClick={() => setCreateNotice('')}><X size={15} /></button></div>}
+    {showCreateForm && !createBusinessId && <section className="create-owner-panel owner-turno-create-panel" aria-label="Seleccionar negocio para el nuevo turno"><div className="create-owner-heading"><div><span className="create-owner-icon"><CalendarDays size={17} /></span><div><h2>Nuevo turno</h2><p>Seleccioná el negocio donde se reservará el turno.</p></div></div><button type="button" className="icon-button owner-turno-close" aria-label="Cerrar formulario de nuevo turno" onClick={() => setShowCreateForm(false)}><X size={17} /></button></div><label className="owner-form-field" htmlFor="owner-turno-business"><span>Negocio *</span><select id="owner-turno-business" value={createBusinessId} onChange={(event) => setCreateBusinessId(event.target.value)}><option value="">Seleccioná un negocio…</option>{businesses.map((business) => <option key={business.negocioId} value={business.negocioId}>{business.nombre}</option>)}</select></label></section>}
+    {showCreateForm && createBusinessId && <OwnerTurnoCreateForm
+      key={`create-${createBusinessId}`}
+      negocioId={createBusinessId}
+      onCancel={() => setShowCreateForm(false)}
+      onCreated={(turno, summary) => {
+        setCreateNotice(summary)
+        setShowCreateForm(false)
+      }}
+    />}
 
     <section className="owners-filters owner-turnos-filters" aria-label="Filtros de turnos">
       <label className="owners-status-filter owner-turnos-business-filter">Negocio<select value={selectedBusiness ? individualBusinessId : ''} onChange={(event) => changeBusiness(event.target.value)}><option value="">Todos mis negocios</option>{businesses.map((business) => <option key={business.negocioId} value={business.negocioId}>{business.nombre}</option>)}</select></label>
