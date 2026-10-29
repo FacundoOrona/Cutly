@@ -10,6 +10,11 @@ export async function getOwnerTurnos({ negocioId, fecha, empleadoId, status }) {
   return data
 }
 
+export async function getOwnerTurno({ negocioId, turnoId }) {
+  const { data } = await apiClient.get(`/api/owner/negocios/${negocioId}/turnos/${turnoId}`)
+  return data
+}
+
 export async function createOwnerTurno({ negocioId, turno }) {
   const { data } = await apiClient.post(`/api/owner/negocios/${negocioId}/turnos`, turno)
   return data

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Ban, CalendarDays, Check, CircleAlert, LoaderCircle, Plus, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, ArrowRight, Ban, CalendarDays, Check, CircleAlert, Ellipsis, Eye, LoaderCircle, Plus, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
@@ -8,8 +8,9 @@ import { getOwnerTurnos, getOwnerTurnosErrorMessage, getUpdateOwnerTurnoErrorMes
 import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
 import { useOwnerBusinessEmployees } from '../hooks/useOwnerBusinessEmployees.js'
 import { useOwnerBusinessServices } from '../hooks/useOwnerBusinessServices.js'
-import { ownerTurnosQueryKey } from '../hooks/useOwnerTurnos.js'
+import { ownerTurnoDetailQueryKey, ownerTurnosQueryKey } from '../hooks/useOwnerTurnos.js'
 import OwnerTurnoCreateForm from '../components/OwnerTurnoCreateForm.jsx'
+import OwnerTurnoDetailDrawer from '../components/OwnerTurnoDetailDrawer.jsx'
 
 const statusLabels = {
   PENDING: 'Pendiente', CONFIRMED: 'Confirmado', IN_PROGRESS: 'En curso',
@@ -90,13 +91,18 @@ export default function OwnerTurnosPage() {
   const [createNotice, setCreateNotice] = useState('')
   const [pendingActionKeys, setPendingActionKeys] = useState(() => new Set())
   const [actionErrors, setActionErrors] = useState({})
+  const [openActionsTurnoId, setOpenActionsTurnoId] = useState(null)
+  const [selectedTurno, setSelectedTurno] = useState(null)
   const pendingActionKeysRef = useRef(new Set())
   const datePickerRef = useRef(null)
+  const actionMenuTriggerRef = useRef(null)
+  const actionMenuPopoverRef = useRef(null)
   const queryClient = useQueryClient()
 
   const updateTurnoMutation = useMutation({
     mutationFn: updateOwnerTurnoStatus,
     onSuccess: (updatedTurno, variables) => {
+      queryClient.setQueryData(ownerTurnoDetailQueryKey({ negocioId: variables.negocioId, turnoId: updatedTurno.turnoId }), updatedTurno)
       const queryPrefix = ['ownerBusinesses', 'detail', String(variables.negocioId), 'turnos']
       for (const [queryKey, cachedTurnos] of queryClient.getQueriesData({ queryKey: queryPrefix })) {
         if (!Array.isArray(cachedTurnos)) continue
@@ -205,6 +211,40 @@ export default function OwnerTurnosPage() {
     for (const { query } of failedQueries) query.refetch()
   }
 
+  const closeTurnoDetail = useCallback(() => setSelectedTurno(null), [])
+
+  useEffect(() => {
+    if (openActionsTurnoId == null) return undefined
+    const trigger = actionMenuTriggerRef.current
+    const popover = actionMenuPopoverRef.current
+    if (trigger && popover) {
+      const triggerRect = trigger.getBoundingClientRect()
+      const popoverRect = popover.getBoundingClientRect()
+      const left = Math.max(8, Math.min(triggerRect.right - popoverRect.width, window.innerWidth - popoverRect.width - 8))
+      const top = triggerRect.bottom + popoverRect.height <= window.innerHeight - 8
+        ? triggerRect.bottom + 4
+        : Math.max(8, triggerRect.top - popoverRect.height - 4)
+      popover.style.left = `${left}px`
+      popover.style.top = `${top}px`
+    }
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpenActionsTurnoId(null)
+        actionMenuTriggerRef.current?.focus()
+      }
+      if (event.key === 'Tab') setOpenActionsTurnoId(null)
+    }
+    function handleOutsideClick(event) {
+      if (!event.target.closest('.owner-turno-actions-menu')) setOpenActionsTurnoId(null)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('click', handleOutsideClick)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('click', handleOutsideClick)
+    }
+  }, [openActionsTurnoId])
+
   async function runTurnoAction(turno, action) {
     const actionKey = `${turno.negocioId}:${turno.turnoId}`
     if (pendingActionKeysRef.current.has(actionKey)) return
@@ -231,11 +271,17 @@ export default function OwnerTurnosPage() {
     const turnIsPending = pendingActionKeys.has(actionKey)
     const actions = availableActions[turno.status] || []
     return <div className="owner-turno-row-actions">
-      {actions.map((action) => {
-        const details = actionDetails[action]
-        const Icon = details.icon
-        return <button key={action} type="button" className={`owners-secondary-button owner-turno-action ${details.className}`} onClick={() => runTurnoAction(turno, action)} disabled={turnIsPending} aria-label={`${details.label}: ${turno.clienteNombre || 'turno'} ${dateTime(turno.fechaHoraInicio)}`}><Icon size={13} />{details.label}</button>
-      })}
+      <button type="button" className="owners-secondary-button owner-turno-action owner-turno-detail-action" onClick={() => setSelectedTurno({ negocioId: turno.negocioId, turnoId: turno.turnoId })} aria-label={`Ver detalles del turno de ${turno.clienteNombre || 'cliente'} ${dateTime(turno.fechaHoraInicio)}`} title="Ver detalles"><Eye size={15} /></button>
+      {actions.length > 0 && <div className="owner-turno-actions-menu">
+        <button ref={openActionsTurnoId === actionKey ? actionMenuTriggerRef : null} type="button" className="owners-secondary-button owner-turno-action owner-turno-menu-trigger" aria-label={`Más acciones para el turno de ${turno.clienteNombre || 'cliente'}`} aria-haspopup="menu" aria-expanded={openActionsTurnoId === actionKey} onClick={() => setOpenActionsTurnoId((current) => current === actionKey ? null : actionKey)} disabled={turnIsPending}><Ellipsis size={16} /></button>
+        {openActionsTurnoId === actionKey && <div ref={actionMenuPopoverRef} className="owner-turno-actions-popover" role="menu" aria-label="Acciones del turno">
+          {actions.map((action) => {
+            const details = actionDetails[action]
+            const Icon = details.icon
+            return <button key={action} type="button" role="menuitem" className={`owner-turno-menu-item ${details.className}`} onClick={() => { setOpenActionsTurnoId(null); void runTurnoAction(turno, action) }} disabled={turnIsPending}><Icon size={14} />{details.label}</button>
+          })}
+        </div>}
+      </div>}
       {turnIsPending && <span className="owner-turno-action-pending" role="status"><LoaderCircle size={14} className="spin" /> Procesando…</span>}
     </div>
   }
@@ -301,10 +347,11 @@ export default function OwnerTurnosPage() {
           {isLoadingTurnos && turnos.length > 0 && <div className="owners-updating" role="status"><LoaderCircle size={14} className="spin" /> Actualizando turnos…</div>}
           {employeesQuery.isLoading && individualBusinessId && <div className="owners-updating" role="status">Cargando empleados y servicios…</div>}
           <div className="owner-turnos-count" aria-live="polite">{visibleTurnos.length} {visibleTurnos.length === 1 ? 'turno' : 'turnos'}{servicioId ? ' para el servicio seleccionado' : ''}</div>
-          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owners-table-wrap owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr>{allBusinesses && <th>Negocio</th>}<th>Cliente</th><th>Empleado</th><th>Servicio</th><th>Inicio</th><th>Fin</th><th>Precio</th><th>Estado</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => <tr key={`${turno.negocioId}-${turno.turnoId}`}>{allBusinesses && <td data-label="Negocio">{turno.negocioNombre}</td>}<td data-label="Cliente">{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Empleado">{[turno.empleadoNombre, turno.empleadoApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Servicio">{turno.servicioNombre || '—'}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td data-label="Fin">{time(turno.fechaHoraFin)}</td><td data-label="Precio">{money(turno.precio)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{statusLabels[turno.status] || turno.status || 'Sin estado'}</span></td><td className="owner-turnos-observations" data-label="Observaciones">{turno.observaciones || '—'}</td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr>)}</tbody></table></div>}
+          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Negocio</th><th>Cliente</th><th>Inicio</th><th>Servicio</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Negocio" title={turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre}>{turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre || '—'}</td><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td data-label="Precio">{money(turno.precio)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{statusLabels[turno.status] || turno.status || 'Sin estado'}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr>)}</tbody></table></div>}
         </>}
       </section>
     )}
+    {selectedTurno && <OwnerTurnoDetailDrawer negocioId={selectedTurno.negocioId} turnoId={selectedTurno.turnoId} onClose={closeTurnoDetail} />}
   </>
 }
 

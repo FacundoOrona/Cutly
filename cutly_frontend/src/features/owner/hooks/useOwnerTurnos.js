@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createOwnerTurno, getOwnerTurnos, searchOwnerClientesLocales } from '../api/ownerTurnosApi.js'
+import { createOwnerTurno, getOwnerTurno, getOwnerTurnos, searchOwnerClientesLocales } from '../api/ownerTurnosApi.js'
 
 export const ownerTurnosQueryKey = ({ negocioId, fecha, empleadoId, status }) => [
   'ownerBusinesses', 'detail', String(negocioId), 'turnos',
@@ -11,6 +11,18 @@ export function useOwnerTurnos(filters, options = {}) {
     queryKey: ownerTurnosQueryKey(filters),
     queryFn: () => getOwnerTurnos(filters),
     enabled: Boolean(filters.negocioId) && (options.enabled ?? true),
+  })
+}
+
+export const ownerTurnoDetailQueryKey = ({ negocioId, turnoId }) => [
+  'ownerBusinesses', 'detail', String(negocioId), 'turnos', 'detail', String(turnoId),
+]
+
+export function useOwnerTurno({ negocioId, turnoId }, options = {}) {
+  return useQuery({
+    queryKey: ownerTurnoDetailQueryKey({ negocioId, turnoId }),
+    queryFn: () => getOwnerTurno({ negocioId, turnoId }),
+    enabled: Boolean(negocioId && turnoId) && (options.enabled ?? true),
   })
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { CheckCircle2, Clock3, LoaderCircle, Scissors, X } from 'lucide-react'
+import useAuth from '../../../auth/useAuth.js'
 import { getCreateOwnerTurnoErrorMessage, getOwnerClientesLocalesErrorMessage } from '../api/ownerTurnosApi.js'
 import { getOwnerBusinessEmployeeServices } from '../api/ownerBusinessEmployeesApi.js'
 import { ownerBusinessEmployeeServicesQueryKey } from '../hooks/useOwnerBusinessEmployees.js'
@@ -78,6 +79,7 @@ function ClientFields({ errors, negocioId, selectedClient, onSelectClient }) {
 }
 
 export default function OwnerTurnoCreateForm({ negocioId, onCancel, onCreated }) {
+  const { user } = useAuth()
   const servicesQuery = useOwnerBusinessServices(negocioId)
   const employeesQuery = useOwnerBusinessEmployees(negocioId)
   const mutation = useCreateOwnerTurno()
@@ -90,6 +92,8 @@ export default function OwnerTurnoCreateForm({ negocioId, onCancel, onCreated })
 
   const services = useMemo(() => (Array.isArray(servicesQuery.data) ? servicesQuery.data : []).filter((service) => service.activo), [servicesQuery.data])
   const activeEmployees = useMemo(() => (Array.isArray(employeesQuery.data) ? employeesQuery.data : []).filter((employee) => employee.activo), [employeesQuery.data])
+  const ownerName = [user?.nombre, user?.apellido].filter(Boolean).join(' ')
+  const ownerEmployeeId = user?.userId
   const chosenService = services.find((service) => String(service.servicioId) === values.servicioId)
   const employeeServicesQueries = useQueries({ queries: activeEmployees.map((employee) => ({
     queryKey: ownerBusinessEmployeeServicesQueryKey(negocioId, employee.empleadoId),
@@ -97,8 +101,8 @@ export default function OwnerTurnoCreateForm({ negocioId, onCancel, onCreated })
     enabled: Boolean(values.servicioId),
   })) })
   const eligibleEmployees = useMemo(() => {
-    return activeEmployees.filter((employee, index) => Array.isArray(employeeServicesQueries[index]?.data) && employeeServicesQueries[index].data.some((service) => String(service.servicioId) === values.servicioId && service.activo))
-  }, [activeEmployees, employeeServicesQueries, values.servicioId])
+    return activeEmployees.filter((employee, index) => String(employee.usuarioId) !== String(ownerEmployeeId) && Array.isArray(employeeServicesQueries[index]?.data) && employeeServicesQueries[index].data.some((service) => String(service.servicioId) === values.servicioId && service.activo))
+  }, [activeEmployees, employeeServicesQueries, ownerEmployeeId, values.servicioId])
   const assignmentError = employeeServicesQueries.some((query) => query.isError)
   const showAssignmentLoading = employeeServicesQueries.some((query) => query.isPending || query.isFetching)
 
@@ -158,7 +162,7 @@ export default function OwnerTurnoCreateForm({ negocioId, onCancel, onCreated })
         : <form className="owner-form owner-turno-form" onSubmit={handleSubmit} noValidate>
           <div className="owner-form-grid">
             <label className="owner-form-field" htmlFor={idFor('servicio')}><span>Servicio *</span><select id={idFor('servicio')} name="servicioId" value={values.servicioId} onChange={(event) => { changeField(event); setValues((current) => ({ ...current, empleadoId: '' })) }} aria-invalid={Boolean(fieldErrors.servicioId)} aria-describedby={fieldErrors.servicioId ? `${idFor('servicio')}-error` : undefined}><option value="">Seleccioná un servicio…</option>{services.map((service) => <option key={service.servicioId} value={service.servicioId}>{service.nombre}{service.precio != null ? ` · ${currencyFormatter.format(Number(service.precio))}` : ''}{service.duracionMinutos != null ? ` · ${service.duracionMinutos} min` : ''}</option>)}</select>{fieldErrors.servicioId && <small id={`${idFor('servicio')}-error`} className="owner-field-error">{fieldErrors.servicioId}</small>}{!services.length && <small className="owner-turno-helper">No hay servicios activos disponibles.</small>}{employeeServicesQueries.some((query) => query.isError) && <small className="owner-field-error" role="alert">No se pudieron comprobar algunos servicios asignados. Reintentá cargar antes de elegir un empleado.</small>}</label>
-            <label className="owner-form-field" htmlFor={idFor('empleado')}><span>Responsable</span><select id={idFor('empleado')} name="empleadoId" value={values.empleadoId} onChange={changeField} disabled={!values.servicioId || showEmployeesLoading || assignmentError}><option value="">Yo (OWNER)</option>{eligibleEmployees.map((employee) => <option key={employee.empleadoId} value={employee.empleadoId}>{employee.nombre} {employee.apellido}</option>)}</select>{showEmployeesLoading && values.servicioId && <small className="owner-turno-helper">Comprobando servicios asignados…</small>}{assignmentError && <small className="owner-field-error" role="alert">No se pudieron comprobar todas las asignaciones. Reintentá antes de elegir un empleado.</small>}{assignmentError && <button type="button" className="owners-secondary-button" onClick={() => employeeServicesQueries.filter((query) => query.isError).forEach((query) => void query.refetch())}>Reintentar asignaciones</button>}{values.servicioId && !showEmployeesLoading && !assignmentError && !eligibleEmployees.length && <small className="owner-turno-helper">No hay empleados activos asignados a este servicio.</small>}</label>
+            <label className="owner-form-field" htmlFor={idFor('empleado')}><span>Responsable</span><select id={idFor('empleado')} name="empleadoId" value={values.empleadoId} onChange={changeField} disabled={!values.servicioId || showEmployeesLoading || assignmentError}><option value="">{ownerName ? `${ownerName} (OWNER)` : 'OWNER'}</option>{eligibleEmployees.map((employee) => <option key={employee.empleadoId} value={employee.empleadoId}>{employee.nombre} {employee.apellido}</option>)}</select>{showEmployeesLoading && values.servicioId && <small className="owner-turno-helper">Comprobando servicios asignados…</small>}{assignmentError && <small className="owner-field-error" role="alert">No se pudieron comprobar todas las asignaciones. Reintentá cargar antes de elegir un empleado.</small>}{assignmentError && <button type="button" className="owners-secondary-button" onClick={() => employeeServicesQueries.filter((query) => query.isError).forEach((query) => void query.refetch())}>Reintentar asignaciones</button>}{values.servicioId && !showEmployeesLoading && !assignmentError && !eligibleEmployees.length && <small className="owner-turno-helper">No hay empleados activos asignados a este servicio.</small>}</label>
             <label className="owner-form-field" htmlFor={idFor('fecha')}><span>Fecha *</span><input id={idFor('fecha')} name="fecha" type="date" value={values.fecha} onChange={changeField} min={todayLocal()} aria-invalid={Boolean(fieldErrors.fecha)} aria-describedby={fieldErrors.fecha ? `${idFor('fecha')}-error` : undefined} />{fieldErrors.fecha && <small id={`${idFor('fecha')}-error`} className="owner-field-error">{fieldErrors.fecha}</small>}</label>
             <label className="owner-form-field" htmlFor={idFor('hora')}><span>Hora de inicio *</span><input id={idFor('hora')} name="hora" type="time" value={values.hora} onChange={changeField} aria-invalid={Boolean(fieldErrors.hora)} aria-describedby={fieldErrors.hora ? `${idFor('hora')}-error` : undefined} />{fieldErrors.hora && <small id={`${idFor('hora')}-error`} className="owner-field-error">{fieldErrors.hora}</small>}</label>
             <label className="owner-form-field owner-turno-observations-field" htmlFor={idFor('observaciones')}><span>Observaciones (opcional)</span><textarea id={idFor('observaciones')} name="observaciones" value={values.observaciones} onChange={changeField} maxLength={500} rows={3} aria-invalid={Boolean(fieldErrors.observaciones)} aria-describedby={fieldErrors.observaciones ? `${idFor('observaciones')}-error` : `${idFor('observaciones')}-count`} />{fieldErrors.observaciones && <small id={`${idFor('observaciones')}-error`} className="owner-field-error">{fieldErrors.observaciones}</small>}<small id={`${idFor('observaciones')}-count`} className="owner-turno-helper">{values.observaciones.length}/500</small></label>
