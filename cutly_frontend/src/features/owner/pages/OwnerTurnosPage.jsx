@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Ban, CalendarDays, Check, CircleAlert, LoaderCircle, Plus, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Ban, CalendarDays, Check, CircleAlert, LoaderCircle, Plus, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
@@ -33,6 +33,13 @@ const actionDetails = {
 function todayLocal() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+function shiftDate(value, days) {
+  if (!validDate(value)) return value
+  const [year, month, day] = value.split('-').map(Number)
+  const shifted = new Date(Date.UTC(year, month - 1, day + days))
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`
 }
 
 function validDate(value) {
@@ -84,6 +91,7 @@ export default function OwnerTurnosPage() {
   const [pendingActionKeys, setPendingActionKeys] = useState(() => new Set())
   const [actionErrors, setActionErrors] = useState({})
   const pendingActionKeysRef = useRef(new Set())
+  const datePickerRef = useRef(null)
   const queryClient = useQueryClient()
 
   const updateTurnoMutation = useMutation({
@@ -186,6 +194,13 @@ export default function OwnerTurnosPage() {
     setServicioId('')
   }
 
+  function openDatePicker() {
+    const input = datePickerRef.current
+    if (!input) return
+    if (typeof input.showPicker === 'function') input.showPicker()
+    else input.focus()
+  }
+
   function retryTurnos() {
     for (const { query } of failedQueries) query.refetch()
   }
@@ -248,14 +263,30 @@ export default function OwnerTurnosPage() {
     />}
 
     <section className="owners-filters owner-turnos-filters" aria-label="Filtros de turnos">
-      <label className="owners-status-filter owner-turnos-business-filter">Negocio<select value={selectedBusiness ? individualBusinessId : ''} onChange={(event) => changeBusiness(event.target.value)}><option value="">Todos mis negocios</option>{businesses.map((business) => <option key={business.negocioId} value={business.negocioId}>{business.nombre}</option>)}</select></label>
-      <label className="owners-search">Fecha<input className="owners-filter-input owner-turnos-date" type="date" value={fecha} aria-invalid={!dateIsValid} onChange={(event) => setFecha(event.target.value)} /></label>
-      <label className="owners-status-filter">Estado<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      {!allBusinesses && <>
-        <label className="owners-status-filter">Empleado<select value={empleadoId} onChange={(event) => setEmpleadoId(event.target.value)}><option value="">Todos</option>{(Array.isArray(employeesQuery.data) ? employeesQuery.data : []).map((employee) => <option key={employee.empleadoId} value={employee.empleadoId}>{employee.nombre} {employee.apellido}{employee.activo ? '' : ' (inactivo)'}</option>)}</select></label>
-        <label className="owners-status-filter">Servicio <span className="owner-turnos-local-label">filtro local</span><select value={servicioId} onChange={(event) => setServicioId(event.target.value)}><option value="">Todos</option>{(Array.isArray(servicesQuery.data) ? servicesQuery.data : []).map((service) => <option key={service.servicioId} value={service.servicioId}>{service.nombre}{service.activo ? '' : ' (inactivo)'}</option>)}</select></label>
-      </>}
-      <div className="owner-turnos-filter-actions"><button className="owners-secondary-button" type="button" onClick={clearFilters}><SlidersHorizontal size={14} /> Limpiar filtros</button></div>
+      <div className="owner-turnos-filter-row">
+        <div className="owner-turnos-filter-fields">
+          <label className="owners-status-filter owner-turnos-business-filter">Negocio<select value={selectedBusiness ? individualBusinessId : ''} onChange={(event) => changeBusiness(event.target.value)}><option value="">Todos mis negocios</option>{businesses.map((business) => <option key={business.negocioId} value={business.negocioId}>{business.nombre}</option>)}</select></label>
+          <label className="owners-status-filter">Estado<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          {!allBusinesses && <>
+            <label className="owners-status-filter">Empleado<select value={empleadoId} onChange={(event) => setEmpleadoId(event.target.value)}><option value="">Todos</option>{(Array.isArray(employeesQuery.data) ? employeesQuery.data : []).map((employee) => <option key={employee.empleadoId} value={employee.empleadoId}>{employee.nombre} {employee.apellido}{employee.activo ? '' : ' (inactivo)'}</option>)}</select></label>
+            <label className="owners-status-filter">Servicio <span className="owner-turnos-local-label">filtro local</span><select value={servicioId} onChange={(event) => setServicioId(event.target.value)}><option value="">Todos</option>{(Array.isArray(servicesQuery.data) ? servicesQuery.data : []).map((service) => <option key={service.servicioId} value={service.servicioId}>{service.nombre}{service.activo ? '' : ' (inactivo)'}</option>)}</select></label>
+          </>}
+        </div>
+        <button className="owners-secondary-button owner-turnos-clear-filters" type="button" onClick={clearFilters}><SlidersHorizontal size={14} /> Limpiar filtros</button>
+      </div>
+      <div className="owner-turnos-date-navigation" role="group" aria-label="Navegación por día">
+        <button className="owners-secondary-button owner-turnos-day-button" type="button" aria-label="Día anterior" onClick={() => setFecha((current) => shiftDate(current, -1))} disabled={!dateIsValid}><ArrowLeft size={17} /></button>
+        <div className="owner-turnos-date-display">
+          <span className="owner-turnos-date-label">Fecha de agenda</span>
+          <strong>{dateIsValid ? new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long', ...(fecha.split('-')[0] !== todayLocal().slice(0, 4) ? { year: 'numeric' } : {}) }).format(new Date(`${fecha}T12:00:00`)) : 'Fecha inválida'}</strong>
+        </div>
+        <button className="owners-secondary-button owner-turnos-day-button" type="button" aria-label="Día siguiente" onClick={() => setFecha((current) => shiftDate(current, 1))} disabled={!dateIsValid}><ArrowRight size={17} /></button>
+        <button className="owners-secondary-button owner-turnos-today" type="button" onClick={() => setFecha(todayLocal())}>Hoy</button>
+        <button className="owners-secondary-button owner-turnos-date-picker" type="button" aria-label="Elegir fecha" onClick={openDatePicker}>
+          <CalendarDays size={17} aria-hidden="true" />
+        </button>
+        <input ref={datePickerRef} id="owner-turnos-date-picker" className="owner-turnos-date-input" type="date" value={fecha} aria-label="Fecha de agenda" aria-invalid={!dateIsValid} onChange={(event) => setFecha(event.target.value)} tabIndex={-1} />
+      </div>
     </section>
 
     {employeesQuery.isError && <div className="owners-inline-error" role="alert"><span>{getOwnerBusinessEmployeesErrorMessage(employeesQuery.error)}</span><button className="owners-secondary-button" type="button" onClick={() => employeesQuery.refetch()}>Reintentar empleados</button></div>}
