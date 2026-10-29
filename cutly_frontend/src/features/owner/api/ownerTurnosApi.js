@@ -51,6 +51,13 @@ export async function searchOwnerClientesLocales({ negocioId, query }) {
   return data
 }
 
+export async function getOwnerClientesLocalesPage({ negocioId, page, size, query }) {
+  const params = { page, size }
+  if (query) params.q = query
+  const { data } = await apiClient.get(`/api/owner/negocios/${negocioId}/clientes-locales/paginado`, { params })
+  return data
+}
+
 export async function createOwnerClienteLocal({ negocioId, cliente }) {
   const { data } = await apiClient.post(`/api/owner/negocios/${negocioId}/clientes-locales`, cliente)
   return data

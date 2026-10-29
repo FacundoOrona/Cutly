@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createOwnerClienteLocal, createOwnerTurno, getOwnerTurno, getOwnerTurnos, searchOwnerClientesLocales } from '../api/ownerTurnosApi.js'
+import { createOwnerClienteLocal, createOwnerTurno, getOwnerClientesLocalesPage, getOwnerTurno, getOwnerTurnos, searchOwnerClientesLocales } from '../api/ownerTurnosApi.js'
 
 export const ownerTurnosQueryKey = ({ negocioId, fecha, empleadoId, status }) => [
   'ownerBusinesses', 'detail', String(negocioId), 'turnos',
@@ -33,6 +33,18 @@ export const ownerClientesLocalesQueryKey = ({ negocioId, query }) => [
 export const ownerClientesLocalesPrefix = (negocioId) => [
   'ownerBusinesses', 'detail', String(negocioId), 'clientes-locales',
 ]
+
+export const ownerClientesLocalesPageQueryKey = ({ negocioId, page, size, query }) => [
+  ...ownerClientesLocalesPrefix(negocioId), 'page', { page, size, query: query || '' },
+]
+
+export function useOwnerClientesLocalesPage(negocioId, page, size, query, options = {}) {
+  return useQuery({
+    queryKey: ownerClientesLocalesPageQueryKey({ negocioId, page, size, query }),
+    queryFn: () => getOwnerClientesLocalesPage({ negocioId, page, size, query }),
+    enabled: Boolean(negocioId) && (options.enabled ?? true),
+  })
+}
 
 export function useOwnerClientesLocales(negocioId, query, options = {}) {
   return useQuery({
