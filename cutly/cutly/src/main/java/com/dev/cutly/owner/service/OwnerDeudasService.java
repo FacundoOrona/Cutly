@@ -41,7 +41,7 @@ public class OwnerDeudasService {
         if (page < 0 || size < 1 || size > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paginación inválida; size debe estar entre 1 y 100");
         String busqueda = texto == null || texto.isBlank() ? null : texto.trim();
         return deudaRepository.listarCuentasCorrientesPorCliente(negocioId, busqueda,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "apellidoCliente").and(Sort.by(Sort.Direction.ASC, "nombreCliente"))));
+                PageRequest.of(page, size));
     }
     public OwnerDeudaDto obtener(Long negocioId, Long deudaId, String email) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, email);

@@ -9,6 +9,14 @@ export async function getOwnerDeudas({ negocioId, page = 0, size = 10, q, estado
   return data
 }
 
+export async function getOwnerDeudasClientes({ negocioId, page = 0, size = 20, q }) {
+  const params = { page, size }
+  if (q) params.q = q
+
+  const { data } = await apiClient.get(`/api/owner/negocios/${negocioId}/deudas/clientes`, { params })
+  return data
+}
+
 export async function getOwnerDeuda({ negocioId, deudaId }) {
   const { data } = await apiClient.get(`/api/owner/negocios/${negocioId}/deudas/${deudaId}`)
   return data

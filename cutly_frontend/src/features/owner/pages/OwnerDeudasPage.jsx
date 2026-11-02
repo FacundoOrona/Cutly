@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, CircleAlert, Eye, LoaderCircle, RefreshCw, Search } from 'lucide-react'
+import { ArrowLeft, Building2, CircleAlert, Eye, LoaderCircle, RefreshCw, Search } from 'lucide-react'
 import { getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
 import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
-import { useCreateOwnerAbono, useOwnerDeudas } from '../hooks/useOwnerDeudas.js'
+import { useCreateOwnerAbono, useOwnerDeudas, useOwnerDeudasClientes } from '../hooks/useOwnerDeudas.js'
 import OwnerDeudaDetailDrawer from '../components/OwnerDeudaDetailDrawer.jsx'
 
-const pageSize = 10
+const pageSize = 20
+const detailPageSize = 100
 const statusLabels = { PENDIENTE: 'Pendiente', PARCIAL: 'Parcial', PAGADA: 'Pagada' }
+const pendingStates = ['PENDIENTE', 'PARCIAL']
 
 function money(value) {
   if (value == null || Number.isNaN(Number(value))) return '—'
@@ -20,14 +22,24 @@ function dateTime(value) {
   return new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium' }).format(parsed)
 }
 
+function clientName(client) {
+  return [client.nombreCliente, client.apellidoCliente].filter(Boolean).join(' ') || '—'
+}
+
+function sameClient(deuda, client) {
+  return client.clienteId != null
+    ? String(deuda.clienteId) === String(client.clienteId)
+    : client.clienteLocalId != null && String(deuda.clienteLocalId) === String(client.clienteLocalId)
+}
+
 export default function OwnerDeudasPage() {
   const businessesQuery = useOwnerBusinesses()
   const businesses = useMemo(() => Array.isArray(businessesQuery.data) ? businessesQuery.data : [], [businessesQuery.data])
   const [selectedBusinessId, setSelectedBusinessId] = useState('')
   const [searchText, setSearchText] = useState('')
   const [debouncedText, setDebouncedText] = useState('')
-  const [estado, setEstado] = useState('')
   const [page, setPage] = useState(0)
+  const [selectedClient, setSelectedClient] = useState(null)
   const [selectedDeuda, setSelectedDeuda] = useState(null)
   const abonoMutation = useCreateOwnerAbono()
 
@@ -41,34 +53,32 @@ export default function OwnerDeudasPage() {
     ? selectedBusinessId
     : businesses.length === 1 ? String(businesses[0].negocioId) : ''
   const isWaitingForDebounce = searchText.trim() !== debouncedText
-  const deudasQuery = useOwnerDeudas({
+  const clientsQuery = useOwnerDeudasClientes({ negocioId: validBusinessId, page, size: pageSize, q: debouncedText }, { enabled: !isWaitingForDebounce && !selectedClient })
+  const clientsResult = !isWaitingForDebounce && !clientsQuery.isFetching ? clientsQuery.data : null
+  const clients = Array.isArray(clientsResult?.content) ? clientsResult.content : []
+  const currentPage = typeof clientsResult?.page === 'number' ? clientsResult.page : page
+  const detailQueries = pendingStates.map((estado) => useOwnerDeudas({
     negocioId: validBusinessId,
-    page,
-    size: pageSize,
-    q: debouncedText,
+    page: 0,
+    size: detailPageSize,
+    q: selectedClient ? clientName(selectedClient) : '',
     estado,
-  }, { enabled: !isWaitingForDebounce })
-  const result = !isWaitingForDebounce && !deudasQuery.isFetching ? deudasQuery.data : null
-  const deudas = Array.isArray(result?.content) ? result.content : []
-  const totalElements = result?.totalElements
-  const totalPages = result?.totalPages
-  const currentPage = typeof result?.number === 'number' ? result.number : page
+  }, { enabled: Boolean(selectedClient && validBusinessId) }))
+  const clientDeudas = detailQueries.flatMap((query) => Array.isArray(query.data?.content) ? query.data.content : [])
+    .filter((deuda, index, all) => sameClient(deuda, selectedClient || {}) && all.findIndex((item) => String(item.deudaId) === String(deuda.deudaId)) === index)
+  const detailsLoading = detailQueries.some((query) => query.isFetching)
+  const detailsError = detailQueries.find((query) => query.isError)
 
   function changeBusiness(event) {
     setSelectedBusinessId(event.target.value)
     setPage(0)
     setSearchText('')
     setDebouncedText('')
-    setEstado('')
+    setSelectedClient(null)
   }
 
   function changeSearch(event) {
     setSearchText(event.target.value)
-    setPage(0)
-  }
-
-  function changeStatus(event) {
-    setEstado(event.target.value)
     setPage(0)
   }
 
@@ -91,12 +101,7 @@ export default function OwnerDeudasPage() {
 
   return <>
     <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO OWNER</span>
-    <div className="owners-heading">
-      <div>
-        <h1>Cuentas corrientes</h1>
-        <p className="owners-description">Seguimiento de saldos pendientes y pagos de clientes.</p>
-      </div>
-    </div>
+    <div className="owners-heading"><div><h1>Cuentas corrientes</h1><p className="owners-description">Seguimiento de saldos pendientes y pagos de clientes.</p></div></div>
 
     {businessesQuery.isLoading ? (
       <div className="owner-business-state" role="status"><LoaderCircle size={19} className="spin" /> Cargando negocios…</div>
@@ -109,34 +114,33 @@ export default function OwnerDeudasPage() {
         {businesses.length === 1 ? <div className="owner-clients-selected-business"><Building2 size={17} /><span><small>Negocio</small><strong>{businesses[0].nombre || 'Negocio'}</strong></span></div> : <label className="owner-form-field" htmlFor="owner-deudas-business"><span>Negocio</span><select id="owner-deudas-business" value={validBusinessId} onChange={changeBusiness}><option value="">Seleccioná un negocio…</option>{businesses.map((business) => <option key={business.negocioId} value={String(business.negocioId)}>{business.nombre || `Negocio ${business.negocioId}`}</option>)}</select></label>}
       </section>
 
-      {validBusinessId ? <section className="owner-client-card owner-deudas-card" aria-label="Listado de deudas">
-        <div className="owner-client-card-heading"><span className="user-detail-icon"><Search size={17} /></span><div><h2>Deudas de clientes</h2><p>Buscá por nombre o apellido y filtrá por estado.</p></div></div>
+      {validBusinessId ? <section className="owner-client-card owner-deudas-card" aria-label={selectedClient ? 'Deudas pendientes del cliente' : 'Cuentas corrientes por cliente'}>
+        <div className="owner-client-card-heading"><span className="user-detail-icon"><Search size={17} /></span><div><h2>{selectedClient ? `Deudas de ${clientName(selectedClient)}` : 'Cuentas corrientes por cliente'}</h2><p>{selectedClient ? 'Deudas pendientes y parciales asociadas a este cliente.' : 'Buscá por nombre o apellido para consultar saldos agrupados.'}</p></div></div>
 
-        <div className="owner-deudas-filters">
-          <label className="owner-form-field" htmlFor="owner-deudas-search"><span>Buscar cliente</span><input id="owner-deudas-search" type="search" value={searchText} maxLength={100} onChange={changeSearch} placeholder="Nombre o apellido" /></label>
-          <label className="owner-form-field" htmlFor="owner-deudas-status"><span>Estado</span><select id="owner-deudas-status" value={estado} onChange={changeStatus}><option value="">Todos</option><option value="PENDIENTE">Pendiente</option><option value="PARCIAL">Parcial</option><option value="PAGADA">Pagada</option></select></label>
-        </div>
+        {!selectedClient ? <label className="owner-form-field owner-deudas-client-search" htmlFor="owner-deudas-search"><span>Buscar cliente</span><input id="owner-deudas-search" type="search" value={searchText} maxLength={100} onChange={changeSearch} placeholder="Nombre o apellido" /></label> : <button type="button" className="owners-secondary-button owner-deudas-back" onClick={() => setSelectedClient(null)}><ArrowLeft size={14} /> Volver a clientes</button>}
 
-        <div className="owner-deudas-results" aria-busy={isWaitingForDebounce || deudasQuery.isFetching}>
-          {deudasQuery.isError ? <div className="owner-deudas-state owner-deudas-error" role="alert"><CircleAlert size={17} /><span>No pudimos cargar las cuentas corrientes. Intentá nuevamente.</span><button type="button" className="owners-secondary-button" onClick={() => void deudasQuery.refetch()} disabled={deudasQuery.isFetching}><RefreshCw size={14} /> Reintentar</button></div>
-            : isWaitingForDebounce || deudasQuery.isFetching ? <div className="owner-deudas-state" role="status"><LoaderCircle size={17} className="spin" /> Cargando deudas…</div>
-              : deudas.length === 0 ? <div className="owner-deudas-state">{debouncedText || estado ? 'No hay deudas para los filtros seleccionados.' : 'Todavía no hay deudas registradas para este negocio.'}</div>
+        <div className="owner-deudas-results" aria-busy={isWaitingForDebounce || clientsQuery.isFetching || detailsLoading}>
+          {!selectedClient ? clientsQuery.isError ? <div className="owner-deudas-state owner-deudas-error" role="alert"><CircleAlert size={17} /><span>No pudimos cargar las cuentas corrientes. Intentá nuevamente.</span><button type="button" className="owners-secondary-button" onClick={() => void clientsQuery.refetch()} disabled={clientsQuery.isFetching}><RefreshCw size={14} /> Reintentar</button></div>
+            : isWaitingForDebounce || clientsQuery.isFetching ? <div className="owner-deudas-state" role="status"><LoaderCircle size={17} className="spin" /> Cargando clientes…</div>
+              : clients.length === 0 ? <div className="owner-deudas-state">{debouncedText ? 'No hay clientes con deudas pendientes para esa búsqueda.' : 'Todavía no hay deudas pendientes para este negocio.'}</div>
                 : <>
-                  <div className="owner-deudas-count" aria-live="polite">{typeof totalElements === 'number' ? `${totalElements} ${totalElements === 1 ? 'deuda' : 'deudas'}` : 'Deudas'}</div>
-                  <div className="owner-deudas-table-wrap"><table className="owners-table owner-deudas-table"><thead><tr><th>Cliente</th><th>Fecha de origen</th><th>Importe acordado</th><th>Total abonado</th><th>Saldo</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>{deudas.map((deuda) => <tr key={deuda.deudaId}>
-                    <td data-label="Cliente" className="owner-deudas-client">{[deuda.nombreCliente, deuda.apellidoCliente].filter(Boolean).join(' ') || '—'}</td>
-                    <td data-label="Fecha de origen">{dateTime(deuda.fechaOrigen)}</td>
-                    <td data-label="Importe acordado">{money(deuda.montoOriginal)}</td>
-                    <td data-label="Total abonado">{money(deuda.totalAbonado)}</td>
-                    <td data-label="Saldo" className="owner-deudas-balance">{money(deuda.saldo)}</td>
-                    <td data-label="Estado"><span className={`owner-status owner-deuda-status owner-deuda-status-${String(deuda.estado || '').toLowerCase()}`}>{statusLabels[deuda.estado] || deuda.estado || '—'}</span></td>
-                    <td data-label="Detalle"><button type="button" className="owners-secondary-button owner-deudas-detail" aria-label={`Consultar detalle de la deuda de ${[deuda.nombreCliente, deuda.apellidoCliente].filter(Boolean).join(' ') || 'cliente'}`} title="Consultar detalle" onClick={() => { abonoMutation.reset(); setSelectedDeuda({ negocioId: validBusinessId, deudaId: deuda.deudaId }) }}><Eye size={14} /><span>Ver detalle</span></button></td>
+                  <div className="owner-deudas-count" aria-live="polite">{typeof clientsResult?.totalElements === 'number' ? `${clientsResult.totalElements} ${clientsResult.totalElements === 1 ? 'cliente' : 'clientes'}` : 'Clientes'}</div>
+                  <div className="owner-deudas-table-wrap"><table className="owners-table owner-deudas-table owner-deudas-clients-table"><thead><tr><th>Cliente</th><th>Tipo</th><th>Deudas pendientes</th><th>Saldo pendiente</th><th>Deuda más antigua</th><th>Detalle</th></tr></thead><tbody>{clients.map((client) => <tr key={client.clienteId != null ? `usuario-${client.clienteId}` : `local-${client.clienteLocalId}`}>
+                    <td data-label="Cliente" className="owner-deudas-client">{clientName(client)}</td>
+                    <td data-label="Tipo">{client.tipoCliente === 'LOCAL' ? 'Local' : 'Registrado'}</td>
+                    <td data-label="Deudas pendientes">{client.cantidadDeudasPendientes}</td>
+                    <td data-label="Saldo pendiente" className="owner-deudas-balance">{money(client.saldoPendienteTotal)}</td>
+                    <td data-label="Deuda más antigua">{dateTime(client.fechaDeudaMasAntigua)}</td>
+                    <td data-label="Detalle"><button type="button" className="owners-secondary-button owner-deudas-detail" onClick={() => setSelectedClient(client)}><Eye size={14} /><span>Ver deudas</span></button></td>
                   </tr>)}</tbody></table></div>
-                  <nav className="owner-clients-pagination owner-deudas-pagination" aria-label="Paginación de cuentas corrientes">
-                    <span>{typeof totalElements === 'number' ? `${totalElements} resultados` : ''}</span>
-                    <div><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={currentPage === 0 || deudasQuery.isFetching}>Anterior</button><span>{typeof totalPages === 'number' ? `Página ${currentPage + 1} de ${totalPages}` : `Página ${currentPage + 1}`}</span><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => current + 1)} disabled={deudasQuery.isFetching || (typeof totalPages === 'number' ? currentPage + 1 >= totalPages : deudas.length < pageSize)}>Siguiente</button></div>
-                  </nav>
-                </>}
+                  <nav className="owner-clients-pagination owner-deudas-pagination" aria-label="Paginación de cuentas corrientes"><span>{typeof clientsResult?.totalElements === 'number' ? `${clientsResult.totalElements} resultados` : ''}</span><div><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={currentPage === 0 || clientsQuery.isFetching}>Anterior</button><span>{typeof clientsResult?.totalPages === 'number' ? `Página ${currentPage + 1} de ${clientsResult.totalPages}` : `Página ${currentPage + 1}`}</span><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => current + 1)} disabled={clientsQuery.isFetching || (typeof clientsResult?.totalPages === 'number' ? currentPage + 1 >= clientsResult.totalPages : clients.length < pageSize)}>Siguiente</button></div></nav>
+                </> : detailsLoading ? <div className="owner-deudas-state" role="status"><LoaderCircle size={17} className="spin" /> Cargando deudas…</div>
+            : detailsError ? <div className="owner-deudas-state owner-deudas-error" role="alert"><CircleAlert size={17} /><span>No pudimos cargar las deudas de este cliente.</span><button type="button" className="owners-secondary-button" onClick={() => detailQueries.forEach((query) => void query.refetch())}><RefreshCw size={14} /> Reintentar</button></div>
+              : clientDeudas.length === 0 ? <div className="owner-deudas-state">Este cliente no tiene deudas pendientes.</div>
+                : <><div className="owner-deudas-count" aria-live="polite">{clientDeudas.length} {clientDeudas.length === 1 ? 'deuda pendiente' : 'deudas pendientes'}</div>
+                  <div className="owner-deudas-table-wrap"><table className="owners-table owner-deudas-table"><thead><tr><th>Turno</th><th>Fecha de origen</th><th>Importe original</th><th>Total abonado</th><th>Saldo pendiente</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>{clientDeudas.map((deuda) => <tr key={deuda.deudaId}>
+                    <td data-label="Turno">#{deuda.turnoId ?? '—'}</td><td data-label="Fecha de origen">{dateTime(deuda.fechaOrigen)}</td><td data-label="Importe original">{money(deuda.montoOriginal)}</td><td data-label="Total abonado">{money(deuda.totalAbonado)}</td><td data-label="Saldo pendiente" className="owner-deudas-balance">{money(deuda.saldo)}</td><td data-label="Estado"><span className={`owner-status owner-deuda-status owner-deuda-status-${String(deuda.estado || '').toLowerCase()}`}>{statusLabels[deuda.estado] || deuda.estado || '—'}</span></td><td data-label="Detalle"><button type="button" className="owners-secondary-button owner-deudas-detail" onClick={() => { abonoMutation.reset(); setSelectedDeuda({ negocioId: validBusinessId, deudaId: deuda.deudaId }) }}><Eye size={14} /><span>Ver detalle</span></button></td>
+                  </tr>)}</tbody></table></div></>}
         </div>
       </section> : <div className="owner-business-state"><Building2 size={22} /><p>Seleccioná uno de tus negocios para consultar sus cuentas corrientes.</p></div>}
     </>}

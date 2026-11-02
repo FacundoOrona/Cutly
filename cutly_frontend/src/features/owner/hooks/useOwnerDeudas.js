@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createOwnerAbono, getOwnerDeuda, getOwnerDeudas } from '../api/ownerDeudasApi.js'
+import { createOwnerAbono, getOwnerDeuda, getOwnerDeudas, getOwnerDeudasClientes } from '../api/ownerDeudasApi.js'
 
 export const ownerDeudasPrefix = (negocioId) => [
   'ownerBusinesses', 'detail', String(negocioId), 'deudas',
@@ -13,6 +13,18 @@ export function useOwnerDeudas(filters, options = {}) {
   return useQuery({
     queryKey: ownerDeudasQueryKey(filters),
     queryFn: () => getOwnerDeudas(filters),
+    enabled: Boolean(filters.negocioId) && (options.enabled ?? true),
+  })
+}
+
+export const ownerDeudasClientesQueryKey = ({ negocioId, page, size, q }) => [
+  ...ownerDeudasPrefix(negocioId), 'clientes', 'page', { page, size, q: q || '' },
+]
+
+export function useOwnerDeudasClientes(filters, options = {}) {
+  return useQuery({
+    queryKey: ownerDeudasClientesQueryKey(filters),
+    queryFn: () => getOwnerDeudasClientes(filters),
     enabled: Boolean(filters.negocioId) && (options.enabled ?? true),
   })
 }
@@ -40,6 +52,7 @@ export function useCreateOwnerAbono() {
         deuda,
       )
       queryClient.invalidateQueries({ queryKey: ownerDeudasPrefix(negocioId) })
+      queryClient.invalidateQueries({ queryKey: [...ownerDeudasPrefix(negocioId), 'clientes'] })
       queryClient.invalidateQueries({
         queryKey: ownerDeudaDetailQueryKey({ negocioId, deudaId: variables.deudaId }),
       })
