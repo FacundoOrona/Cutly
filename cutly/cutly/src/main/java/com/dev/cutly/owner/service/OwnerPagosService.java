@@ -64,7 +64,8 @@ public class OwnerPagosService {
                 pago.getDeuda() != null ? pago.getDeuda().getDeudaId() : null,
                 pago.getMonto(),
                 pago.getMetodoPago(),
-                pago.getFechaPago()
+                pago.getFechaPago(),
+                pago.getDescripcionOtro()
         );
     }
 }

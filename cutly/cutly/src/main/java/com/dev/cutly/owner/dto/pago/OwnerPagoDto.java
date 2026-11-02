@@ -12,6 +12,7 @@ public record OwnerPagoDto(
         Long deudaId,
         BigDecimal monto,
         MetodoPago metodoPago,
-        LocalDateTime fechaPago
+        LocalDateTime fechaPago,
+        String descripcionOtro
 ) {
 }
