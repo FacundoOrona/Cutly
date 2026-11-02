@@ -36,6 +36,13 @@ public class OwnerDeudasService {
         return deudaRepository.listarResumenPorNegocio(negocioId, busqueda, estado,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "fechaOrigen").and(Sort.by(Sort.Direction.DESC, "deudaId"))));
     }
+    public Page<OwnerCuentaCorrienteClienteDto> listarPorCliente(Long negocioId, String texto, int page, int size, String email) {
+        ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, email);
+        if (page < 0 || size < 1 || size > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paginación inválida; size debe estar entre 1 y 100");
+        String busqueda = texto == null || texto.isBlank() ? null : texto.trim();
+        return deudaRepository.listarCuentasCorrientesPorCliente(negocioId, busqueda,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "apellidoCliente").and(Sort.by(Sort.Direction.ASC, "nombreCliente"))));
+    }
     public OwnerDeudaDto obtener(Long negocioId, Long deudaId, String email) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, email);
         return dto(deudaRepository.findByDeudaIdAndNegocio_NegocioId(deudaId, negocioId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró la deuda solicitada")));

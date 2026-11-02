@@ -26,6 +26,14 @@ public interface DeudaClienteRepository extends JpaRepository<DeudaCliente, Long
             Pageable pageable
     );
 
+    @Query(value = "select new com.dev.cutly.owner.dto.pago.OwnerCuentaCorrienteClienteDto(c.usuarioId, cl.clienteLocalId, case when c.usuarioId is null then 'LOCAL' else 'USUARIO' end, coalesce(c.nombre, cl.nombre), coalesce(c.apellido, cl.apellido), count(d.deudaId), sum(d.montoOriginal - coalesce((select sum(p.monto) from Pago p where p.deuda = d), 0)), min(d.fechaOrigen)) from DeudaCliente d left join d.cliente c left join d.clienteLocal cl where d.negocio.negocioId = :negocioId and d.montoOriginal > coalesce((select sum(p2.monto) from Pago p2 where p2.deuda = d), 0) and (:texto is null or lower(concat(coalesce(c.nombre, cl.nombre), ' ', coalesce(c.apellido, cl.apellido))) like lower(concat('%', :texto, '%'))) group by c.usuarioId, cl.clienteLocalId, c.nombre, cl.nombre, c.apellido, cl.apellido",
+            countQuery = "select count(distinct case when d.cliente is not null then d.cliente.usuarioId else -d.clienteLocal.clienteLocalId end) from DeudaCliente d where d.negocio.negocioId = :negocioId and d.montoOriginal > coalesce((select sum(p.monto) from Pago p where p.deuda = d), 0) and (:texto is null or lower(concat(coalesce(d.cliente.nombre, d.clienteLocal.nombre), ' ', coalesce(d.cliente.apellido, d.clienteLocal.apellido))) like lower(concat('%', :texto, '%')))")
+    Page<com.dev.cutly.owner.dto.pago.OwnerCuentaCorrienteClienteDto> listarCuentasCorrientesPorCliente(
+            @Param("negocioId") Long negocioId,
+            @Param("texto") String texto,
+            Pageable pageable
+    );
+
     @Query("select coalesce(sum(d.montoOriginal - (select coalesce(sum(p.monto), 0) from Pago p where p.deuda = d)), 0) from DeudaCliente d where d.negocio.negocioId = :negocioId and (:desde is null or d.fechaOrigen >= :desde) and (:hasta is null or d.fechaOrigen < :hasta) and d.montoOriginal > (select coalesce(sum(p2.monto), 0) from Pago p2 where p2.deuda = d)")
     BigDecimal sumarSaldoPendiente(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
