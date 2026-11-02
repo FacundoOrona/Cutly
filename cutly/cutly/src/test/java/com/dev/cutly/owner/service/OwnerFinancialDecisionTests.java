@@ -65,12 +65,13 @@ class OwnerFinancialDecisionTests {
         lenient().when(turnoRepository.findWithLockingByTurnoIdAndNegocioId(17L, 9L)).thenReturn(Optional.of(turno));
         lenient().when(resultadoRepository.existsByTurno_TurnoId(17L)).thenReturn(false);
         lenient().when(resultadoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(deudaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(turnoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(idempotenciaRepository.findByKey("key-1")).thenReturn(Optional.empty());
     }
 
     @Test void cobraDirectamenteYCompletaElTurnoAtomico() {
-        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local");
+        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), null, MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local");
         verify(pagoRepository).save(argThat(p -> p.getMonto().compareTo(new BigDecimal("1200")) == 0 && p.getTurno() == turno && p.getResultadoFinanciero() != null));
         verify(idempotenciaRepository).saveAndFlush(any(IdempotenciaFinanciera.class));
         assertEquals(TurnoStatus.COMPLETED, turno.getStatus());
@@ -79,7 +80,7 @@ class OwnerFinancialDecisionTests {
     @Test void otroConDescripcionValidaEsAceptadoAlRegularizar() {
         turno.setStatus(TurnoStatus.COMPLETED);
         service.regularizarFinanzas(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO,
-                new BigDecimal("1200"), MetodoPago.OTRO, "Transferencia externa", null), "key-1", "owner@test.local");
+                new BigDecimal("1200"), null, MetodoPago.OTRO, "Transferencia externa", null), "key-1", "owner@test.local");
         verify(resultadoRepository).save(any(ResultadoFinancieroTurno.class));
         verify(pagoRepository).save(argThat(p -> "Transferencia externa".equals(p.getDescripcionOtro())));
     }
@@ -103,7 +104,7 @@ class OwnerFinancialDecisionTests {
     @Test void otroMetodoConDescripcionSeRechazaAntesDeGuardar() {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L,
                 new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"),
-                        MetodoPago.EFECTIVO, "No corresponde", null), "key-1", "owner@test.local"));
+                        null, MetodoPago.EFECTIVO, "No corresponde", null), "key-1", "owner@test.local"));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         verifyNoInteractions(resultadoRepository, pagoRepository);
     }
@@ -111,54 +112,78 @@ class OwnerFinancialDecisionTests {
     private void assertOtroDescripcionInvalida(String descripcion) {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L,
                 new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"),
-                        MetodoPago.OTRO, descripcion, null), "key-1", "owner@test.local"));
+                        null, MetodoPago.OTRO, descripcion, null), "key-1", "owner@test.local"));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         verifyNoInteractions(resultadoRepository, pagoRepository);
     }
 
     @Test void creaDeudaSinRegistrarIngreso() {
-        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("1200"), null, null, null), "key-1", "owner@test.local");
+        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("1200"), BigDecimal.ZERO, null, null, null), "key-1", "owner@test.local");
         verify(deudaRepository).save(argThat(d -> d.getMontoOriginal().compareTo(new BigDecimal("1200")) == 0));
         verifyNoInteractions(pagoRepository);
     }
 
     @Test void gratuidadGuardaMotivoSinPagoNiDeuda() {
-        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, "Promoción"), "key-1", "owner@test.local");
+        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "Promoción"), "key-1", "owner@test.local");
         verify(resultadoRepository).save(argThat(r -> r.getMontoAcordado().signum() == 0 && "Promoción".equals(r.getMotivoGratuidad())));
         verifyNoInteractions(pagoRepository, deudaRepository);
     }
 
     @Test void gratuidadSinMotivoSeRechazaAntesDeGuardar() {
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, "  "), "key-1", "owner@test.local"));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "  "), "key-1", "owner@test.local"));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         verify(resultadoRepository, never()).save(any());
     }
 
     @Test void claveIgualConCuerpoDistintoSeRechaza() throws Exception {
-        String body = "COBRO_DIRECTO|100|EFECTIVO|null|null";
+        String body = "COBRO_DIRECTO|100|null|EFECTIVO|null|null";
         String hash = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body.getBytes(StandardCharsets.UTF_8)));
         IdempotenciaFinanciera existing = new IdempotenciaFinanciera(); existing.setNegocio(negocio); existing.setTurno(turno); existing.setRequestHash(hash);
         when(idempotenciaRepository.findByKey("key-1")).thenReturn(Optional.of(existing));
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("200"), MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local"));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("200"), null, MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local"));
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         verify(resultadoRepository, never()).save(any());
     }
 
     @Test void claveIgualConMismoCuerpoDevuelveResultadoSinDuplicar() throws Exception {
-        String body = "COBRO_DIRECTO|1200|EFECTIVO|null|null";
+        String body = "COBRO_DIRECTO|1200|null|EFECTIVO|null|null";
         String hash = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body.getBytes(StandardCharsets.UTF_8)));
         IdempotenciaFinanciera existing = new IdempotenciaFinanciera(); existing.setNegocio(negocio); existing.setTurno(turno); existing.setRequestHash(hash);
         when(idempotenciaRepository.findByKey("key-1")).thenReturn(Optional.of(existing));
-        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local");
+        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), null, MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local");
         verify(resultadoRepository, never()).save(any());
         verifyNoInteractions(pagoRepository, deudaRepository);
+    }
+
+    @Test void cuentaCorrienteRegistraPagoInicialComoAbonoYConservaDeudaTotal() {
+        var request = new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE,
+                new BigDecimal("20000"), new BigDecimal("7000"), MetodoPago.EFECTIVO, null, null);
+        service.completarConDecision(9L, 17L, request, "key-1", "owner@test.local");
+        verify(deudaRepository).save(argThat(d -> d.getMontoOriginal().compareTo(new BigDecimal("20000")) == 0));
+        verify(pagoRepository).save(argThat(p -> p.getDeuda() != null
+                && p.getMonto().compareTo(new BigDecimal("7000")) == 0
+                && p.getMetodoPago() == MetodoPago.EFECTIVO));
+    }
+
+    @Test void cuentaCorrientePagoCompletoMantieneDeudaYAbonoCompleto() {
+        service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE,
+                new BigDecimal("20000"), new BigDecimal("20000"), MetodoPago.DEBITO, null, null), "key-1", "owner@test.local");
+        verify(deudaRepository).save(argThat(d -> d.getMontoOriginal().compareTo(new BigDecimal("20000")) == 0));
+        verify(pagoRepository).save(argThat(p -> p.getMonto().compareTo(new BigDecimal("20000")) == 0));
+    }
+
+    @Test void pagoInicialMayorAlTotalSeRechaza() {
+        assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L,
+                new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("100"),
+                        new BigDecimal("101"), MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local"));
+        verifyNoInteractions(resultadoRepository, deudaRepository, pagoRepository);
     }
 
     @Test void ownerAjenoNoPuedeFinalizarElTurnoDelNegocio() {
         when(ownerNegocioService.obtenerEntidadNegocioPropio(9L, "intruso@test.local"))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
         assertThrows(ResponseStatusException.class, () -> service.completarConDecision(9L, 17L,
-                new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), MetodoPago.EFECTIVO, null, null),
+                new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), null, MetodoPago.EFECTIVO, null, null),
                 "otra-key", "intruso@test.local"));
         verify(turnoRepository, never()).findWithLockingByTurnoIdAndNegocioId(any(), any());
     }

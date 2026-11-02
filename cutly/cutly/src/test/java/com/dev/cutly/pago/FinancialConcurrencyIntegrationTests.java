@@ -108,7 +108,7 @@ class FinancialConcurrencyIntegrationTests {
     }
 
     @Test void dosFinalizacionesMismoIdempotencyKeyMismoCuerpoCreanUnaSolaOperacion() throws Exception {
-        var request = new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("900.00"), MetodoPago.EFECTIVO, null, null);
+        var request = new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("900.00"), null, MetodoPago.EFECTIVO, null, null);
         var outcomes = concurrent(() -> ownerTurnosService.completarConDecision(negocio.getNegocioId(), turno.getTurnoId(), request, "same-key-" + turno.getTurnoId(), email));
         assertEquals(2, outcomes.length);
         assertEquals(1, resultadoRepository.findByTurno_TurnoId(turno.getTurnoId()).stream().count());
@@ -117,9 +117,9 @@ class FinancialConcurrencyIntegrationTests {
 
     @Test void finalizacionesSimultaneasConClavesDistintasNoDuplicanResultado() throws Exception {
         var outcomes = concurrentTwo(() -> ownerTurnosService.completarConDecision(negocio.getNegocioId(), turno.getTurnoId(),
-                        new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, "Promoción"), "different-a-" + turno.getTurnoId(), email),
+                        new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "Promoción"), "different-a-" + turno.getTurnoId(), email),
                 () -> ownerTurnosService.completarConDecision(negocio.getNegocioId(), turno.getTurnoId(),
-                        new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, "Promoción"), "different-b-" + turno.getTurnoId(), email));
+                        new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "Promoción"), "different-b-" + turno.getTurnoId(), email));
         assertEquals(1, java.util.Arrays.stream(outcomes).filter("OK"::equals).count());
         assertEquals(1, java.util.Arrays.stream(outcomes).filter("CONFLICT"::equals).count());
         assertTrue(resultadoRepository.existsByTurno_TurnoId(turno.getTurnoId()));
@@ -138,17 +138,17 @@ class FinancialConcurrencyIntegrationTests {
 
     @Test void estadisticasCalculanIngresosSaldoYRegularizacionSinDuplicar() {
         ownerTurnosService.completarConDecision(negocio.getNegocioId(), turno.getTurnoId(),
-                new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("900.00"), MetodoPago.EFECTIVO, null, null),
+                new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("900.00"), null, MetodoPago.EFECTIVO, null, null),
                 "stats-direct-" + turno.getTurnoId(), email);
         Turno turnoDeuda = crearTurnoAdicional(TurnoStatus.CONFIRMED);
         ownerTurnosService.completarConDecision(negocio.getNegocioId(), turnoDeuda.getTurnoId(),
-                new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("1000.00"), null, null, null),
+                new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("1000.00"), BigDecimal.ZERO, null, null, null),
                 "stats-debt-" + turnoDeuda.getTurnoId(), email);
         DeudaCliente deuda = deudaRepository.findByNegocio_NegocioIdOrderByFechaOrigenDesc(negocio.getNegocioId()).get(0);
         ownerDeudasService.abonar(negocio.getNegocioId(), deuda.getDeudaId(), new CrearAbonoRequestDto(new BigDecimal("250.00"), MetodoPago.DEBITO, null), email);
         Turno turnoGratis = crearTurnoAdicional(TurnoStatus.CONFIRMED);
         ownerTurnosService.completarConDecision(negocio.getNegocioId(), turnoGratis.getTurnoId(),
-                new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, "Promoción"),
+                new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "Promoción"),
                 "stats-free-" + turnoGratis.getTurnoId(), email);
         crearTurnoAdicional(TurnoStatus.COMPLETED);
 
@@ -161,6 +161,22 @@ class FinancialConcurrencyIntegrationTests {
         assertEquals(1L, stats.turnosCobrados());
         assertEquals(1L, stats.turnosGratuitos());
         assertEquals(1L, stats.turnosPendientesRegularizacion());
+    }
+
+    @Test void pagoInicialCuentaComoAbonoYReduceSaldoSinDuplicarse() {
+        ownerTurnosService.completarConDecision(negocio.getNegocioId(), turno.getTurnoId(),
+                new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("1000.00"),
+                        new BigDecimal("250.00"), MetodoPago.EFECTIVO, null, null), "partial-" + turno.getTurnoId(), email);
+        DeudaCliente deuda = deudaRepository.findByNegocio_NegocioIdOrderByFechaOrigenDesc(negocio.getNegocioId()).get(0);
+        assertEquals(new BigDecimal("1000.00"), deuda.getMontoOriginal());
+        assertEquals(new BigDecimal("250.00"), pagoRepository.sumarAbonos(deuda.getDeudaId()));
+        var debtView = ownerDeudasService.obtener(negocio.getNegocioId(), deuda.getDeudaId(), email);
+        assertEquals(new BigDecimal("750.00"), debtView.saldo());
+        assertEquals(1, debtView.abonos().size());
+        var stats = ownerEstadisicaService.obtenerEstadisticasIngresos(negocio.getNegocioId(), null, null, email);
+        assertEquals(new BigDecimal("250.00"), stats.ingresosAbonos());
+        assertEquals(new BigDecimal("250.00"), stats.ingresosTotales());
+        assertEquals(new BigDecimal("750.00"), stats.deudaPendienteTotal());
     }
 
     private Long crearDeuda() {

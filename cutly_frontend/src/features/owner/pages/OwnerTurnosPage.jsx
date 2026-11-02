@@ -69,6 +69,31 @@ function money(value) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(value))
 }
 
+const paymentMethodLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', TARJETA: 'Tarjeta', OTRO: 'Otro' }
+
+function financialSummary(turno) {
+  const summary = turno.resumenFinanciero
+  if (turno.status === 'COMPLETED' && !turno.regularizadoFinancieramente) {
+    return <div className="owner-turno-financial"><strong>{money(turno.precio)}</strong><span className="owner-turno-financial-pending">Pendiente de regularización</span></div>
+  }
+  if (!summary) return '—'
+  if (summary.decisionFinanciera === 'COBRO_DIRECTO') return <div className="owner-turno-financial"><strong>{money(summary.monto)}</strong><span>Cobrado · {paymentMethodLabels[summary.metodoPago] || summary.metodoPago || 'Método no disponible'}</span></div>
+  if (summary.decisionFinanciera === 'CUENTA_CORRIENTE') {
+    const agreed = summary.montoAcordado ?? summary.monto
+    const paid = summary.totalAbonado
+    const balance = summary.saldoPendiente
+    const debtStatus = balance === 0 ? 'Deuda saldada' : paid === 0 ? 'Sin abonos' : paid != null ? 'Abono parcial' : 'Cuenta corriente'
+    return <div className="owner-turno-financial"><strong>{debtStatus}</strong><span>Importe acordado: {money(agreed)}</span><span>Total abonado: {money(paid)}</span><span>Saldo pendiente: {money(balance)}</span></div>
+  }
+  if (summary.decisionFinanciera === 'GRATUIDAD') return <div className="owner-turno-financial"><strong>Gratis</strong></div>
+  return '—'
+}
+
+function turnoStatusLabel(turno) {
+  if (turno.status === 'COMPLETED') return turno.regularizadoFinancieramente ? 'Completado y regularizado' : 'Pendiente de regularización'
+  return statusLabels[turno.status] || turno.status || 'Sin estado'
+}
+
 function errorCanRetry(error) {
   return ![400, 401, 403, 404].includes(error.response?.status)
 }
@@ -370,7 +395,7 @@ export default function OwnerTurnosPage() {
           {isLoadingTurnos && turnos.length > 0 && <div className="owners-updating" role="status"><LoaderCircle size={14} className="spin" /> Actualizando turnos…</div>}
           {employeesQuery.isLoading && individualBusinessId && <div className="owners-updating" role="status">Cargando empleados y servicios…</div>}
           <div className="owner-turnos-count" aria-live="polite">{visibleTurnos.length} {visibleTurnos.length === 1 ? 'turno' : 'turnos'}{servicioId ? ' para el servicio seleccionado' : ''}</div>
-          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Negocio</th><th>Cliente</th><th>Inicio</th><th>Servicio</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Negocio" title={turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre}>{turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre || '—'}</td><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td data-label="Precio">{money(turno.precio)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{turno.status === 'COMPLETED' ? (turno.regularizadoFinancieramente ? 'Finalizado y regularizado' : 'Pendiente de regularización') : statusLabels[turno.status] || turno.status || 'Sin estado'}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr>)}</tbody></table></div>}
+          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Negocio</th><th>Cliente</th><th>Inicio</th><th>Servicio</th><th>Resumen económico</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Negocio" title={turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre}>{turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre || '—'}</td><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td className="owner-turnos-economic-cell" data-label="Resumen económico">{financialSummary(turno)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{turnoStatusLabel(turno)}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr>)}</tbody></table></div>}
         </>}
       </section>
     )}

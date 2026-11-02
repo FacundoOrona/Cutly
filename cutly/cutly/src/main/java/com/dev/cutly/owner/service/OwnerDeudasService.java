@@ -44,6 +44,6 @@ public class OwnerDeudasService {
         var movimientos = pagoRepository.findByDeuda_DeudaIdOrderByFechaPagoAscPagoIdAsc(d.getDeudaId()).stream().map(p -> new OwnerPagoDto(p.getPagoId(), d.getNegocio().getNegocioId(), null, d.getDeudaId(), p.getMonto(), p.getMetodoPago(), p.getFechaPago())).toList();
         BigDecimal saldo = d.getMontoOriginal().subtract(abonado);
         String estado = abonado.signum() == 0 ? "PENDIENTE" : saldo.signum() == 0 ? "PAGADA" : "PARCIAL";
-        return new OwnerDeudaDto(d.getDeudaId(), d.getNegocio().getNegocioId(), d.getResultadoFinanciero().getTurno().getTurnoId(), d.getCliente() == null ? null : d.getCliente().getUsuarioId(), d.getClienteLocal() == null ? null : d.getClienteLocal().getClienteLocalId(), d.getMontoOriginal(), abonado, saldo, estado, d.getFechaOrigen(), movimientos);
+        return new OwnerDeudaDto(d.getDeudaId(), d.getNegocio().getNegocioId(), d.getResultadoFinanciero().getTurno().getTurnoId(), d.getCliente() == null ? null : d.getCliente().getUsuarioId(), d.getClienteLocal() == null ? null : d.getClienteLocal().getClienteLocalId(), d.getMontoOriginal(), abonado, saldo, estado, d.getFechaOrigen(), movimientos, d.getMontoOriginal());
     }
 }

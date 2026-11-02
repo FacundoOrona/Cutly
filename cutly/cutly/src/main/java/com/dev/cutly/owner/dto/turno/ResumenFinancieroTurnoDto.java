@@ -10,6 +10,7 @@ public record ResumenFinancieroTurnoDto(
         BigDecimal monto,
         MetodoPago metodoPago,
         BigDecimal totalAbonado,
-        BigDecimal saldoPendiente
+        BigDecimal saldoPendiente,
+        BigDecimal montoAcordado
 ) {
 }

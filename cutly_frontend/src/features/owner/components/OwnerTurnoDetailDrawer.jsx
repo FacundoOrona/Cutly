@@ -7,6 +7,8 @@ const statusLabels = {
   COMPLETED: 'Completado', CANCELLED: 'Cancelado', NO_SHOW: 'Ausencia', REJECTED: 'Rechazado',
 }
 
+const paymentMethodLabels = { EFECTIVO: 'Efectivo', TRANSFERENCIA: 'Transferencia', TARJETA: 'Tarjeta', OTRO: 'Otro' }
+
 function dateTime(value) {
   if (!value) return '—'
   const parsed = new Date(value)
@@ -51,6 +53,15 @@ export default function OwnerTurnoDetailDrawer({ negocioId, turnoId, onClose }) 
   const start = dateTime(turno?.fechaHoraInicio)
   const endTime = turno?.fechaHoraFin ? new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' }).format(new Date(turno.fechaHoraFin)) : null
   const price = money(turno?.precio)
+  const summary = turno?.resumenFinanciero
+  const pendingRegularization = turno?.status === 'COMPLETED' && !turno?.regularizadoFinancieramente
+  const completedStatus = turno?.status === 'COMPLETED'
+  const financialContent = pendingRegularization
+    ? <><h3>Resumen económico</h3>{price && <p>Precio original: {price}</p>}<span className="owner-turno-financial-pending">Pendiente de regularización</span></>
+    : !summary ? null
+      : summary.decisionFinanciera === 'COBRO_DIRECTO' ? <><h3>Resumen económico</h3><p>Cobrado: {money(summary.monto) || '—'}</p><small>Método de pago: {paymentMethodLabels[summary.metodoPago] || summary.metodoPago || 'No disponible'}</small></>
+        : summary.decisionFinanciera === 'CUENTA_CORRIENTE' ? <><h3>Resumen económico</h3><p>{summary.saldoPendiente === 0 ? 'Deuda saldada' : summary.totalAbonado === 0 ? 'Sin abonos' : summary.totalAbonado != null ? 'Deuda parcialmente abonada' : 'Cuenta corriente'}</p><small>Importe acordado: {money(summary.montoAcordado ?? summary.monto) || '—'}</small><small>Total abonado: {money(summary.totalAbonado) || '—'}</small><small>Saldo pendiente: {money(summary.saldoPendiente) || '—'}</small></>
+          : summary.decisionFinanciera === 'GRATUIDAD' ? <><h3>Resumen económico</h3><p>Gratis</p></> : null
 
   return <div className="owner-turno-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <aside className="owner-turno-drawer" role="dialog" aria-modal="true" aria-labelledby={headingId}>
@@ -63,11 +74,12 @@ export default function OwnerTurnoDetailDrawer({ negocioId, turnoId, onClose }) 
           : !turno ? <div className="owner-turno-drawer-state" role="status">No hay datos disponibles para este turno.</div>
             : <div className="owner-turno-drawer-content">
               <div className="owner-turno-detail-date"><CalendarDays size={18} /><div><span>Fecha y horario</span><strong>{start}</strong>{endTime && <small>Finaliza a las {endTime}</small>}</div></div>
-              {turno.status && <section className="owner-turno-detail-section"><h3>Estado</h3><span className={`owner-status owner-turno-status owner-turno-status-${String(turno.status).toLowerCase()}`}>{statusLabels[turno.status] || turno.status}</span></section>}
+              {turno.status && <section className="owner-turno-detail-section"><h3>Estado</h3><span className={`owner-status owner-turno-status owner-turno-status-${String(turno.status).toLowerCase()}`}>{completedStatus ? (pendingRegularization ? 'Pendiente de regularización' : 'Completado y regularizado') : statusLabels[turno.status] || turno.status}</span></section>}
               {(clientName || turno.tipoCliente) && <section className="owner-turno-detail-section"><h3>Cliente</h3><p>{clientName || 'Nombre no disponible'}</p>{turno.tipoCliente && <small>{turno.tipoCliente === 'LOCAL' ? 'Cliente del negocio' : 'Cliente registrado'}</small>}</section>}
               {turno.servicioNombre && <section className="owner-turno-detail-section"><h3>Servicio</h3><p>{turno.servicioNombre}</p></section>}
               <section className="owner-turno-detail-section"><h3>Empleado asignado</h3><p>{employeeName || (turno.tipoResponsable === 'OWNER' ? ( [turno.responsableNombre, turno.responsableApellido].filter(Boolean).join(' ') || 'Propietario' ) : 'Sin empleado asignado')}</p></section>
-              {price && <section className="owner-turno-detail-section"><h3>Precio</h3><p>{price}</p></section>}
+              {price && <section className="owner-turno-detail-section"><h3>Precio original</h3><p>{price}</p></section>}
+              {financialContent && <section className="owner-turno-detail-section owner-turno-detail-financial">{financialContent}</section>}
               {turno.observaciones && <section className="owner-turno-detail-section"><h3>Observaciones</h3><p className="owner-turno-detail-observations">{turno.observaciones}</p></section>}
             </div>}
       <footer className="owner-turno-drawer-footer"><button type="button" className="owners-secondary-button" onClick={onClose}>Volver a la agenda</button></footer>

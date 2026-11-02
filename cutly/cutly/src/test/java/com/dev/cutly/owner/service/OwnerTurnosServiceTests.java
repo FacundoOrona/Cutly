@@ -92,6 +92,8 @@ class OwnerTurnosServiceTests {
         owner.setRol(Rol.OWNER);
         negocio.setOwner(owner);
         when(ownerNegocioService.obtenerEntidadNegocioPropio(NEGOCIO_ID, EMAIL_OWNER)).thenReturn(negocio);
+        org.mockito.Mockito.lenient().when(resultadoRepository.findResumenesBasePorTurnoIds(any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -122,9 +124,9 @@ class OwnerTurnosServiceTests {
         completado.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(completado));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.COBRO_DIRECTO, new java.math.BigDecimal("18000")}));
-        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, new java.math.BigDecimal("18000"), MetodoPago.EFECTIVO}));
 
         OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
@@ -142,7 +144,7 @@ class OwnerTurnosServiceTests {
         pendiente.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(regularizado, pendiente));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.GRATUIDAD, java.math.BigDecimal.ZERO}));
 
         List<OwnerTurnoDto> dtos = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER);
@@ -159,7 +161,7 @@ class OwnerTurnosServiceTests {
         completado.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(completado));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of());
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.<Object[]>of());
 
         OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
 
@@ -173,7 +175,7 @@ class OwnerTurnosServiceTests {
         confirmado.setStatus(TurnoStatus.CONFIRMED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(confirmado));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of());
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.<Object[]>of());
 
         OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
 
@@ -185,9 +187,9 @@ class OwnerTurnosServiceTests {
         Turno completado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
         completado.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findByTurnoIdAndNegocio_NegocioId(40L, NEGOCIO_ID)).thenReturn(Optional.of(completado));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.COBRO_DIRECTO, new java.math.BigDecimal("18000")}));
-        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, new java.math.BigDecimal("17000"), MetodoPago.TRANSFERENCIA_QR}));
 
         OwnerTurnoDto dto = service.obtenerTurno(NEGOCIO_ID, 40L, EMAIL_OWNER);
@@ -202,14 +204,15 @@ class OwnerTurnosServiceTests {
         Turno turno = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(turno));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.CUENTA_CORRIENTE, new java.math.BigDecimal("20000")}));
-        when(pagoRepository.findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+        when(pagoRepository.findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, new java.math.BigDecimal("20000"), new java.math.BigDecimal("8000")}));
 
         ResumenFinancieroTurnoDto resumen = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER)
                 .get(0).resumenFinanciero();
 
+        assertEquals(new java.math.BigDecimal("20000"), resumen.montoAcordado());
         assertEquals(new java.math.BigDecimal("20000"), resumen.monto());
         assertEquals(new java.math.BigDecimal("8000"), resumen.totalAbonado());
         assertEquals(new java.math.BigDecimal("12000"), resumen.saldoPendiente());
@@ -223,10 +226,10 @@ class OwnerTurnosServiceTests {
         pagada.setTurnoId(41L);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(sinAbonos, pagada));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.CUENTA_CORRIENTE, new java.math.BigDecimal("20000")},
                 new Object[]{41L, DecisionFinanciera.CUENTA_CORRIENTE, new java.math.BigDecimal("20000")}));
-        when(pagoRepository.findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L, 41L))).thenReturn(List.of(
+        when(pagoRepository.findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L, 41L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, new java.math.BigDecimal("20000"), java.math.BigDecimal.ZERO},
                 new Object[]{41L, new java.math.BigDecimal("20000"), new java.math.BigDecimal("20000")}));
 
@@ -241,7 +244,7 @@ class OwnerTurnosServiceTests {
         Turno gratis = turno(usuario(1L, "Ana", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(gratis));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.GRATUIDAD, java.math.BigDecimal.ZERO}));
 
         ResumenFinancieroTurnoDto resumen = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER)
@@ -258,10 +261,10 @@ class OwnerTurnosServiceTests {
         segundo.setTurnoId(41L);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(primero, segundo));
-        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.of(
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, DecisionFinanciera.COBRO_DIRECTO, new java.math.BigDecimal("18000")},
                 new Object[]{41L, DecisionFinanciera.GRATUIDAD, java.math.BigDecimal.ZERO}));
-        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.<Object[]>of(
                 new Object[]{40L, new java.math.BigDecimal("18000"), MetodoPago.EFECTIVO}));
 
         List<OwnerTurnoDto> dtos = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER);
@@ -354,7 +357,12 @@ class OwnerTurnosServiceTests {
         when(ownerClienteLocalService.registrar(eq(NEGOCIO_ID), any(CrearClienteLocalRequestDto.class), eq(EMAIL_OWNER)))
                 .thenReturn(creado);
         when(clienteLocalRepository.getReferenceById(32L)).thenReturn(referencia);
-        when(turnoRepository.save(any(Turno.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.doReturn(List.of()).when(resultadoRepository).findResumenesBasePorTurnoIds(any());
+        when(turnoRepository.save(any(Turno.class))).thenAnswer(invocation -> {
+            Turno turno = invocation.getArgument(0);
+            turno.setTurnoId(82L);
+            return turno;
+        });
 
         OwnerTurnoDto result = service.crearManual(NEGOCIO_ID,
                 request(null, new CrearClienteLocalRequestDto("Nuevo", "Cliente", "12345678", "5555"), 22L),
@@ -375,9 +383,14 @@ class OwnerTurnosServiceTests {
                 .thenReturn(Optional.of(local));
         Usuario ownerBloqueado = negocio.getOwner();
         when(usuarioRepository.findWithLockingByUsuarioId(3L)).thenReturn(Optional.of(ownerBloqueado));
+        org.mockito.Mockito.doReturn(List.of()).when(resultadoRepository).findResumenesBasePorTurnoIds(any());
         when(turnoRepository.findTurnosSolapadosPorOwner(3L, inicio, inicio.plusMinutes(45)))
                 .thenReturn(List.of());
-        when(turnoRepository.save(any(Turno.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(turnoRepository.save(any(Turno.class))).thenAnswer(invocation -> {
+            Turno turno = invocation.getArgument(0);
+            turno.setTurnoId(83L);
+            return turno;
+        });
 
         OwnerTurnoDto result = service.crearManual(NEGOCIO_ID,
                 request(31L, null, null, inicio), EMAIL_OWNER);
@@ -397,12 +410,17 @@ class OwnerTurnosServiceTests {
         LocalDateTime inicio = inicioFuturo();
         configurarServicio(inicio);
         when(usuarioRepository.findWithLockingByUsuarioId(3L)).thenReturn(Optional.of(negocio.getOwner()));
+        org.mockito.Mockito.doReturn(List.of()).when(resultadoRepository).findResumenesBasePorTurnoIds(any());
         when(turnoRepository.findTurnosSolapadosPorOwner(3L, inicio, inicio.plusMinutes(45)))
                 .thenReturn(List.of());
         when(ownerClienteLocalService.registrar(eq(NEGOCIO_ID), any(CrearClienteLocalRequestDto.class), eq(EMAIL_OWNER)))
                 .thenReturn(new ClienteLocalDto(32L, "Nuevo", "Cliente", "12345678", "5555"));
         when(clienteLocalRepository.getReferenceById(32L)).thenReturn(clienteLocal(32L, "Nuevo", "Cliente"));
-        when(turnoRepository.save(any(Turno.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(turnoRepository.save(any(Turno.class))).thenAnswer(invocation -> {
+            Turno turno = invocation.getArgument(0);
+            turno.setTurnoId(84L);
+            return turno;
+        });
 
         OwnerTurnoDto result = service.crearManual(NEGOCIO_ID,
                 request(null, new CrearClienteLocalRequestDto("Nuevo", "Cliente", "12345678", "5555"), null, inicio),
@@ -621,3 +639,6 @@ class OwnerTurnosServiceTests {
         assertEquals(expected, exception.getStatusCode());
     }
 }
+
+
+

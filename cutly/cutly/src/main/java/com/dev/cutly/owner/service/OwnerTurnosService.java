@@ -291,7 +291,10 @@ public class OwnerTurnosService {
         resultado.setFechaRegistro(LocalDateTime.now()); resultado.setMotivoGratuidad(request.motivoGratuidad() == null ? null : request.motivoGratuidad().trim());
         resultado = resultadoRepository.save(resultado);
         if (request.decisionFinanciera() == DecisionFinanciera.CUENTA_CORRIENTE) {
-            DeudaCliente deuda = new DeudaCliente(); deuda.setResultadoFinanciero(resultado); deuda.setNegocio(negocio); deuda.setCliente(turno.getCliente()); deuda.setClienteLocal(turno.getClienteLocal()); deuda.setMontoOriginal(monto); deuda.setFechaOrigen(LocalDateTime.now()); deudaRepository.save(deuda);
+            DeudaCliente deuda = new DeudaCliente(); deuda.setResultadoFinanciero(resultado); deuda.setNegocio(negocio); deuda.setCliente(turno.getCliente()); deuda.setClienteLocal(turno.getClienteLocal()); deuda.setMontoOriginal(monto); deuda.setFechaOrigen(LocalDateTime.now()); deuda = deudaRepository.save(deuda);
+            if (request.pagoInicial().signum() > 0) {
+                Pago pago = new Pago(); pago.setDeuda(deuda); pago.setMonto(request.pagoInicial()); pago.setMetodoPago(request.metodoPago()); pago.setDescripcionOtro(request.descripcionOtro()); pago.setFechaPago(LocalDateTime.now()); pago.setOwnerRegistrante(negocio.getOwner()); pagoRepository.save(pago);
+            }
         } else if (request.decisionFinanciera() == DecisionFinanciera.COBRO_DIRECTO) {
             Pago pago = new Pago(); pago.setTurno(turno); pago.setResultadoFinanciero(resultado); pago.setMonto(monto); pago.setMetodoPago(request.metodoPago()); pago.setDescripcionOtro(request.descripcionOtro()); pago.setFechaPago(LocalDateTime.now()); pago.setOwnerRegistrante(negocio.getOwner()); pagoRepository.save(pago);
         }
@@ -305,14 +308,19 @@ public class OwnerTurnosService {
     private void validarDecision(DecisionFinancieraRequestDto r) {
         if (r == null || r.decisionFinanciera() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La decisión financiera es obligatoria");
         switch (r.decisionFinanciera()) {
-            case COBRO_DIRECTO -> { if (r.monto() == null || r.monto().signum() <= 0 || r.metodoPago() == null || r.motivoGratuidad() != null || (r.metodoPago() == com.dev.cutly.pago.enums.MetodoPago.OTRO && (r.descripcionOtro() == null || r.descripcionOtro().isBlank() || r.descripcionOtro().length() > 100)) || (r.metodoPago() != com.dev.cutly.pago.enums.MetodoPago.OTRO && r.descripcionOtro() != null)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para cobro directo"); }
-            case CUENTA_CORRIENTE -> { if (r.monto() == null || r.monto().signum() <= 0 || r.metodoPago() != null || r.descripcionOtro() != null || r.motivoGratuidad() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para cuenta corriente"); }
-            case GRATUIDAD -> { if (r.monto() != null || r.metodoPago() != null || r.descripcionOtro() != null || r.motivoGratuidad() == null || r.motivoGratuidad().trim().length() < 3 || r.motivoGratuidad().trim().length() > 250) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para gratuidad"); }
+            case COBRO_DIRECTO -> { if (r.monto() == null || r.monto().signum() <= 0 || r.pagoInicial() != null || r.metodoPago() == null || r.motivoGratuidad() != null || !descripcionPagoValida(r)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para cobro directo"); }
+            case CUENTA_CORRIENTE -> { if (r.monto() == null || r.monto().signum() <= 0 || r.pagoInicial() == null || r.pagoInicial().signum() < 0 || r.pagoInicial().compareTo(r.monto()) > 0 || (r.pagoInicial().signum() == 0 && (r.metodoPago() != null || r.descripcionOtro() != null)) || (r.pagoInicial().signum() > 0 && (r.metodoPago() == null || !descripcionPagoValida(r))) || r.motivoGratuidad() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para cuenta corriente"); }
+            case GRATUIDAD -> { if (r.monto() != null || r.pagoInicial() != null || r.metodoPago() != null || r.descripcionOtro() != null || r.motivoGratuidad() == null || r.motivoGratuidad().trim().length() < 3 || r.motivoGratuidad().trim().length() > 250) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para gratuidad"); }
         }
     }
 
+    private boolean descripcionPagoValida(DecisionFinancieraRequestDto r) {
+        return (r.metodoPago() == MetodoPago.OTRO && r.descripcionOtro() != null && !r.descripcionOtro().isBlank() && r.descripcionOtro().length() <= 100)
+                || (r.metodoPago() != MetodoPago.OTRO && r.descripcionOtro() == null);
+    }
+
     private String hashSolicitud(DecisionFinancieraRequestDto r) {
-        try { var bytes = MessageDigest.getInstance("SHA-256").digest((r.decisionFinanciera()+"|"+r.monto()+"|"+r.metodoPago()+"|"+r.descripcionOtro()+"|"+(r.motivoGratuidad()==null?null:r.motivoGratuidad().trim())).getBytes(StandardCharsets.UTF_8)); return java.util.HexFormat.of().formatHex(bytes); }
+        try { var bytes = MessageDigest.getInstance("SHA-256").digest((r.decisionFinanciera()+"|"+r.monto()+"|"+r.pagoInicial()+"|"+r.metodoPago()+"|"+r.descripcionOtro()+"|"+(r.motivoGratuidad()==null?null:r.motivoGratuidad().trim())).getBytes(StandardCharsets.UTF_8)); return java.util.HexFormat.of().formatHex(bytes); }
         catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
 
@@ -408,11 +416,11 @@ public class OwnerTurnosService {
             DecisionFinanciera decision = (DecisionFinanciera) fila[1];
             BigDecimal monto = (BigDecimal) fila[2];
             if (decision == DecisionFinanciera.GRATUIDAD) {
-                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, null, null, null, null));
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, null, null, null, null, null));
             } else if (decision == DecisionFinanciera.COBRO_DIRECTO) {
-                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, null, null));
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, null, null, monto));
             } else {
-                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, BigDecimal.ZERO, monto));
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, BigDecimal.ZERO, monto, monto));
             }
         }
         Set<Long> turnosCobroDirecto = new java.util.HashSet<>();
@@ -426,7 +434,7 @@ public class OwnerTurnosService {
             ResumenFinancieroTurnoDto previo = resumenes.get(turnoId);
             if (previo != null && previo.decisionFinanciera() == DecisionFinanciera.COBRO_DIRECTO) {
                 resumenes.put(turnoId, new ResumenFinancieroTurnoDto(previo.decisionFinanciera(),
-                        (BigDecimal) fila[1], (MetodoPago) fila[2], null, null));
+                        (BigDecimal) fila[1], (MetodoPago) fila[2], null, null, previo.montoAcordado()));
             }
         }
         if (!turnosCuentaCorriente.isEmpty()) for (Object[] fila : pagoRepository.findDeudasConAbonosPorTurnoIds(turnosCuentaCorriente)) {
@@ -435,7 +443,8 @@ public class OwnerTurnosService {
             if (previo != null && previo.decisionFinanciera() == DecisionFinanciera.CUENTA_CORRIENTE) {
                 BigDecimal totalAbonado = (BigDecimal) fila[2];
                 resumenes.put(turnoId, new ResumenFinancieroTurnoDto(previo.decisionFinanciera(),
-                        (BigDecimal) fila[1], null, totalAbonado, ((BigDecimal) fila[1]).subtract(totalAbonado)));
+                        previo.montoAcordado(), null, totalAbonado,
+                        ((BigDecimal) fila[1]).subtract(totalAbonado), previo.montoAcordado()));
             }
         }
         return resumenes;
