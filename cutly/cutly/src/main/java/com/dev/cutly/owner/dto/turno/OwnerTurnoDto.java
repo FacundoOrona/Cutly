@@ -29,6 +29,7 @@ public record OwnerTurnoDto(
         TipoResponsableTurno tipoResponsable,
         String responsableNombre,
         String responsableApellido,
-        boolean regularizadoFinancieramente
+        boolean regularizadoFinancieramente,
+        ResumenFinancieroTurnoDto resumenFinanciero
 ) {
 }

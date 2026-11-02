@@ -7,6 +7,7 @@ import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
+import com.dev.cutly.owner.dto.turno.ResumenFinancieroTurnoDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.entity.Servicio;
@@ -19,6 +20,7 @@ import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
 import com.dev.cutly.pago.entity.*;
 import com.dev.cutly.pago.enums.DecisionFinanciera;
+import com.dev.cutly.pago.enums.MetodoPago;
 import com.dev.cutly.pago.repository.*;
 import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.usuario.entity.Usuario;
@@ -44,6 +46,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -226,14 +231,14 @@ public class OwnerTurnosService {
                 ));
         if (turnos.isEmpty()) return List.of();
         var turnoIds = turnos.stream().map(Turno::getTurnoId).toList();
-        var turnoIdsRegularizados = resultadoRepository.findTurnoIdsConResultadoFinanciero(turnoIds);
-        return turnos.stream().map(turno -> aDto(turno,
-                turnoIdsRegularizados.contains(turno.getTurnoId()))).toList();
+        var resumenes = cargarResumenes(turnoIds);
+        return turnos.stream().map(turno -> aDto(turno, resumenes.get(turno.getTurnoId()))).toList();
     }
 
     public OwnerTurnoDto obtenerTurno(Long negocioId, Long turnoId, String emailOwner) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        return aDto(buscarTurno(negocioId, turnoId));
+        Turno turno = buscarTurno(negocioId, turnoId);
+        return aDto(turno, cargarResumenes(List.of(turno.getTurnoId())).get(turno.getTurnoId()));
     }
 
     public OwnerTurnoDto confirmar(Long negocioId, Long turnoId, String emailOwner) {
@@ -352,11 +357,15 @@ public class OwnerTurnosService {
     }
 
     private OwnerTurnoDto aDto(Turno turno) {
-        boolean regularizadoFinancieramente = resultadoRepository.existsByTurno_TurnoId(turno.getTurnoId());
-        return aDto(turno, regularizadoFinancieramente);
+        return aDto(turno, cargarResumenes(List.of(turno.getTurnoId())).get(turno.getTurnoId()));
     }
 
     private OwnerTurnoDto aDto(Turno turno, boolean regularizadoFinancieramente) {
+        ResumenFinancieroTurnoDto resumen = cargarResumenes(List.of(turno.getTurnoId())).get(turno.getTurnoId());
+        return aDto(turno, regularizadoFinancieramente ? resumen : null);
+    }
+
+    private OwnerTurnoDto aDto(Turno turno, ResumenFinancieroTurnoDto resumenFinanciero) {
         Usuario cliente = turno.getCliente();
         var clienteLocal = turno.getClienteLocal();
         Usuario empleado = turno.getEmpleado() == null ? null : turno.getEmpleado().getUsuario();
@@ -387,7 +396,48 @@ public class OwnerTurnosService {
                 tipoResponsable,
                 empleado != null ? empleado.getNombre() : ownerResponsable.getNombre(),
                 empleado != null ? empleado.getApellido() : ownerResponsable.getApellido(),
-                regularizadoFinancieramente
+                resumenFinanciero != null,
+                resumenFinanciero
         );
+    }
+
+    private Map<Long, ResumenFinancieroTurnoDto> cargarResumenes(List<Long> turnoIds) {
+        Map<Long, ResumenFinancieroTurnoDto> resumenes = new HashMap<>();
+        for (Object[] fila : resultadoRepository.findResumenesBasePorTurnoIds(turnoIds)) {
+            Long turnoId = (Long) fila[0];
+            DecisionFinanciera decision = (DecisionFinanciera) fila[1];
+            BigDecimal monto = (BigDecimal) fila[2];
+            if (decision == DecisionFinanciera.GRATUIDAD) {
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, null, null, null, null));
+            } else if (decision == DecisionFinanciera.COBRO_DIRECTO) {
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, null, null));
+            } else {
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, BigDecimal.ZERO, monto));
+            }
+        }
+        Set<Long> turnosCobroDirecto = new java.util.HashSet<>();
+        Set<Long> turnosCuentaCorriente = new java.util.HashSet<>();
+        resumenes.forEach((turnoId, resumen) -> {
+            if (resumen.decisionFinanciera() == DecisionFinanciera.COBRO_DIRECTO) turnosCobroDirecto.add(turnoId);
+            if (resumen.decisionFinanciera() == DecisionFinanciera.CUENTA_CORRIENTE) turnosCuentaCorriente.add(turnoId);
+        });
+        if (!turnosCobroDirecto.isEmpty()) for (Object[] fila : pagoRepository.findCobrosDirectosPorTurnoIds(turnosCobroDirecto)) {
+            Long turnoId = (Long) fila[0];
+            ResumenFinancieroTurnoDto previo = resumenes.get(turnoId);
+            if (previo != null && previo.decisionFinanciera() == DecisionFinanciera.COBRO_DIRECTO) {
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(previo.decisionFinanciera(),
+                        (BigDecimal) fila[1], (MetodoPago) fila[2], null, null));
+            }
+        }
+        if (!turnosCuentaCorriente.isEmpty()) for (Object[] fila : pagoRepository.findDeudasConAbonosPorTurnoIds(turnosCuentaCorriente)) {
+            Long turnoId = (Long) fila[0];
+            ResumenFinancieroTurnoDto previo = resumenes.get(turnoId);
+            if (previo != null && previo.decisionFinanciera() == DecisionFinanciera.CUENTA_CORRIENTE) {
+                BigDecimal totalAbonado = (BigDecimal) fila[2];
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(previo.decisionFinanciera(),
+                        (BigDecimal) fila[1], null, totalAbonado, ((BigDecimal) fila[1]).subtract(totalAbonado)));
+            }
+        }
+        return resumenes;
     }
 }

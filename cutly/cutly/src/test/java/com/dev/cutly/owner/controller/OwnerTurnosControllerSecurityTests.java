@@ -144,7 +144,7 @@ class OwnerTurnosControllerSecurityTests {
                 70L, 20L, null, "Ana", "Pérez", null, null, null,
                 50L, "Corte", inicio, inicio.plusMinutes(45), TurnoStatus.CONFIRMED,
                 null, null, 31L, TipoClienteTurno.LOCAL, 3L, TipoResponsableTurno.OWNER,
-                "Olga", "Owner", false
+                "Olga", "Owner", false, null
         );
         when(ownerTurnosService.crearManual(eq(20L), any(CrearOwnerTurnoManualRequestDto.class),
                 eq("owner@example.com"))).thenReturn(respuesta);
@@ -199,7 +199,7 @@ class OwnerTurnosControllerSecurityTests {
         return new OwnerTurnoDto(id, 20L, null, "Ana", "Pérez", null, null, null,
                 50L, "Corte", inicio, inicio.plusMinutes(45), TurnoStatus.COMPLETED,
                 null, null, 31L, TipoClienteTurno.LOCAL, 3L, TipoResponsableTurno.OWNER,
-                "Olga", "Owner", regularizado);
+                "Olga", "Owner", regularizado, null);
     }
 
     private String cuerpoValido() {

@@ -13,6 +13,9 @@ public interface ResultadoFinancieroTurnoRepository extends JpaRepository<Result
     @Query("select r.turno.turnoId from ResultadoFinancieroTurno r where r.turno.turnoId in :turnoIds")
     java.util.Set<Long> findTurnoIdsConResultadoFinanciero(@Param("turnoIds") java.util.Collection<Long> turnoIds);
 
+    @Query("select r.turno.turnoId, r.tipoResultado, r.montoAcordado from ResultadoFinancieroTurno r where r.turno.turnoId in :turnoIds")
+    java.util.List<Object[]> findResumenesBasePorTurnoIds(@Param("turnoIds") java.util.Collection<Long> turnoIds);
+
     @Query("select count(r) from ResultadoFinancieroTurno r where r.negocio.negocioId = :negocioId and r.tipoResultado = com.dev.cutly.pago.enums.DecisionFinanciera.COBRO_DIRECTO and (:desde is null or r.fechaRegistro >= :desde) and (:hasta is null or r.fechaRegistro < :hasta)")
     long contarTurnosCobrados(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 

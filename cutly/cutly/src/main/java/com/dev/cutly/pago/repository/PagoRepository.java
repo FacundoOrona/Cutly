@@ -19,6 +19,12 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     Optional<Pago> findByPagoIdAndTurno_Negocio_NegocioId(Long pagoId, Long negocioId);
 
+    @Query("select p.resultadoFinanciero.turno.turnoId, p.monto, p.metodoPago from Pago p where p.resultadoFinanciero.turno.turnoId in :turnoIds")
+    List<Object[]> findCobrosDirectosPorTurnoIds(@Param("turnoIds") java.util.Collection<Long> turnoIds);
+
+    @Query("select d.resultadoFinanciero.turno.turnoId, d.montoOriginal, coalesce(sum(p.monto), 0) from DeudaCliente d left join Pago p on p.deuda = d where d.resultadoFinanciero.turno.turnoId in :turnoIds group by d.resultadoFinanciero.turno.turnoId, d.montoOriginal")
+    List<Object[]> findDeudasConAbonosPorTurnoIds(@Param("turnoIds") java.util.Collection<Long> turnoIds);
+
     boolean existsByTurno_TurnoId(Long turnoId);
 
     @Query("select coalesce(sum(p.monto), 0) from Pago p where p.deuda.deudaId = :deudaId")

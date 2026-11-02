@@ -10,6 +10,11 @@ import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
+import com.dev.cutly.owner.dto.turno.ResumenFinancieroTurnoDto;
+import com.dev.cutly.pago.enums.DecisionFinanciera;
+import com.dev.cutly.pago.enums.MetodoPago;
+import com.dev.cutly.pago.repository.DeudaClienteRepository;
+import com.dev.cutly.pago.repository.PagoRepository;
 import com.dev.cutly.pago.repository.ResultadoFinancieroTurnoRepository;
 import com.dev.cutly.servicio.entity.EmpleadoServicio;
 import com.dev.cutly.servicio.entity.Servicio;
@@ -67,6 +72,8 @@ class OwnerTurnosServiceTests {
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private TurnoHorarioValidator horarioValidator;
     @Mock private ResultadoFinancieroTurnoRepository resultadoRepository;
+    @Mock private PagoRepository pagoRepository;
+    @Mock private DeudaClienteRepository deudaRepository;
 
     private OwnerTurnosService service;
     private Negocio negocio;
@@ -76,7 +83,7 @@ class OwnerTurnosServiceTests {
         service = new OwnerTurnosService(turnoRepository, ownerNegocioService, clienteLocalRepository,
                 ownerClienteLocalService, servicioRepository, empleadoRepository,
                 empleadoServicioRepository, usuarioRepository, horarioValidator, resultadoRepository,
-                null, null, null);
+                deudaRepository, pagoRepository, null);
         negocio = new Negocio();
         negocio.setNegocioId(NEGOCIO_ID);
         negocio.setNombre("Negocio test");
@@ -115,13 +122,15 @@ class OwnerTurnosServiceTests {
         completado.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(completado));
-        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L))).thenReturn(java.util.Set.of(40L));
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.COBRO_DIRECTO, new java.math.BigDecimal("18000")}));
+        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+                new Object[]{40L, new java.math.BigDecimal("18000"), MetodoPago.EFECTIVO}));
 
         OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
 
         assertTrue(dto.regularizadoFinancieramente());
-        verify(resultadoRepository).findTurnoIdsConResultadoFinanciero(List.of(40L));
-        verify(resultadoRepository, never()).existsByTurno_TurnoId(anyLong());
+        assertEquals(MetodoPago.EFECTIVO, dto.resumenFinanciero().metodoPago());
     }
 
     @Test
@@ -133,15 +142,15 @@ class OwnerTurnosServiceTests {
         pendiente.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(regularizado, pendiente));
-        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L, 41L)))
-                .thenReturn(java.util.Set.of(40L));
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.GRATUIDAD, java.math.BigDecimal.ZERO}));
 
         List<OwnerTurnoDto> dtos = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER);
 
         assertTrue(dtos.get(0).regularizadoFinancieramente());
         assertFalse(dtos.get(1).regularizadoFinancieramente());
-        verify(resultadoRepository).findTurnoIdsConResultadoFinanciero(List.of(40L, 41L));
-        verify(resultadoRepository, never()).existsByTurno_TurnoId(anyLong());
+        assertEquals(DecisionFinanciera.GRATUIDAD, dtos.get(0).resumenFinanciero().decisionFinanciera());
+        assertNull(dtos.get(1).resumenFinanciero());
     }
 
     @Test
@@ -150,11 +159,12 @@ class OwnerTurnosServiceTests {
         completado.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(completado));
-        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L))).thenReturn(java.util.Set.of());
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of());
 
         OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
 
         assertFalse(dto.regularizadoFinancieramente());
+        assertNull(dto.resumenFinanciero());
     }
 
     @Test
@@ -163,7 +173,7 @@ class OwnerTurnosServiceTests {
         confirmado.setStatus(TurnoStatus.CONFIRMED);
         when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
                 .thenReturn(List.of(confirmado));
-        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L))).thenReturn(java.util.Set.of());
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of());
 
         OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
 
@@ -175,11 +185,93 @@ class OwnerTurnosServiceTests {
         Turno completado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
         completado.setStatus(TurnoStatus.COMPLETED);
         when(turnoRepository.findByTurnoIdAndNegocio_NegocioId(40L, NEGOCIO_ID)).thenReturn(Optional.of(completado));
-        when(resultadoRepository.existsByTurno_TurnoId(40L)).thenReturn(true);
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.COBRO_DIRECTO, new java.math.BigDecimal("18000")}));
+        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+                new Object[]{40L, new java.math.BigDecimal("17000"), MetodoPago.TRANSFERENCIA_QR}));
 
         OwnerTurnoDto dto = service.obtenerTurno(NEGOCIO_ID, 40L, EMAIL_OWNER);
 
         assertTrue(dto.regularizadoFinancieramente());
+        assertEquals(new java.math.BigDecimal("17000"), dto.resumenFinanciero().monto());
+        assertEquals(MetodoPago.TRANSFERENCIA_QR, dto.resumenFinanciero().metodoPago());
+    }
+
+    @Test
+    void resumenCuentaCorrienteUsaDeudaYAbonosAgregados() {
+        Turno turno = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(turno));
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.CUENTA_CORRIENTE, new java.math.BigDecimal("20000")}));
+        when(pagoRepository.findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+                new Object[]{40L, new java.math.BigDecimal("20000"), new java.math.BigDecimal("8000")}));
+
+        ResumenFinancieroTurnoDto resumen = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER)
+                .get(0).resumenFinanciero();
+
+        assertEquals(new java.math.BigDecimal("20000"), resumen.monto());
+        assertEquals(new java.math.BigDecimal("8000"), resumen.totalAbonado());
+        assertEquals(new java.math.BigDecimal("12000"), resumen.saldoPendiente());
+        verify(pagoRepository).findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L));
+    }
+
+    @Test
+    void cuentaCorrienteSinAbonosYCompletamentePagadaCalculaSaldo() {
+        Turno sinAbonos = turno(usuario(1L, "Ana", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        Turno pagada = turno(usuario(2L, "Luis", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        pagada.setTurnoId(41L);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(sinAbonos, pagada));
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.CUENTA_CORRIENTE, new java.math.BigDecimal("20000")},
+                new Object[]{41L, DecisionFinanciera.CUENTA_CORRIENTE, new java.math.BigDecimal("20000")}));
+        when(pagoRepository.findDeudasConAbonosPorTurnoIds(java.util.Set.of(40L, 41L))).thenReturn(List.of(
+                new Object[]{40L, new java.math.BigDecimal("20000"), java.math.BigDecimal.ZERO},
+                new Object[]{41L, new java.math.BigDecimal("20000"), new java.math.BigDecimal("20000")}));
+
+        List<OwnerTurnoDto> dtos = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER);
+
+        assertEquals(new java.math.BigDecimal("20000"), dtos.get(0).resumenFinanciero().saldoPendiente());
+        assertEquals(java.math.BigDecimal.ZERO, dtos.get(1).resumenFinanciero().saldoPendiente());
+    }
+
+    @Test
+    void gratuidadNoConsultaPagosNiDeudas() {
+        Turno gratis = turno(usuario(1L, "Ana", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(gratis));
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.GRATUIDAD, java.math.BigDecimal.ZERO}));
+
+        ResumenFinancieroTurnoDto resumen = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER)
+                .get(0).resumenFinanciero();
+
+        assertNull(resumen.monto());
+        verifyNoInteractions(pagoRepository, deudaRepository);
+    }
+
+    @Test
+    void listadoConsultaResultadosYPagosEnLoteSinConsultasPorTurno() {
+        Turno primero = turno(usuario(1L, "Ana", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        Turno segundo = turno(usuario(2L, "Luis", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        segundo.setTurnoId(41L);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(primero, segundo));
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(40L, 41L))).thenReturn(List.of(
+                new Object[]{40L, DecisionFinanciera.COBRO_DIRECTO, new java.math.BigDecimal("18000")},
+                new Object[]{41L, DecisionFinanciera.GRATUIDAD, java.math.BigDecimal.ZERO}));
+        when(pagoRepository.findCobrosDirectosPorTurnoIds(java.util.Set.of(40L))).thenReturn(List.of(
+                new Object[]{40L, new java.math.BigDecimal("18000"), MetodoPago.EFECTIVO}));
+
+        List<OwnerTurnoDto> dtos = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER);
+
+        assertEquals(DecisionFinanciera.COBRO_DIRECTO, dtos.get(0).resumenFinanciero().decisionFinanciera());
+        assertEquals(DecisionFinanciera.GRATUIDAD, dtos.get(1).resumenFinanciero().decisionFinanciera());
+        verify(resultadoRepository).findResumenesBasePorTurnoIds(List.of(40L, 41L));
+        verify(pagoRepository).findCobrosDirectosPorTurnoIds(java.util.Set.of(40L));
+        verify(pagoRepository, never()).findDeudasConAbonosPorTurnoIds(any());
+        verify(resultadoRepository, never()).existsByTurno_TurnoId(anyLong());
     }
 
     @Test
@@ -433,8 +525,8 @@ class OwnerTurnosServiceTests {
         when(turnoRepository.findAll(
                 org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)
         )).thenReturn(List.of(turno));
-        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(turno.getTurnoId())))
-                .thenReturn(java.util.Set.of());
+        when(resultadoRepository.findResumenesBasePorTurnoIds(List.of(turno.getTurnoId())))
+                .thenReturn(List.of());
         return service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
     }
 
