@@ -17,6 +17,10 @@ import com.dev.cutly.turno.enums.TipoClienteTurno;
 import com.dev.cutly.turno.enums.TipoResponsableTurno;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
+import com.dev.cutly.pago.entity.*;
+import com.dev.cutly.pago.enums.DecisionFinanciera;
+import com.dev.cutly.pago.repository.*;
+import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -24,7 +28,9 @@ import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,6 +39,11 @@ import java.util.List;
 import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -47,7 +58,12 @@ public class OwnerTurnosService {
     private final EmpleadoServiciorRepository empleadoServicioRepository;
     private final UsuarioRepository usuarioRepository;
     private final TurnoHorarioValidator horarioValidator;
+    private final ResultadoFinancieroTurnoRepository resultadoRepository;
+    private final DeudaClienteRepository deudaRepository;
+    private final PagoRepository pagoRepository;
+    private final IdempotenciaFinancieraRepository idempotenciaRepository;
 
+    @Autowired
     public OwnerTurnosService(
             TurnoRepository turnoRepository,
             OwnerNegocioService ownerNegocioService,
@@ -57,7 +73,11 @@ public class OwnerTurnosService {
             EmpleadoRepository empleadoRepository,
             EmpleadoServiciorRepository empleadoServicioRepository,
             UsuarioRepository usuarioRepository,
-            TurnoHorarioValidator horarioValidator
+            TurnoHorarioValidator horarioValidator,
+            ResultadoFinancieroTurnoRepository resultadoRepository,
+            DeudaClienteRepository deudaRepository,
+            PagoRepository pagoRepository,
+            IdempotenciaFinancieraRepository idempotenciaRepository
     ) {
         this.turnoRepository = turnoRepository;
         this.ownerNegocioService = ownerNegocioService;
@@ -68,6 +88,10 @@ public class OwnerTurnosService {
         this.empleadoServicioRepository = empleadoServicioRepository;
         this.usuarioRepository = usuarioRepository;
         this.horarioValidator = horarioValidator;
+        this.resultadoRepository = Objects.requireNonNull(resultadoRepository, "resultadoRepository es obligatorio");
+        this.deudaRepository = deudaRepository;
+        this.pagoRepository = pagoRepository;
+        this.idempotenciaRepository = idempotenciaRepository;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -197,10 +221,14 @@ public class OwnerTurnosService {
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
-        return turnoRepository.findAll(filtros, Sort.by(
+        List<Turno> turnos = turnoRepository.findAll(filtros, Sort.by(
                         Sort.Order.asc("fechaHoraInicio"), Sort.Order.asc("turnoId")
-                ))
-                .stream().map(this::aDto).toList();
+                ));
+        if (turnos.isEmpty()) return List.of();
+        var turnoIds = turnos.stream().map(Turno::getTurnoId).toList();
+        var turnoIdsRegularizados = resultadoRepository.findTurnoIdsConResultadoFinanciero(turnoIds);
+        return turnos.stream().map(turno -> aDto(turno,
+                turnoIdsRegularizados.contains(turno.getTurnoId()))).toList();
     }
 
     public OwnerTurnoDto obtenerTurno(Long negocioId, Long turnoId, String emailOwner) {
@@ -221,7 +249,66 @@ public class OwnerTurnosService {
     }
 
     public OwnerTurnoDto completar(Long negocioId, Long turnoId, String emailOwner) {
-        return cambiarEstado(negocioId, turnoId, TurnoStatus.COMPLETED, emailOwner);
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La finalización financiera requiere cuerpo e Idempotency-Key");
+    }
+
+    public OwnerTurnoDto completarConDecision(Long negocioId, Long turnoId, DecisionFinancieraRequestDto request, String key, String emailOwner) {
+        return finalizarFinanzas(negocioId, turnoId, request, key, emailOwner, true);
+    }
+
+    public OwnerTurnoDto regularizarFinanzas(Long negocioId, Long turnoId, DecisionFinancieraRequestDto request, String key, String emailOwner) {
+        return finalizarFinanzas(negocioId, turnoId, request, key, emailOwner, false);
+    }
+
+    private OwnerTurnoDto finalizarFinanzas(Long negocioId, Long turnoId, DecisionFinancieraRequestDto request, String key, String emailOwner, boolean completarTurno) {
+        if (key == null || key.isBlank() || key.length() > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key es obligatorio y admite hasta 100 caracteres");
+        Negocio negocio = ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
+        Turno turno = turnoRepository.findWithLockingByTurnoIdAndNegocioId(turnoId, negocioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el turno solicitado"));
+        validarDecision(request);
+        String hash = hashSolicitud(request);
+        var previa = idempotenciaRepository.findByKey(key);
+        if (previa.isPresent()) {
+            if (!previa.get().getNegocio().getNegocioId().equals(negocioId)
+                    || !previa.get().getTurno().getTurnoId().equals(turnoId)
+                    || !previa.get().getRequestHash().equals(hash)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "La clave de idempotencia ya se usó con otra operación");
+            }
+            return aDto(turno);
+        }
+        if (resultadoRepository.existsByTurno_TurnoId(turnoId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "El turno ya tiene regularización financiera");
+        if (completarTurno && !transicionValida(turno.getStatus(), TurnoStatus.COMPLETED)) throw new ResponseStatusException(HttpStatus.CONFLICT, "El estado actual del turno no permite completarlo");
+        if (!completarTurno && turno.getStatus() != TurnoStatus.COMPLETED) throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se puede regularizar un turno completado");
+        BigDecimal monto = request.decisionFinanciera() == DecisionFinanciera.GRATUIDAD ? BigDecimal.ZERO : request.monto();
+        ResultadoFinancieroTurno resultado = new ResultadoFinancieroTurno();
+        resultado.setTurno(turno); resultado.setNegocio(negocio); resultado.setCliente(turno.getCliente()); resultado.setClienteLocal(turno.getClienteLocal());
+        resultado.setOwner(negocio.getOwner()); resultado.setTipoResultado(request.decisionFinanciera()); resultado.setMontoAcordado(monto);
+        resultado.setFechaRegistro(LocalDateTime.now()); resultado.setMotivoGratuidad(request.motivoGratuidad() == null ? null : request.motivoGratuidad().trim());
+        resultado = resultadoRepository.save(resultado);
+        if (request.decisionFinanciera() == DecisionFinanciera.CUENTA_CORRIENTE) {
+            DeudaCliente deuda = new DeudaCliente(); deuda.setResultadoFinanciero(resultado); deuda.setNegocio(negocio); deuda.setCliente(turno.getCliente()); deuda.setClienteLocal(turno.getClienteLocal()); deuda.setMontoOriginal(monto); deuda.setFechaOrigen(LocalDateTime.now()); deudaRepository.save(deuda);
+        } else if (request.decisionFinanciera() == DecisionFinanciera.COBRO_DIRECTO) {
+            Pago pago = new Pago(); pago.setTurno(turno); pago.setResultadoFinanciero(resultado); pago.setMonto(monto); pago.setMetodoPago(request.metodoPago()); pago.setDescripcionOtro(request.descripcionOtro()); pago.setFechaPago(LocalDateTime.now()); pago.setOwnerRegistrante(negocio.getOwner()); pagoRepository.save(pago);
+        }
+        IdempotenciaFinanciera idem = new IdempotenciaFinanciera(); idem.setKey(key); idem.setRequestHash(hash); idem.setNegocio(negocio); idem.setTurno(turno); idem.setResultado(resultado);
+        try { idempotenciaRepository.saveAndFlush(idem); }
+        catch (DataIntegrityViolationException conflict) { throw new ResponseStatusException(HttpStatus.CONFLICT, "La clave de idempotencia ya se usó en otra solicitud"); }
+        if (completarTurno) turno.setStatus(TurnoStatus.COMPLETED);
+        return aDto(turnoRepository.save(turno));
+    }
+
+    private void validarDecision(DecisionFinancieraRequestDto r) {
+        if (r == null || r.decisionFinanciera() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La decisión financiera es obligatoria");
+        switch (r.decisionFinanciera()) {
+            case COBRO_DIRECTO -> { if (r.monto() == null || r.monto().signum() <= 0 || r.metodoPago() == null || r.motivoGratuidad() != null || (r.metodoPago() == com.dev.cutly.pago.enums.MetodoPago.OTRO && (r.descripcionOtro() == null || r.descripcionOtro().isBlank() || r.descripcionOtro().length() > 100)) || (r.metodoPago() != com.dev.cutly.pago.enums.MetodoPago.OTRO && r.descripcionOtro() != null)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para cobro directo"); }
+            case CUENTA_CORRIENTE -> { if (r.monto() == null || r.monto().signum() <= 0 || r.metodoPago() != null || r.descripcionOtro() != null || r.motivoGratuidad() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para cuenta corriente"); }
+            case GRATUIDAD -> { if (r.monto() != null || r.metodoPago() != null || r.descripcionOtro() != null || r.motivoGratuidad() == null || r.motivoGratuidad().trim().length() < 3 || r.motivoGratuidad().trim().length() > 250) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos inválidos para gratuidad"); }
+        }
+    }
+
+    private String hashSolicitud(DecisionFinancieraRequestDto r) {
+        try { var bytes = MessageDigest.getInstance("SHA-256").digest((r.decisionFinanciera()+"|"+r.monto()+"|"+r.metodoPago()+"|"+r.descripcionOtro()+"|"+(r.motivoGratuidad()==null?null:r.motivoGratuidad().trim())).getBytes(StandardCharsets.UTF_8)); return java.util.HexFormat.of().formatHex(bytes); }
+        catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
 
     public OwnerTurnoDto marcarNoShow(Long negocioId, Long turnoId, String emailOwner) {
@@ -265,6 +352,11 @@ public class OwnerTurnosService {
     }
 
     private OwnerTurnoDto aDto(Turno turno) {
+        boolean regularizadoFinancieramente = resultadoRepository.existsByTurno_TurnoId(turno.getTurnoId());
+        return aDto(turno, regularizadoFinancieramente);
+    }
+
+    private OwnerTurnoDto aDto(Turno turno, boolean regularizadoFinancieramente) {
         Usuario cliente = turno.getCliente();
         var clienteLocal = turno.getClienteLocal();
         Usuario empleado = turno.getEmpleado() == null ? null : turno.getEmpleado().getUsuario();
@@ -294,7 +386,8 @@ public class OwnerTurnosService {
                 ownerResponsable == null ? null : ownerResponsable.getUsuarioId(),
                 tipoResponsable,
                 empleado != null ? empleado.getNombre() : ownerResponsable.getNombre(),
-                empleado != null ? empleado.getApellido() : ownerResponsable.getApellido()
+                empleado != null ? empleado.getApellido() : ownerResponsable.getApellido(),
+                regularizadoFinancieramente
         );
     }
 }

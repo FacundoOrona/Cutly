@@ -21,8 +21,19 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     boolean existsByTurno_TurnoId(Long turnoId);
 
+    @Query("select coalesce(sum(p.monto), 0) from Pago p where p.deuda.deudaId = :deudaId")
+    BigDecimal sumarAbonos(@Param("deudaId") Long deudaId);
+
+    List<Pago> findByDeuda_DeudaIdOrderByFechaPagoAscPagoIdAsc(Long deudaId);
+
+    @Query("select p from Pago p left join p.turno t left join p.deuda d where (t.negocio.negocioId = :negocioId or d.negocio.negocioId = :negocioId) order by p.fechaPago desc, p.pagoId desc")
+    List<Pago> findTodosPorNegocio(@Param("negocioId") Long negocioId);
+
+    @Query("select p from Pago p left join p.turno t left join p.deuda d where p.pagoId = :pagoId and (t.negocio.negocioId = :negocioId or d.negocio.negocioId = :negocioId)")
+    Optional<Pago> findByPagoIdYNegocio(@Param("pagoId") Long pagoId, @Param("negocioId") Long negocioId);
+
     @Query("select coalesce(sum(p.monto), 0) from Pago p "
-            + "where p.turno.negocio.negocioId = :negocioId "
+            + "left join p.turno t left join p.deuda d where (t.negocio.negocioId = :negocioId or d.negocio.negocioId = :negocioId) "
             + "and (:desde is null or p.fechaPago >= :desde) "
             + "and (:hasta is null or p.fechaPago < :hasta)")
     BigDecimal sumarMontosPorNegocioYPeriodo(
@@ -32,7 +43,7 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     );
 
     @Query("select count(p) from Pago p "
-            + "where p.turno.negocio.negocioId = :negocioId "
+            + "left join p.turno t left join p.deuda d where (t.negocio.negocioId = :negocioId or d.negocio.negocioId = :negocioId) "
             + "and (:desde is null or p.fechaPago >= :desde) "
             + "and (:hasta is null or p.fechaPago < :hasta)")
     long contarPorNegocioYPeriodo(
@@ -40,4 +51,19 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             @Param("desde") LocalDateTime desde,
             @Param("hasta") LocalDateTime hasta
     );
+
+    @Query("select coalesce(sum(p.monto), 0) from Pago p where p.turno.negocio.negocioId = :negocioId and (:desde is null or p.fechaPago >= :desde) and (:hasta is null or p.fechaPago < :hasta)")
+    BigDecimal sumarCobrosDirectos(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("select count(p) from Pago p where p.turno.negocio.negocioId = :negocioId and (:desde is null or p.fechaPago >= :desde) and (:hasta is null or p.fechaPago < :hasta)")
+    long contarCobrosDirectos(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("select coalesce(sum(p.monto), 0) from Pago p where p.deuda.negocio.negocioId = :negocioId and (:desde is null or p.fechaPago >= :desde) and (:hasta is null or p.fechaPago < :hasta)")
+    BigDecimal sumarAbonosPorNegocioYPeriodo(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("select count(p) from Pago p where p.deuda.negocio.negocioId = :negocioId and (:desde is null or p.fechaPago >= :desde) and (:hasta is null or p.fechaPago < :hasta)")
+    long contarAbonosPorNegocioYPeriodo(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("select count(distinct p.turno.turnoId) from Pago p where p.turno.negocio.negocioId = :negocioId and (:desde is null or p.fechaPago >= :desde) and (:hasta is null or p.fechaPago < :hasta)")
+    long contarTurnosCobrados(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 }

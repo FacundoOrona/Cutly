@@ -4,6 +4,7 @@ import com.dev.cutly.auth.repository.TokenInvalidoRepository;
 import com.dev.cutly.auth.security.JwtUtil;
 import com.dev.cutly.auth.security.SecurityConfig;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
+import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
 import com.dev.cutly.owner.service.OwnerTurnosService;
 import com.dev.cutly.turno.enums.TipoClienteTurno;
@@ -19,12 +20,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -70,6 +73,39 @@ class OwnerTurnosControllerSecurityTests {
     }
 
     @Test
+    void completarFinanzasRequiereAutenticacion() throws Exception {
+        mockMvc.perform(post("/api/owner/negocios/20/turnos/70/completar")
+                        .header("Idempotency-Key", "test-key")
+                        .contentType("application/json")
+                        .content("{\"decisionFinanciera\":\"GRATUIDAD\",\"motivoGratuidad\":\"Promoción\"}"))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(ownerTurnosService);
+    }
+
+    @Test
+    @WithMockUser(roles = "EMPLOYEE")
+    void completarFinanzasRechazaEmpleado() throws Exception {
+        mockMvc.perform(post("/api/owner/negocios/20/turnos/70/completar")
+                        .header("Idempotency-Key", "test-key")
+                        .contentType("application/json")
+                        .content("{\"decisionFinanciera\":\"GRATUIDAD\",\"motivoGratuidad\":\"Promoción\"}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(ownerTurnosService);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "OWNER")
+    void ownerAutenticadoPuedeInvocarFinalizacionFinanciera() throws Exception {
+        mockMvc.perform(post("/api/owner/negocios/20/turnos/70/completar")
+                        .header("Idempotency-Key", "finance-key")
+                        .contentType("application/json")
+                        .content("{\"decisionFinanciera\":\"GRATUIDAD\",\"motivoGratuidad\":\"Promoción\"}"))
+                .andExpect(status().isOk());
+        verify(ownerTurnosService).completarConDecision(eq(20L), eq(70L), any(DecisionFinancieraRequestDto.class),
+                eq("finance-key"), eq("owner@example.com"));
+    }
+
+    @Test
     @WithMockUser(username = "owner@example.com", roles = "OWNER")
     void rechazaPeticionSinClienteLocal() throws Exception {
         mockMvc.perform(post("/api/owner/negocios/20/turnos")
@@ -108,7 +144,7 @@ class OwnerTurnosControllerSecurityTests {
                 70L, 20L, null, "Ana", "Pérez", null, null, null,
                 50L, "Corte", inicio, inicio.plusMinutes(45), TurnoStatus.CONFIRMED,
                 null, null, 31L, TipoClienteTurno.LOCAL, 3L, TipoResponsableTurno.OWNER,
-                "Olga", "Owner"
+                "Olga", "Owner", false
         );
         when(ownerTurnosService.crearManual(eq(20L), any(CrearOwnerTurnoManualRequestDto.class),
                 eq("owner@example.com"))).thenReturn(respuesta);
@@ -123,10 +159,47 @@ class OwnerTurnosControllerSecurityTests {
                 .andExpect(jsonPath("$.tipoCliente").value("LOCAL"))
                 .andExpect(jsonPath("$.clienteLocalId").value(31))
                 .andExpect(jsonPath("$.tipoResponsable").value("OWNER"))
-                .andExpect(jsonPath("$.ownerResponsableId").value(3));
+                .andExpect(jsonPath("$.ownerResponsableId").value(3))
+                .andExpect(jsonPath("$.regularizadoFinancieramente").value(false));
 
         verify(ownerTurnosService).crearManual(eq(20L), any(CrearOwnerTurnoManualRequestDto.class),
                 eq("owner@example.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "OWNER")
+    void detalleIncluyeRegularizadoFinancieramenteEnJson() throws Exception {
+        OwnerTurnoDto respuesta = turnoDto(70L, true);
+        when(ownerTurnosService.obtenerTurno(20L, 70L, "owner@example.com")).thenReturn(respuesta);
+
+        mockMvc.perform(get("/api/owner/negocios/20/turnos/70"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turnoId").value(70))
+                .andExpect(jsonPath("$.regularizadoFinancieramente").value(true));
+
+        verify(ownerTurnosService).obtenerTurno(20L, 70L, "owner@example.com");
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "OWNER")
+    void listadoIncluyeRegularizadoFinancieramenteParaCadaTurnoEnJson() throws Exception {
+        when(ownerTurnosService.listarTurnos(eq(20L), eq(null), eq(null), eq(null), eq("owner@example.com")))
+                .thenReturn(List.of(turnoDto(70L, true), turnoDto(71L, false)));
+
+        mockMvc.perform(get("/api/owner/negocios/20/turnos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].regularizadoFinancieramente").value(true))
+                .andExpect(jsonPath("$[1].regularizadoFinancieramente").value(false));
+
+        verify(ownerTurnosService).listarTurnos(20L, null, null, null, "owner@example.com");
+    }
+
+    private OwnerTurnoDto turnoDto(Long id, boolean regularizado) {
+        LocalDateTime inicio = LocalDateTime.of(2030, 1, 2, 10, 0);
+        return new OwnerTurnoDto(id, 20L, null, "Ana", "Pérez", null, null, null,
+                50L, "Corte", inicio, inicio.plusMinutes(45), TurnoStatus.COMPLETED,
+                null, null, 31L, TipoClienteTurno.LOCAL, 3L, TipoResponsableTurno.OWNER,
+                "Olga", "Owner", regularizado);
     }
 
     private String cuerpoValido() {

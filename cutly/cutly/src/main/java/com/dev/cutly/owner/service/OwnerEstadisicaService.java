@@ -6,6 +6,8 @@ import com.dev.cutly.owner.dto.estadistica.OwnerResumenEstadisticaDto;
 import com.dev.cutly.owner.dto.estadistica.OwnerServicioEstadisticaDto;
 import com.dev.cutly.owner.dto.estadistica.OwnerTurnosEstadisticaDto;
 import com.dev.cutly.pago.repository.PagoRepository;
+import com.dev.cutly.pago.repository.DeudaClienteRepository;
+import com.dev.cutly.pago.repository.ResultadoFinancieroTurnoRepository;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import org.springframework.http.HttpStatus;
@@ -27,15 +29,21 @@ public class OwnerEstadisicaService {
     private final TurnoRepository turnoRepository;
     private final PagoRepository pagoRepository;
     private final OwnerNegocioService ownerNegocioService;
+    private final DeudaClienteRepository deudaRepository;
+    private final ResultadoFinancieroTurnoRepository resultadoRepository;
 
     public OwnerEstadisicaService(
             TurnoRepository turnoRepository,
             PagoRepository pagoRepository,
-            OwnerNegocioService ownerNegocioService
+            OwnerNegocioService ownerNegocioService,
+            DeudaClienteRepository deudaRepository,
+            ResultadoFinancieroTurnoRepository resultadoRepository
     ) {
         this.turnoRepository = turnoRepository;
         this.pagoRepository = pagoRepository;
         this.ownerNegocioService = ownerNegocioService;
+        this.deudaRepository = deudaRepository;
+        this.resultadoRepository = resultadoRepository;
     }
 
     public OwnerResumenEstadisticaDto obtenerResumen(
@@ -59,7 +67,12 @@ public class OwnerEstadisicaService {
                 contar(conteos, TurnoStatus.NO_SHOW),
                 contar(conteos, TurnoStatus.REJECTED),
                 ingresos.ingresosTotales(),
-                ingresos.cantidadPagos()
+                ingresos.cantidadPagos(),
+                ingresos.ingresosCobrosDirectos(), ingresos.ingresosAbonos(),
+                ingresos.cantidadCobrosDirectos(), ingresos.cantidadAbonos(),
+                ingresos.turnosCobrados(), ingresos.turnosGratuitos(),
+                ingresos.deudaPendienteTotal(), ingresos.deudasPendientes(), ingresos.deudasParciales(),
+                ingresos.deudasPagadas(), ingresos.turnosPendientesRegularizacion()
         );
     }
 
@@ -128,13 +141,26 @@ public class OwnerEstadisicaService {
     }
 
     private OwnerIngresosEstadisticaDto calcularIngresos(Long negocioId, Rango rango) {
-        BigDecimal total = pagoRepository.sumarMontosPorNegocioYPeriodo(
-                negocioId, rango.desde(), rango.hastaExclusivo()
+        var desde = rango.desde(); var hasta = rango.hastaExclusivo();
+        BigDecimal directos = pagoRepository.sumarCobrosDirectos(negocioId, desde, hasta);
+        BigDecimal abonos = pagoRepository.sumarAbonosPorNegocioYPeriodo(negocioId, desde, hasta);
+        long cantidadDirectos = pagoRepository.contarCobrosDirectos(negocioId, desde, hasta);
+        long cantidadAbonos = pagoRepository.contarAbonosPorNegocioYPeriodo(negocioId, desde, hasta);
+        BigDecimal deuda = deudaRepository.sumarSaldoPendiente(negocioId, desde, hasta);
+        return new OwnerIngresosEstadisticaDto(
+                (directos == null ? BigDecimal.ZERO : directos).add(abonos == null ? BigDecimal.ZERO : abonos),
+                cantidadDirectos + cantidadAbonos,
+                directos == null ? BigDecimal.ZERO : directos,
+                abonos == null ? BigDecimal.ZERO : abonos,
+                cantidadDirectos, cantidadAbonos,
+                resultadoRepository.contarTurnosCobrados(negocioId, desde, hasta),
+                resultadoRepository.contarTurnosGratuitos(negocioId, desde, hasta),
+                deuda == null ? BigDecimal.ZERO : deuda,
+                deudaRepository.contarPendientes(negocioId, desde, hasta),
+                deudaRepository.contarParciales(negocioId, desde, hasta),
+                deudaRepository.contarPagadas(negocioId, desde, hasta),
+                turnoRepository.contarCompletadosSinRegularizacion(negocioId, desde, hasta)
         );
-        long cantidad = pagoRepository.contarPorNegocioYPeriodo(
-                negocioId, rango.desde(), rango.hastaExclusivo()
-        );
-        return new OwnerIngresosEstadisticaDto(total == null ? BigDecimal.ZERO : total, cantidad);
     }
 
     private long contar(Map<TurnoStatus, Long> conteos, TurnoStatus status) {

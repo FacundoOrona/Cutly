@@ -1,0 +1,21 @@
+package com.dev.cutly.owner.controller;
+
+import com.dev.cutly.owner.dto.pago.CrearAbonoRequestDto;
+import com.dev.cutly.owner.service.OwnerDeudasService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestController
+@RequestMapping("/api/owner/negocios/{negocioId}/deudas")
+public class OwnerDeudasController {
+    private final OwnerDeudasService service;
+    public OwnerDeudasController(OwnerDeudasService service) { this.service = service; }
+    @GetMapping public ResponseEntity<?> listar(@PathVariable Long negocioId) { try { return ResponseEntity.ok(service.listar(negocioId, email())); } catch (ResponseStatusException e) { return ResponseEntity.status(e.getStatusCode()).body(e.getReason()); } }
+    @GetMapping("/{deudaId}") public ResponseEntity<?> obtener(@PathVariable Long negocioId, @PathVariable Long deudaId) { try { return ResponseEntity.ok(service.obtener(negocioId, deudaId, email())); } catch (ResponseStatusException e) { return ResponseEntity.status(e.getStatusCode()).body(e.getReason()); } }
+    @PostMapping("/{deudaId}/abonos") public ResponseEntity<?> abonar(@PathVariable Long negocioId, @PathVariable Long deudaId, @Valid @RequestBody CrearAbonoRequestDto request) { try { return ResponseEntity.ok(service.abonar(negocioId, deudaId, request, email())); } catch (ResponseStatusException e) { return ResponseEntity.status(e.getStatusCode()).body(e.getReason()); } }
+    private String email() { Authentication a = SecurityContextHolder.getContext().getAuthentication(); return a == null ? null : a.getName(); }
+}

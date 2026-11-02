@@ -34,13 +34,13 @@ public class OwnerPagosService {
 
     public List<OwnerPagoDto> listarPagos(Long negocioId, String emailOwner) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        return pagoRepository.findByTurno_Negocio_NegocioIdOrderByFechaPagoDescPagoIdDesc(negocioId)
+        return pagoRepository.findTodosPorNegocio(negocioId)
                 .stream().map(this::aDto).toList();
     }
 
     public OwnerPagoDto obtenerPago(Long negocioId, Long pagoId, String emailOwner) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        Pago pago = pagoRepository.findByPagoIdAndTurno_Negocio_NegocioId(pagoId, negocioId)
+        Pago pago = pagoRepository.findByPagoIdYNegocio(pagoId, negocioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No se encontró el pago solicitado"));
         return aDto(pago);
@@ -52,27 +52,16 @@ public class OwnerPagosService {
             String emailOwner
     ) {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        Turno turno = turnoRepository.findByTurnoIdAndNegocio_NegocioId(request.turnoId(), negocioId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No se encontró el turno solicitado en este negocio"));
-        if (pagoRepository.existsByTurno_TurnoId(turno.getTurnoId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "El turno ya tiene un pago registrado");
-        }
-
-        Pago pago = new Pago();
-        pago.setTurno(turno);
-        pago.setMonto(request.monto());
-        pago.setMetodoPago(request.metodoPago());
-        pago.setFechaPago(LocalDateTime.now());
-        return aDto(pagoRepository.save(pago));
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "La creación genérica de pagos fue retirada; complete el turno con una decisión financiera");
     }
 
     private OwnerPagoDto aDto(Pago pago) {
         return new OwnerPagoDto(
                 pago.getPagoId(),
-                pago.getTurno().getNegocio().getNegocioId(),
-                pago.getTurno().getTurnoId(),
+                pago.getTurno() != null ? pago.getTurno().getNegocio().getNegocioId() : pago.getDeuda().getNegocio().getNegocioId(),
+                pago.getTurno() != null ? pago.getTurno().getTurnoId() : null,
+                pago.getDeuda() != null ? pago.getDeuda().getDeudaId() : null,
                 pago.getMonto(),
                 pago.getMetodoPago(),
                 pago.getFechaPago()

@@ -10,6 +10,7 @@ import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
+import com.dev.cutly.pago.repository.ResultadoFinancieroTurnoRepository;
 import com.dev.cutly.servicio.entity.EmpleadoServicio;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
@@ -65,6 +66,7 @@ class OwnerTurnosServiceTests {
     @Mock private EmpleadoServiciorRepository empleadoServicioRepository;
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private TurnoHorarioValidator horarioValidator;
+    @Mock private ResultadoFinancieroTurnoRepository resultadoRepository;
 
     private OwnerTurnosService service;
     private Negocio negocio;
@@ -73,7 +75,8 @@ class OwnerTurnosServiceTests {
     void setUp() {
         service = new OwnerTurnosService(turnoRepository, ownerNegocioService, clienteLocalRepository,
                 ownerClienteLocalService, servicioRepository, empleadoRepository,
-                empleadoServicioRepository, usuarioRepository, horarioValidator);
+                empleadoServicioRepository, usuarioRepository, horarioValidator, resultadoRepository,
+                null, null, null);
         negocio = new Negocio();
         negocio.setNegocioId(NEGOCIO_ID);
         negocio.setNombre("Negocio test");
@@ -103,6 +106,80 @@ class OwnerTurnosServiceTests {
         assertNull(dto.ownerResponsableId());
         assertEquals(TipoResponsableTurno.EMPLEADO, dto.tipoResponsable());
         assertEquals("Empleada", dto.responsableNombre());
+        assertFalse(dto.regularizadoFinancieramente());
+    }
+
+    @Test
+    void listaTurnoCompletadoConResultadoFinancieroComoRegularizado() {
+        Turno completado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+        completado.setStatus(TurnoStatus.COMPLETED);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(completado));
+        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L))).thenReturn(java.util.Set.of(40L));
+
+        OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
+
+        assertTrue(dto.regularizadoFinancieramente());
+        verify(resultadoRepository).findTurnoIdsConResultadoFinanciero(List.of(40L));
+        verify(resultadoRepository, never()).existsByTurno_TurnoId(anyLong());
+    }
+
+    @Test
+    void listaVariosTurnosCalculaRegularizacionParaCadaTurnoConUnaConsultaPorLote() {
+        Turno regularizado = turno(usuario(1L, "Ana", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        Turno pendiente = turno(usuario(2L, "Luis", "Cliente"), null, empleado(22L, "Eva", "Test"), null);
+        regularizado.setStatus(TurnoStatus.COMPLETED);
+        pendiente.setTurnoId(41L);
+        pendiente.setStatus(TurnoStatus.COMPLETED);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(regularizado, pendiente));
+        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L, 41L)))
+                .thenReturn(java.util.Set.of(40L));
+
+        List<OwnerTurnoDto> dtos = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER);
+
+        assertTrue(dtos.get(0).regularizadoFinancieramente());
+        assertFalse(dtos.get(1).regularizadoFinancieramente());
+        verify(resultadoRepository).findTurnoIdsConResultadoFinanciero(List.of(40L, 41L));
+        verify(resultadoRepository, never()).existsByTurno_TurnoId(anyLong());
+    }
+
+    @Test
+    void listaTurnoCompletadoSinResultadoFinancieroComoPendiente() {
+        Turno completado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+        completado.setStatus(TurnoStatus.COMPLETED);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(completado));
+        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L))).thenReturn(java.util.Set.of());
+
+        OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
+
+        assertFalse(dto.regularizadoFinancieramente());
+    }
+
+    @Test
+    void listaTurnoNoCompletadoSinResultadoFinancieroComoNoRegularizado() {
+        Turno confirmado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+        confirmado.setStatus(TurnoStatus.CONFIRMED);
+        when(turnoRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)))
+                .thenReturn(List.of(confirmado));
+        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(40L))).thenReturn(java.util.Set.of());
+
+        OwnerTurnoDto dto = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
+
+        assertFalse(dto.regularizadoFinancieramente());
+    }
+
+    @Test
+    void detalleIncluyeIndicadorDeResultadoFinanciero() {
+        Turno completado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+        completado.setStatus(TurnoStatus.COMPLETED);
+        when(turnoRepository.findByTurnoIdAndNegocio_NegocioId(40L, NEGOCIO_ID)).thenReturn(Optional.of(completado));
+        when(resultadoRepository.existsByTurno_TurnoId(40L)).thenReturn(true);
+
+        OwnerTurnoDto dto = service.obtenerTurno(NEGOCIO_ID, 40L, EMAIL_OWNER);
+
+        assertTrue(dto.regularizadoFinancieramente());
     }
 
     @Test
@@ -356,6 +433,8 @@ class OwnerTurnosServiceTests {
         when(turnoRepository.findAll(
                 org.mockito.ArgumentMatchers.<Specification<Turno>>any(), any(Sort.class)
         )).thenReturn(List.of(turno));
+        when(resultadoRepository.findTurnoIdsConResultadoFinanciero(List.of(turno.getTurnoId())))
+                .thenReturn(java.util.Set.of());
         return service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER).get(0);
     }
 

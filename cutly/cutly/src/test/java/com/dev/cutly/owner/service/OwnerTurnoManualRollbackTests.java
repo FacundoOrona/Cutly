@@ -10,6 +10,12 @@ import com.dev.cutly.negocio.repository.HorarioNegocioRepository;
 import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
+import com.dev.cutly.pago.entity.Pago;
+import com.dev.cutly.pago.entity.ResultadoFinancieroTurno;
+import com.dev.cutly.pago.enums.DecisionFinanciera;
+import com.dev.cutly.pago.enums.MetodoPago;
+import com.dev.cutly.pago.repository.PagoRepository;
+import com.dev.cutly.pago.repository.ResultadoFinancieroTurnoRepository;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.entity.Turno;
@@ -28,6 +34,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,6 +63,8 @@ class OwnerTurnoManualRollbackTests {
     @Autowired private HorarioNegocioRepository horarioRepository;
     @Autowired private ClienteLocalRepository clienteLocalRepository;
     @Autowired private TurnoRepository turnoRepository;
+    @Autowired private ResultadoFinancieroTurnoRepository resultadoRepository;
+    @Autowired private PagoRepository pagoRepository;
 
     @MockitoBean private OwnerNegocioService ownerNegocioService;
 
@@ -177,5 +186,57 @@ class OwnerTurnoManualRollbackTests {
         turnoRepository.saveAndFlush(turno);
         assertEquals(1, turnoRepository.findTurnosSolapadosPorOwner(
                 owner.getUsuarioId(), inicio, inicio.plusMinutes(30)).size());
+    }
+
+    @Test
+    void persisteUnResultadoPorTurnoYUnCobroDirectoVinculado() {
+        ClienteLocal local = guardarClienteLocal(negocio);
+        Turno turno = crearTurno(local, negocio, negocio.getOwner(), servicioId);
+
+        ResultadoFinancieroTurno resultado = new ResultadoFinancieroTurno();
+        resultado.setTurno(turno);
+        resultado.setNegocio(negocio);
+        resultado.setClienteLocal(local);
+        resultado.setOwner(negocio.getOwner());
+        resultado.setTipoResultado(DecisionFinanciera.COBRO_DIRECTO);
+        resultado.setMontoAcordado(new BigDecimal("85.00"));
+        resultado.setFechaRegistro(LocalDateTime.now());
+        resultado = resultadoRepository.saveAndFlush(resultado);
+
+        Pago pago = new Pago();
+        pago.setTurno(turno);
+        pago.setResultadoFinanciero(resultado);
+        pago.setOwnerRegistrante(negocio.getOwner());
+        pago.setMonto(new BigDecimal("85.00"));
+        pago.setMetodoPago(MetodoPago.EFECTIVO);
+        pago.setFechaPago(LocalDateTime.now());
+        pagoRepository.saveAndFlush(pago);
+
+        ResultadoFinancieroTurno duplicado = new ResultadoFinancieroTurno();
+        duplicado.setTurno(turno);
+        duplicado.setNegocio(negocio);
+        duplicado.setClienteLocal(local);
+        duplicado.setOwner(negocio.getOwner());
+        duplicado.setTipoResultado(DecisionFinanciera.GRATUIDAD);
+        duplicado.setMontoAcordado(BigDecimal.ZERO);
+        duplicado.setMotivoGratuidad("Promoción");
+        duplicado.setFechaRegistro(LocalDateTime.now());
+        assertThrows(DataIntegrityViolationException.class, () -> resultadoRepository.saveAndFlush(duplicado));
+    }
+
+    private ClienteLocal guardarClienteLocal(Negocio negocio) {
+        ClienteLocal local = new ClienteLocal();
+        local.setNegocio(negocio); local.setNombre("Ana"); local.setApellido("Pérez");
+        local.setDniPresentado("12345678"); local.setDniNormalizado("12345678"); local.setTelefono("5555");
+        return clienteLocalRepository.saveAndFlush(local);
+    }
+
+    private Turno crearTurno(ClienteLocal local, Negocio negocio, Usuario owner, Long servicioId) {
+        Turno turno = new Turno();
+        turno.setFechaHoraInicio(inicio); turno.setFechaHoraFin(inicio.plusMinutes(30));
+        turno.setStatus(TurnoStatus.COMPLETED); turno.setClienteLocal(local); turno.setNegocio(negocio);
+        turno.setOwnerResponsable(owner); turno.setServicio(servicioRepository.findById(servicioId).orElseThrow());
+        turno.setPrecio(new BigDecimal("100.00"));
+        return turnoRepository.saveAndFlush(turno);
     }
 }

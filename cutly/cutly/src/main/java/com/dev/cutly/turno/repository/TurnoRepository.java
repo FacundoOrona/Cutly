@@ -14,10 +14,19 @@ import org.springframework.data.jpa.repository.Query;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecificationExecutor<Turno> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from Turno t where t.turnoId = :turnoId and t.negocio.negocioId = :negocioId")
+    Optional<Turno> findWithLockingByTurnoIdAndNegocioId(@Param("turnoId") Long turnoId, @Param("negocioId") Long negocioId);
+
     long countByStatus(TurnoStatus status);
+
+    @Query("select count(t) from Turno t where t.negocio.negocioId = :negocioId and t.status = com.dev.cutly.turno.enums.TurnoStatus.COMPLETED and not exists (select r.resultadoFinancieroId from com.dev.cutly.pago.entity.ResultadoFinancieroTurno r where r.turno = t) and (:desde is null or t.fechaHoraInicio >= :desde) and (:hasta is null or t.fechaHoraInicio < :hasta)")
+    long contarCompletadosSinRegularizacion(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
     List<Turno> findByNegocio_NegocioIdOrderByFechaHoraInicioAscTurnoIdAsc(Long negocioId);
 

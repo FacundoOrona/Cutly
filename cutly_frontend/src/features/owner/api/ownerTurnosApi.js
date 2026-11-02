@@ -84,6 +84,27 @@ export async function updateOwnerTurnoStatus({ negocioId, turnoId, action }) {
   return data
 }
 
+export async function completeOwnerTurno({ negocioId, turnoId, body, idempotencyKey }) {
+  const { data } = await apiClient.post(`/api/owner/negocios/${negocioId}/turnos/${turnoId}/completar`, body, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
+}
+
+export function getCompleteOwnerTurnoErrorMessage(error) {
+  const status = error.response?.status
+  const body = error.response?.data
+  const message = typeof body === 'string' ? body : body?.mensaje || body?.message
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return message || 'No tenés permiso para completar este turno.'
+  if (status === 404) return message || 'El turno ya no está disponible. Actualizá el listado.'
+  if (status === 409) return message || 'El turno cambió o esta operación ya fue procesada. Actualizamos el listado.'
+  if (status === 400 || status === 422) return message || 'Revisá los datos financieros ingresados.'
+  if (!error.response) return 'No pudimos confirmar el resultado por un problema de conexión. Reintentá para consultar la misma operación.'
+  if (status >= 500) return message || 'No pudimos completar el turno por un problema del servidor.'
+  return message || 'No pudimos completar el turno. Intentá nuevamente.'
+}
+
 export function getOwnerTurnosErrorMessage(error) {
   const status = error.response?.status
   const body = error.response?.data

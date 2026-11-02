@@ -3,6 +3,7 @@ package com.dev.cutly.owner.controller;
 import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
+import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.owner.service.OwnerTurnosService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -101,9 +103,22 @@ public class OwnerTurnosController {
         return actualizarEstado(negocioId, turnoId, ownerTurnosService::cancelar);
     }
 
-    @PatchMapping("/{id}/completar")
-    public ResponseEntity<?> completar(@PathVariable Long negocioId, @PathVariable("id") Long turnoId) {
-        return actualizarEstado(negocioId, turnoId, ownerTurnosService::completar);
+    @PostMapping("/{id}/completar")
+    public ResponseEntity<?> completar(@PathVariable Long negocioId, @PathVariable("id") Long turnoId,
+                                       @RequestHeader("Idempotency-Key") String key,
+                                       @RequestBody DecisionFinancieraRequestDto request) {
+        try { return ResponseEntity.ok(ownerTurnosService.completarConDecision(negocioId, turnoId, request, key, emailOwnerAutenticado())); }
+        catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return errorInterno("No se pudo completar y regularizar el turno"); }
+    }
+
+    @PostMapping("/{id}/regularizacion-financiera")
+    public ResponseEntity<?> regularizar(@PathVariable Long negocioId, @PathVariable("id") Long turnoId,
+                                         @RequestHeader("Idempotency-Key") String key,
+                                         @RequestBody DecisionFinancieraRequestDto request) {
+        try { return ResponseEntity.ok(ownerTurnosService.regularizarFinanzas(negocioId, turnoId, request, key, emailOwnerAutenticado())); }
+        catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return errorInterno("No se pudo regularizar el turno"); }
     }
 
     @PatchMapping("/{id}/no-show")

@@ -7,6 +7,7 @@ import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.turno.entity.Turno;
+import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.enums.TipoClienteTurno;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.usuario.entity.Usuario;
@@ -22,11 +23,13 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class EmpleadoTurnoServiceTests {
@@ -88,5 +91,22 @@ class EmpleadoTurnoServiceTests {
         assertEquals("Cliente", dto.clienteNombre());
         assertEquals("Local", dto.clienteApellido());
         assertEquals(EMPLEADO_ID, dto.empleadoId());
+    }
+
+    @Test
+    void completarComoEmpleadoSoloCambiaElEstadoYConservaElPrecio() {
+        Negocio negocio = new Negocio(); negocio.setNegocioId(2L); negocio.setNombre("Negocio"); empleado.setNegocio(negocio);
+        ClienteLocal cliente = new ClienteLocal(); cliente.setClienteLocalId(31L); cliente.setNombre("Cliente"); cliente.setApellido("Local");
+        Servicio servicio = new Servicio(); servicio.setServicioId(7L); servicio.setNombre("Corte");
+        Turno turno = new Turno(); turno.setTurnoId(21L); turno.setNegocio(negocio); turno.setClienteLocal(cliente); turno.setEmpleado(empleado);
+        turno.setServicio(servicio); turno.setStatus(TurnoStatus.CONFIRMED); turno.setPrecio(new BigDecimal("1250.00"));
+        when(turnoRepository.findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.of(turno));
+        when(turnoRepository.save(turno)).thenReturn(turno);
+
+        service.completar(21L, EMAIL);
+
+        assertEquals(TurnoStatus.COMPLETED, turno.getStatus());
+        assertEquals(new BigDecimal("1250.00"), turno.getPrecio());
+        verify(turnoRepository).save(turno);
     }
 }

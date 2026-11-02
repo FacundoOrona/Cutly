@@ -9,6 +9,7 @@ public record OwnerPagoDto(
         Long pagoId,
         Long negocioId,
         Long turnoId,
+        Long deudaId,
         BigDecimal monto,
         MetodoPago metodoPago,
         LocalDateTime fechaPago
