@@ -4,6 +4,7 @@ import { getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
 import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
 import { useCreateOwnerAbono, useOwnerDeudas, useOwnerDeudasClientes } from '../hooks/useOwnerDeudas.js'
 import OwnerDeudaDetailDrawer from '../components/OwnerDeudaDetailDrawer.jsx'
+import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 
 const pageSize = 20
 const detailPageSize = 100
@@ -35,7 +36,7 @@ function sameClient(deuda, client) {
 export default function OwnerDeudasPage() {
   const businessesQuery = useOwnerBusinesses()
   const businesses = useMemo(() => Array.isArray(businessesQuery.data) ? businessesQuery.data : [], [businessesQuery.data])
-  const [selectedBusinessId, setSelectedBusinessId] = useState('')
+  const { activeBusiness } = useActiveOwnerBusiness()
   const [searchText, setSearchText] = useState('')
   const [debouncedText, setDebouncedText] = useState('')
   const [page, setPage] = useState(0)
@@ -48,10 +49,9 @@ export default function OwnerDeudasPage() {
     return () => window.clearTimeout(timer)
   }, [searchText])
 
-  const selectedBusiness = businesses.find((business) => String(business.negocioId) === selectedBusinessId)
-  const validBusinessId = selectedBusiness
-    ? selectedBusinessId
-    : businesses.length === 1 ? String(businesses[0].negocioId) : ''
+  useEffect(() => { setPage(0); setSelectedClient(null); setSelectedDeuda(null) }, [activeBusiness?.negocioId])
+
+  const validBusinessId = String(activeBusiness?.negocioId || '')
   const isWaitingForDebounce = searchText.trim() !== debouncedText
   const clientsQuery = useOwnerDeudasClientes({ negocioId: validBusinessId, page, size: pageSize, q: debouncedText }, { enabled: !isWaitingForDebounce && !selectedClient })
   const clientsResult = !isWaitingForDebounce && !clientsQuery.isFetching ? clientsQuery.data : null
@@ -68,14 +68,6 @@ export default function OwnerDeudasPage() {
     .filter((deuda, index, all) => sameClient(deuda, selectedClient || {}) && all.findIndex((item) => String(item.deudaId) === String(deuda.deudaId)) === index)
   const detailsLoading = detailQueries.some((query) => query.isFetching)
   const detailsError = detailQueries.find((query) => query.isError)
-
-  function changeBusiness(event) {
-    setSelectedBusinessId(event.target.value)
-    setPage(0)
-    setSearchText('')
-    setDebouncedText('')
-    setSelectedClient(null)
-  }
 
   function changeSearch(event) {
     setSearchText(event.target.value)
@@ -110,9 +102,6 @@ export default function OwnerDeudasPage() {
     ) : businesses.length === 0 ? (
       <div className="owner-business-state"><Building2 size={22} /><p>Todavía no tenés negocios registrados.</p></div>
     ) : <>
-      <section className="owner-clients-business-panel owner-deudas-business-panel" aria-label="Negocio seleccionado">
-        {businesses.length === 1 ? <div className="owner-clients-selected-business"><Building2 size={17} /><span><small>Negocio</small><strong>{businesses[0].nombre || 'Negocio'}</strong></span></div> : <label className="owner-form-field" htmlFor="owner-deudas-business"><span>Negocio</span><select id="owner-deudas-business" value={validBusinessId} onChange={changeBusiness}><option value="">Seleccioná un negocio…</option>{businesses.map((business) => <option key={business.negocioId} value={String(business.negocioId)}>{business.nombre || `Negocio ${business.negocioId}`}</option>)}</select></label>}
-      </section>
 
       {validBusinessId ? <section className="owner-client-card owner-deudas-card" aria-label={selectedClient ? 'Deudas pendientes del cliente' : 'Cuentas corrientes por cliente'}>
         <div className="owner-client-card-heading"><span className="user-detail-icon"><Search size={17} /></span><div><h2>{selectedClient ? `Deudas de ${clientName(selectedClient)}` : 'Cuentas corrientes por cliente'}</h2><p>{selectedClient ? 'Deudas pendientes y parciales asociadas a este cliente.' : 'Buscá por nombre o apellido para consultar saldos agrupados.'}</p></div></div>
@@ -142,7 +131,7 @@ export default function OwnerDeudasPage() {
                     <td data-label="Turno">#{deuda.turnoId ?? '—'}</td><td data-label="Fecha de origen">{dateTime(deuda.fechaOrigen)}</td><td data-label="Importe original">{money(deuda.montoOriginal)}</td><td data-label="Total abonado">{money(deuda.totalAbonado)}</td><td data-label="Saldo pendiente" className="owner-deudas-balance">{money(deuda.saldo)}</td><td data-label="Estado"><span className={`owner-status owner-deuda-status owner-deuda-status-${String(deuda.estado || '').toLowerCase()}`}>{statusLabels[deuda.estado] || deuda.estado || '—'}</span></td><td data-label="Detalle"><button type="button" className="owners-secondary-button owner-deudas-detail" onClick={() => { abonoMutation.reset(); setSelectedDeuda({ negocioId: validBusinessId, deudaId: deuda.deudaId }) }}><Eye size={14} /><span>Ver detalle</span></button></td>
                   </tr>)}</tbody></table></div></>}
         </div>
-      </section> : <div className="owner-business-state"><Building2 size={22} /><p>Seleccioná uno de tus negocios para consultar sus cuentas corrientes.</p></div>}
+      </section> : null}
     </>}
     {selectedDeuda && <OwnerDeudaDetailDrawer negocioId={selectedDeuda.negocioId} deudaId={selectedDeuda.deudaId} abonoMutation={abonoMutation} onClose={closeDeudaDetail} onAbonar={registerAbono} />}
   </>

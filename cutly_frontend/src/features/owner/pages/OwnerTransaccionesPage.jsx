@@ -4,6 +4,7 @@ import { getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
 import { getOwnerTransaccionesErrorMessage } from '../api/ownerTransaccionesApi.js'
 import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
 import { useOwnerTransacciones } from '../hooks/useOwnerTransacciones.js'
+import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 
 const pageSize = 20
 function localDateString(date = new Date()) {
@@ -45,7 +46,7 @@ function dateTime(value) {
 export default function OwnerTransaccionesPage() {
   const businessesQuery = useOwnerBusinesses()
   const businesses = useMemo(() => Array.isArray(businessesQuery.data) ? businessesQuery.data : [], [businessesQuery.data])
-  const [selectedBusinessId, setSelectedBusinessId] = useState('')
+  const { activeBusiness } = useActiveOwnerBusiness()
   const [desde, setDesde] = useState(localDateString)
   const [hasta, setHasta] = useState(localDateString)
   const [metodoPago, setMetodoPago] = useState([])
@@ -59,10 +60,9 @@ export default function OwnerTransaccionesPage() {
     return () => window.clearTimeout(timer)
   }, [searchText])
 
-  const selectedBusiness = businesses.find((business) => String(business.negocioId) === selectedBusinessId)
-  const validBusinessId = selectedBusiness
-    ? selectedBusinessId
-    : businesses.length === 1 ? String(businesses[0].negocioId) : ''
+  useEffect(() => { setPage(0) }, [activeBusiness?.negocioId])
+
+  const validBusinessId = String(activeBusiness?.negocioId || '')
   const isWaitingForDebounce = searchText.trim() !== debouncedText
   const dateRangeInvalid = Boolean(desde && hasta && desde > hasta)
   const transactionsQuery = useOwnerTransacciones({
@@ -75,7 +75,7 @@ export default function OwnerTransaccionesPage() {
     page,
     size: pageSize,
   }, { enabled: !isWaitingForDebounce && !dateRangeInvalid })
-  const result = transactionsQuery.data
+  const result = transactionsQuery.isPlaceholderData ? null : transactionsQuery.data
   const transactions = Array.isArray(result?.items) ? result.items : []
   const summary = result?.resumen
   const currentPage = typeof result?.page === 'number' ? result.page : page
@@ -83,18 +83,6 @@ export default function OwnerTransaccionesPage() {
   const hasFilters = Boolean(desde || hasta || metodoPago.length || tipo || searchText.trim())
 
   function resetPage() { setPage(0) }
-
-  function changeBusiness(event) {
-    setSelectedBusinessId(event.target.value)
-    const today = localDateString()
-    setDesde(today)
-    setHasta(today)
-    setMetodoPago([])
-    setTipo('')
-    setSearchText('')
-    setDebouncedText('')
-    setPage(0)
-  }
 
   function togglePaymentMethod(value) {
     setMetodoPago((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
@@ -123,9 +111,6 @@ export default function OwnerTransaccionesPage() {
     ) : businesses.length === 0 ? (
       <div className="owner-business-state"><Building2 size={22} /><p>Todavía no tenés negocios registrados.</p></div>
     ) : <>
-      <section className="owner-clients-business-panel owner-transactions-business-panel" aria-label="Negocio seleccionado">
-        {businesses.length === 1 ? <div className="owner-clients-selected-business"><Building2 size={17} /><span><small>Negocio</small><strong>{businesses[0].nombre || 'Negocio'}</strong></span></div> : <label className="owner-form-field" htmlFor="owner-transactions-business"><span>Negocio</span><select id="owner-transactions-business" value={validBusinessId} onChange={changeBusiness}><option value="">Seleccioná un negocio…</option>{businesses.map((business) => <option key={business.negocioId} value={String(business.negocioId)}>{business.nombre || `Negocio ${business.negocioId}`}</option>)}</select></label>}
-      </section>
 
       {validBusinessId ? <>
         <section className="owner-client-card owner-transactions-filter-card" aria-label="Filtros de transacciones">
@@ -172,7 +157,7 @@ export default function OwnerTransaccionesPage() {
                     </>}
           </div>
         </section>
-      </> : <div className="owner-business-state"><Building2 size={22} /><p>Seleccioná uno de tus negocios para consultar sus transacciones.</p></div>}
+      </> : null}
     </>}
   </>
 }

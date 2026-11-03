@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Ban, CalendarDays, Check, CircleAlert, Ellipsis, Eye, LoaderCircle, Plus, RefreshCw, SlidersHorizontal, UserRoundX, X } from 'lucide-react'
-import { Navigate, useParams, useSearchParams } from 'react-router-dom'
-import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
+import { Navigate, useParams } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
 import { getOwnerBusinessServicesErrorMessage } from '../api/ownerBusinessServicesApi.js'
-import { completeOwnerTurno, getCompleteOwnerTurnoErrorMessage, getOwnerTurnos, getOwnerTurnosErrorMessage, getUpdateOwnerTurnoErrorMessage, updateOwnerTurnoStatus } from '../api/ownerTurnosApi.js'
-import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
+import { completeOwnerTurno, getCompleteOwnerTurnoErrorMessage, getOwnerTurnosErrorMessage, getUpdateOwnerTurnoErrorMessage, updateOwnerTurnoStatus } from '../api/ownerTurnosApi.js'
+import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 import { useOwnerBusinessEmployees } from '../hooks/useOwnerBusinessEmployees.js'
 import { useOwnerBusinessServices } from '../hooks/useOwnerBusinessServices.js'
-import { ownerTurnoDetailQueryKey, ownerTurnosQueryKey } from '../hooks/useOwnerTurnos.js'
+import { ownerTurnoDetailQueryKey, ownerTurnosQueryKey, useOwnerTurnos } from '../hooks/useOwnerTurnos.js'
 import OwnerTurnoCreateForm from '../components/OwnerTurnoCreateForm.jsx'
 import OwnerTurnoDetailDrawer from '../components/OwnerTurnoDetailDrawer.jsx'
 import OwnerTurnoFinancialDrawer from '../components/OwnerTurnoFinancialDrawer.jsx'
@@ -104,16 +104,12 @@ export function LegacyOwnerTurnosRedirect() {
 }
 
 export default function OwnerTurnosPage() {
-  const businessesQuery = useOwnerBusinesses()
-  const [searchParams] = useSearchParams()
-  const initialBusinessId = searchParams.get('negocioId') || ''
-  const [selectedBusinessId, setSelectedBusinessId] = useState(initialBusinessId)
+  const { businesses, businessesQuery, activeBusiness, activeBusinessId } = useActiveOwnerBusiness()
   const [fecha, setFecha] = useState(todayLocal)
   const [empleadoId, setEmpleadoId] = useState('')
   const [status, setStatus] = useState('')
   const [servicioId, setServicioId] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [createBusinessId, setCreateBusinessId] = useState('')
   const [createNotice, setCreateNotice] = useState('')
   const [pendingActionKeys, setPendingActionKeys] = useState(() => new Set())
   const [actionErrors, setActionErrors] = useState({})
@@ -193,53 +189,31 @@ export default function OwnerTurnosPage() {
     },
     onError: (error) => setFinancialError(getCompleteOwnerTurnoErrorMessage(error)),
   })
-  const businesses = useMemo(() => Array.isArray(businessesQuery.data) ? businessesQuery.data : [], [businessesQuery.data])
-  // Solo se acepta el negocio si pertenece a la respuesta autenticada de GET /api/owner/negocios.
-  const selectedBusiness = businesses.find((business) => String(business.negocioId) === selectedBusinessId)
-  const individualBusinessId = selectedBusiness ? String(selectedBusiness.negocioId) : ''
-  const allBusinesses = !selectedBusiness
+  const individualBusinessId = activeBusiness ? String(activeBusiness.negocioId) : ''
   const dateIsValid = validDate(fecha)
+
+  useEffect(() => {
+    setEmpleadoId('')
+    setServicioId('')
+    setSelectedTurno(null)
+    setFinancialTurno(null)
+    setActionErrors({})
+    setPendingActionKeys(new Set())
+    pendingActionKeysRef.current = new Set()
+    financialOperationRef.current = null
+  }, [activeBusinessId])
 
   const employeesQuery = useOwnerBusinessEmployees(individualBusinessId, { enabled: Boolean(individualBusinessId) })
   const servicesQuery = useOwnerBusinessServices(individualBusinessId, { enabled: Boolean(individualBusinessId) })
-  const targetBusinesses = useMemo(() => allBusinesses ? businesses : selectedBusiness ? [selectedBusiness] : [], [allBusinesses, businesses, selectedBusiness])
-  const turnosQueries = useQueries({
-    queries: targetBusinesses.map((business) => {
-      const filters = {
-        negocioId: String(business.negocioId),
-        fecha,
-        empleadoId: allBusinesses ? '' : empleadoId,
-        status,
-      }
-      return {
-        queryKey: ownerTurnosQueryKey(filters),
-        queryFn: () => getOwnerTurnos(filters),
-        enabled: businessesQuery.isSuccess && dateIsValid,
-        retry: false,
-      }
-    }),
+  const turnosQuery = useOwnerTurnos({ negocioId: individualBusinessId, fecha, empleadoId, status }, {
+    enabled: Boolean(individualBusinessId) && businessesQuery.isSuccess && dateIsValid,
+    retry: false,
   })
-
-  const failedQueries = turnosQueries
-    .map((query, index) => ({ query, business: targetBusinesses[index] }))
-    .filter(({ query }) => query.isError)
-  const turnos = useMemo(() => turnosQueries.flatMap((query, index) => {
-    if (!Array.isArray(query.data)) return []
-    const business = targetBusinesses[index]
-    return query.data.map((turno) => ({
-      ...turno,
-      ...(allBusinesses ? { negocioNombre: business?.nombre || `Negocio ${business?.negocioId}` } : {}),
-    }))
-  }).sort((a, b) => String(a.fechaHoraInicio).localeCompare(String(b.fechaHoraInicio))), [turnosQueries, targetBusinesses, allBusinesses])
+  const turnos = useMemo(() => (Array.isArray(turnosQuery.data) ? [...turnosQuery.data] : [])
+    .sort((a, b) => String(a.fechaHoraInicio).localeCompare(String(b.fechaHoraInicio))), [turnosQuery.data])
   // La API no admite servicioId; este filtro se aplica sobre los turnos ya descargados.
   const visibleTurnos = servicioId ? turnos.filter((turno) => String(turno.servicioId) === servicioId) : turnos
-  const isLoadingTurnos = turnosQueries.some((query) => query.isPending || query.isFetching)
-
-  function changeBusiness(nextId) {
-    setSelectedBusinessId(nextId)
-    setEmpleadoId('')
-    setServicioId('')
-  }
+  const isLoadingTurnos = turnosQuery.isPending || turnosQuery.isFetching
 
   function clearFilters() {
     setFecha(todayLocal())
@@ -256,7 +230,7 @@ export default function OwnerTurnosPage() {
   }
 
   function retryTurnos() {
-    for (const { query } of failedQueries) query.refetch()
+    void turnosQuery.refetch()
   }
 
   const closeTurnoDetail = useCallback(() => setSelectedTurno(null), [])
@@ -305,7 +279,7 @@ export default function OwnerTurnosPage() {
     pendingActionKeysRef.current.add(actionKey)
     setPendingActionKeys(new Set(pendingActionKeysRef.current))
     try {
-      await updateTurnoMutation.mutateAsync({ negocioId: turno.negocioId, turnoId: turno.turnoId, action })
+      await updateTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: turno.turnoId, action })
     } catch {
       // El error se presenta junto al turno desde onError.
     } finally {
@@ -319,7 +293,7 @@ export default function OwnerTurnosPage() {
     const turnIsPending = pendingActionKeys.has(actionKey)
     const actions = availableActions[turno.status] || []
     return <div className="owner-turno-row-actions">
-      <button type="button" className="owners-secondary-button owner-turno-action owner-turno-detail-action" onClick={() => setSelectedTurno({ negocioId: turno.negocioId, turnoId: turno.turnoId })} aria-label={`Ver detalles del turno de ${turno.clienteNombre || 'cliente'} ${dateTime(turno.fechaHoraInicio)}`} title="Ver detalles"><Eye size={15} /></button>
+      <button type="button" className="owners-secondary-button owner-turno-action owner-turno-detail-action" onClick={() => setSelectedTurno({ negocioId: activeBusinessId, turnoId: turno.turnoId })} aria-label={`Ver detalles del turno de ${turno.clienteNombre || 'cliente'} ${dateTime(turno.fechaHoraInicio)}`} title="Ver detalles"><Eye size={15} /></button>
       {actions.length > 0 && <div className="owner-turno-actions-menu">
         <button ref={openActionsTurnoId === actionKey ? actionMenuTriggerRef : null} type="button" className="owners-secondary-button owner-turno-action owner-turno-menu-trigger" aria-label={`Más acciones para el turno de ${turno.clienteNombre || 'cliente'}`} aria-haspopup="menu" aria-expanded={openActionsTurnoId === actionKey} onClick={() => setOpenActionsTurnoId((current) => current === actionKey ? null : actionKey)} disabled={turnIsPending}><Ellipsis size={16} /></button>
         {openActionsTurnoId === actionKey && <div ref={actionMenuPopoverRef} className="owner-turno-actions-popover" role="menu" aria-label="Acciones del turno">
@@ -341,14 +315,13 @@ export default function OwnerTurnosPage() {
     <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO OWNER</span>
     <div className="owners-heading">
       <div><h1>Turnos</h1><p className="owners-description">Consultá los turnos diarios de tus negocios.</p></div>
-      <button className="owner-create-button" type="button" onClick={() => { setCreateNotice(''); setCreateBusinessId(individualBusinessId); setShowCreateForm((current) => !current) }} aria-expanded={showCreateForm}><Plus size={15} /> Nuevo turno</button>
+      <button className="owner-create-button" type="button" onClick={() => { setCreateNotice(''); setShowCreateForm((current) => !current) }} aria-expanded={showCreateForm}><Plus size={15} /> Nuevo turno</button>
     </div>
 
     {createNotice && <div className="owner-created-notice" role="status"><Check size={16} /><span>{createNotice}</span><button type="button" className="icon-button" aria-label="Cerrar confirmación" onClick={() => setCreateNotice('')}><X size={15} /></button></div>}
-    {showCreateForm && !createBusinessId && <section className="create-owner-panel owner-turno-create-panel" aria-label="Seleccionar negocio para el nuevo turno"><div className="create-owner-heading"><div><span className="create-owner-icon"><CalendarDays size={17} /></span><div><h2>Nuevo turno</h2><p>Seleccioná el negocio donde se reservará el turno.</p></div></div><button type="button" className="icon-button owner-turno-close" aria-label="Cerrar formulario de nuevo turno" onClick={() => setShowCreateForm(false)}><X size={17} /></button></div><label className="owner-form-field" htmlFor="owner-turno-business"><span>Negocio *</span><select id="owner-turno-business" value={createBusinessId} onChange={(event) => setCreateBusinessId(event.target.value)}><option value="">Seleccioná un negocio…</option>{businesses.map((business) => <option key={business.negocioId} value={business.negocioId}>{business.nombre}</option>)}</select></label></section>}
-    {showCreateForm && createBusinessId && <OwnerTurnoCreateForm
-      key={`create-${createBusinessId}`}
-      negocioId={createBusinessId}
+    {showCreateForm && individualBusinessId && <OwnerTurnoCreateForm
+      key={`create-${individualBusinessId}`}
+      negocioId={individualBusinessId}
       onCancel={() => setShowCreateForm(false)}
       onCreated={(turno, summary) => {
         setCreateNotice(summary)
@@ -359,9 +332,8 @@ export default function OwnerTurnosPage() {
     <section className="owners-filters owner-turnos-filters" aria-label="Filtros de turnos">
       <div className="owner-turnos-filter-row">
         <div className="owner-turnos-filter-fields">
-          <label className="owners-status-filter owner-turnos-business-filter">Negocio<select value={selectedBusiness ? individualBusinessId : ''} onChange={(event) => changeBusiness(event.target.value)}><option value="">Todos mis negocios</option>{businesses.map((business) => <option key={business.negocioId} value={business.negocioId}>{business.nombre}</option>)}</select></label>
           <label className="owners-status-filter">Estado<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          {!allBusinesses && <>
+          {<>
             <label className="owners-status-filter">Empleado<select value={empleadoId} onChange={(event) => setEmpleadoId(event.target.value)}><option value="">Todos</option>{(Array.isArray(employeesQuery.data) ? employeesQuery.data : []).map((employee) => <option key={employee.empleadoId} value={employee.empleadoId}>{employee.nombre} {employee.apellido}{employee.activo ? '' : ' (inactivo)'}</option>)}</select></label>
             <label className="owners-status-filter">Servicio <span className="owner-turnos-local-label">filtro local</span><select value={servicioId} onChange={(event) => setServicioId(event.target.value)}><option value="">Todos</option>{(Array.isArray(servicesQuery.data) ? servicesQuery.data : []).map((service) => <option key={service.servicioId} value={service.servicioId}>{service.nombre}{service.activo ? '' : ' (inactivo)'}</option>)}</select></label>
           </>}
@@ -391,11 +363,11 @@ export default function OwnerTurnosPage() {
     })}
     {!dateIsValid ? <div className="owners-results owners-message owners-error" role="alert">La fecha seleccionada no es válida. Elegí una fecha válida para consultar los turnos.</div> : businesses.length === 0 ? <div className="owners-business-state"><CalendarDays size={22} /><p>Todavía no tenés negocios registrados.</p></div> : (
       <section className="owners-results owner-turnos-results" aria-label="Listado de turnos" aria-busy={isLoadingTurnos}>
-        {isLoadingTurnos && turnos.length === 0 ? <div className="owners-message owner-turnos-state" role="status"><LoaderCircle size={19} className="spin" /> Cargando turnos…</div> : failedQueries.length > 0 ? <div className="owners-message owners-error owner-turnos-state" role="alert"><p>No se pudo completar la consulta; ocultamos los resultados parciales.</p><ul className="owner-turnos-failed-businesses">{failedQueries.map(({ query, business }) => <li key={business.negocioId}>{business.nombre || `Negocio ${business.negocioId}`}: {getOwnerTurnosErrorMessage(query.error)}</li>)}</ul><button className="owners-secondary-button" type="button" onClick={retryTurnos}><RefreshCw size={14} /> Reintentar negocios fallidos</button></div> : <>
+        {isLoadingTurnos && turnos.length === 0 ? <div className="owners-message owner-turnos-state" role="status"><LoaderCircle size={19} className="spin" /> Cargando turnos…</div> : turnosQuery.isError ? <div className="owners-message owners-error owner-turnos-state" role="alert"><p>{getOwnerTurnosErrorMessage(turnosQuery.error)}</p><button className="owners-secondary-button" type="button" onClick={retryTurnos} disabled={turnosQuery.isFetching}><RefreshCw size={14} /> Reintentar</button></div> : <>
           {isLoadingTurnos && turnos.length > 0 && <div className="owners-updating" role="status"><LoaderCircle size={14} className="spin" /> Actualizando turnos…</div>}
           {employeesQuery.isLoading && individualBusinessId && <div className="owners-updating" role="status">Cargando empleados y servicios…</div>}
           <div className="owner-turnos-count" aria-live="polite">{visibleTurnos.length} {visibleTurnos.length === 1 ? 'turno' : 'turnos'}{servicioId ? ' para el servicio seleccionado' : ''}</div>
-          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Negocio</th><th>Cliente</th><th>Inicio</th><th>Servicio</th><th>Resumen económico</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Negocio" title={turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre}>{turno.negocioNombre || businesses.find((business) => String(business.negocioId) === String(turno.negocioId))?.nombre || '—'}</td><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td className="owner-turnos-economic-cell" data-label="Resumen económico">{financialSummary(turno)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{turnoStatusLabel(turno)}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr>)}</tbody></table></div>}
+          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Negocio</th><th>Cliente</th><th>Inicio</th><th>Servicio</th><th>Resumen económico</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Negocio" title={activeBusiness?.nombre}>{activeBusiness?.nombre || '—'}</td><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td className="owner-turnos-economic-cell" data-label="Resumen económico">{financialSummary(turno)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{turnoStatusLabel(turno)}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr>)}</tbody></table></div>}
         </>}
       </section>
     )}
@@ -404,13 +376,13 @@ export default function OwnerTurnosPage() {
       if (completeTurnoMutation.isPending) return
       if (financialOperationRef.current && !body) {
         const operation = financialOperationRef.current
-        void completeTurnoMutation.mutateAsync({ negocioId: financialTurno.negocioId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey }).catch(() => {})
+        void completeTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey }).catch(() => {})
         return
       }
       if (financialOperationRef.current && body && JSON.stringify(financialOperationRef.current.body) !== JSON.stringify(body)) return
       if (!financialOperationRef.current) financialOperationRef.current = { idempotencyKey: crypto.randomUUID(), body }
       const operation = financialOperationRef.current
-      void completeTurnoMutation.mutateAsync({ negocioId: financialTurno.negocioId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey }).catch(() => {})
+      void completeTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey }).catch(() => {})
     }} />}
 
   </>

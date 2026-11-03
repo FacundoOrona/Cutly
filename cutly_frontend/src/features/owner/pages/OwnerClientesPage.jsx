@@ -5,13 +5,14 @@ import { getOwnerClientesLocalesErrorMessage } from '../api/ownerTurnosApi.js'
 import OwnerClienteLocalForm from '../components/OwnerClienteLocalForm.jsx'
 import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
 import { useOwnerClientesLocalesPage } from '../hooks/useOwnerTurnos.js'
+import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 
 const clientLabel = (client) => [client.nombre, client.apellido].filter(Boolean).join(' ')
 
 export default function OwnerClientesPage() {
   const businessesQuery = useOwnerBusinesses()
   const businesses = useMemo(() => Array.isArray(businessesQuery.data) ? businessesQuery.data : [], [businessesQuery.data])
-  const [selectedBusinessId, setSelectedBusinessId] = useState('')
+  const { activeBusiness } = useActiveOwnerBusiness()
   const [searchText, setSearchText] = useState('')
   const [debouncedText, setDebouncedText] = useState('')
   const [page, setPage] = useState(0)
@@ -23,10 +24,9 @@ export default function OwnerClientesPage() {
     return () => window.clearTimeout(timer)
   }, [searchText])
 
-  const selectedBusiness = businesses.find((business) => String(business.negocioId) === selectedBusinessId)
-  const validBusinessId = selectedBusiness
-    ? selectedBusinessId
-    : businesses.length === 1 ? String(businesses[0].negocioId) : ''
+  useEffect(() => { setPage(0); setCreatedClient(null) }, [activeBusiness?.negocioId])
+
+  const validBusinessId = String(activeBusiness?.negocioId || '')
   const searchReady = debouncedText.trim().length >= 2
   const isWaitingForDebounce = searchText.trim().length >= 2 && debouncedText !== searchText.trim()
   const effectiveQuery = searchReady ? debouncedText : ''
@@ -35,14 +35,6 @@ export default function OwnerClientesPage() {
   const clients = Array.isArray(result?.content) ? result.content : []
   const totalElements = result?.totalElements
   const totalPages = result?.totalPages
-
-  function changeBusiness(event) {
-    setSelectedBusinessId(event.target.value)
-    setPage(0)
-    setSearchText('')
-    setDebouncedText('')
-    setCreatedClient(null)
-  }
 
   function handleClientCreated(client) {
     const currentSearch = searchText.trim()
@@ -66,10 +58,6 @@ export default function OwnerClientesPage() {
     ) : businesses.length === 0 ? (
       <div className="owner-business-state"><Building2 size={22} /><p>Todavía no tenés negocios registrados.</p></div>
     ) : <>
-      <section className="owner-clients-business-panel" aria-label="Negocio seleccionado">
-        {businesses.length === 1 ? <div className="owner-clients-selected-business"><Building2 size={17} /><span><small>Negocio</small><strong>{businesses[0].nombre || 'Negocio'}</strong></span></div> : <label className="owner-form-field" htmlFor="owner-clients-business"><span>Negocio</span><select id="owner-clients-business" value={validBusinessId} onChange={changeBusiness}><option value="">Seleccioná un negocio…</option>{businesses.map((business) => <option key={business.negocioId} value={String(business.negocioId)}>{business.nombre || `Negocio ${business.negocioId}`}</option>)}</select></label>}
-      </section>
-
       {validBusinessId ? <>
         <section className="owner-client-card">
           <div className="owner-client-card-heading"><span className="user-detail-icon"><Search size={17} /></span><div><h2>Buscar clientes</h2><p>La búsqueda considera nombre y apellido, con dos caracteres como mínimo.</p></div></div>
@@ -86,7 +74,7 @@ export default function OwnerClientesPage() {
           <OwnerClienteLocalForm key={validBusinessId} negocioId={validBusinessId} onCreated={handleClientCreated} />
           {createdClient && <div className="owner-created-notice" role="status"><CheckCircle2 size={17} /><span>Se registró a {clientLabel(createdClient)} correctamente.{createdClientMatchedPreviousSearch ? ' Actualizamos la búsqueda para incluirlo.' : ' Actualizamos la búsqueda con su nombre.'}</span></div>}
         </section>
-      </> : <div className="owner-business-state"><Building2 size={22} /><p>Seleccioná uno de tus negocios para buscar o registrar clientes.</p></div>}
+      </> : null}
     </>}
   </>
 }

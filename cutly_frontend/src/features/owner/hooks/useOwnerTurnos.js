@@ -11,6 +11,7 @@ export function useOwnerTurnos(filters, options = {}) {
     queryKey: ownerTurnosQueryKey(filters),
     queryFn: () => getOwnerTurnos(filters),
     enabled: Boolean(filters.negocioId) && (options.enabled ?? true),
+    ...(options.retry !== undefined ? { retry: options.retry } : {}),
   })
 }
 
