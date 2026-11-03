@@ -72,15 +72,17 @@ export default function OwnerBusinessPage() {
           {isEditing ? (
             <EditOwnerBusinessForm business={business} onCancel={() => setIsEditing(false)} onUpdated={(updatedBusiness) => { setBusiness(updatedBusiness); setIsEditing(false); setShowUpdatedNotice(true) }} />
           ) : (
-            <section className="user-detail-card" aria-label="Datos del negocio">
-              <div className="user-detail-card-heading"><span className="user-detail-icon"><Building2 size={18} /></span><div><h2>{business.nombre || 'Negocio'}</h2><p>{business.email || 'Sin email'}</p></div></div>
-              <dl className="user-detail-grid">{fields.map(([label, value]) => <div className="user-detail-field" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
-            </section>
+            <div className="owner-business-detail-sections">
+              <section className="user-detail-card" aria-label="Datos del negocio">
+                <div className="user-detail-card-heading"><span className="user-detail-icon"><Building2 size={18} /></span><div><h2>{business.nombre || 'Negocio'}</h2><p>{business.email || 'Sin email'}</p></div></div>
+                <dl className="user-detail-grid">{fields.map(([label, value]) => <div className="user-detail-field" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
+              </section>
+              <OwnerBusinessAddressSection negocioId={negocioId} />
+              <OwnerBusinessHoursSection negocioId={negocioId} />
+              <OwnerBusinessServicesSection key={`services-${negocioId}`} negocioId={negocioId} />
+              <OwnerBusinessEmployeesSection key={`employees-${negocioId}`} negocioId={negocioId} />
+            </div>
           )}
-          <OwnerBusinessAddressSection negocioId={negocioId} />
-          <OwnerBusinessHoursSection negocioId={negocioId} />
-          <OwnerBusinessServicesSection key={negocioId} negocioId={negocioId} />
-          <OwnerBusinessEmployeesSection key={negocioId} negocioId={negocioId} />
         </>
       ) : (
         <div className="owner-business-state"><p>No hay datos disponibles para este negocio.</p></div>

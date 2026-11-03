@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight, LoaderCircle, LockKeyhole, Mail, Sparkles } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
 
@@ -29,8 +29,7 @@ export default function LoginPage() {
 
   if (isInitializing) return <main className="session-loading" role="status">Verificando sesión…</main>
   if (isAuthenticated) {
-    navigate(getRoleDestination(role), { replace: true })
-    return null
+    return <Navigate to={getRoleDestination(role)} replace />
   }
 
   async function handleSubmit(event) {
