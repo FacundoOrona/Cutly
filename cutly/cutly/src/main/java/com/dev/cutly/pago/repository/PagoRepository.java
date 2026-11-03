@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface PagoRepository extends JpaRepository<Pago, Long> {
+public interface PagoRepository extends JpaRepository<Pago, Long>, PagoTransaccionesRepository {
 
     @Query("select sum(p.monto) from Pago p")
     BigDecimal sumarMontos();
@@ -72,4 +72,5 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     @Query("select count(distinct p.turno.turnoId) from Pago p where p.turno.negocio.negocioId = :negocioId and (:desde is null or p.fechaPago >= :desde) and (:hasta is null or p.fechaPago < :hasta)")
     long contarTurnosCobrados(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
 }
