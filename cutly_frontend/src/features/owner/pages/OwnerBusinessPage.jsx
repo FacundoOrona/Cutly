@@ -58,7 +58,7 @@ export default function OwnerBusinessPage() {
       <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO OWNER</span>
       <div className="user-detail-heading">
         <div><h1>{business?.nombre || 'Espacio del negocio'}</h1><p className="owners-description">Información básica de tu negocio.</p></div>
-        <div className="user-detail-heading-actions"><Link className="owners-secondary-button user-back-button" to="/owner"><ArrowLeft size={15} /> Volver a negocios</Link>{business && !isEditing && <button type="button" className="owner-create-button" onClick={() => { setShowUpdatedNotice(false); setIsEditing(true) }}><Pencil size={15} /> Editar negocio</button>}</div>
+        <div className="user-detail-heading-actions"><Link className="owners-secondary-button user-back-button" to="/owner"><ArrowLeft size={15} /> Volver a negocios</Link></div>
       </div>
       {!validId || error?.message === 'invalid id' ? (
         <div className="owner-business-state user-detail-error" role="alert"><p>El identificador del negocio no es válido.</p></div>
@@ -74,7 +74,7 @@ export default function OwnerBusinessPage() {
           ) : (
             <div className="owner-business-detail-sections">
               <section className="user-detail-card" aria-label="Datos del negocio">
-                <div className="user-detail-card-heading"><span className="user-detail-icon"><Building2 size={18} /></span><div><h2>{business.nombre || 'Negocio'}</h2><p>{business.email || 'Sin email'}</p></div></div>
+                <div className="user-detail-card-heading"><div className="user-detail-card-heading-copy"><span className="user-detail-icon"><Building2 size={18} /></span><div><h2>{business.nombre || 'Negocio'}</h2><p>{business.email || 'Sin email'}</p></div></div>{!isEditing && <button type="button" className="owner-create-button" onClick={() => { setShowUpdatedNotice(false); setIsEditing(true) }}><Pencil size={15} /> Editar negocio</button>}</div>
                 <dl className="user-detail-grid">{fields.map(([label, value]) => <div className="user-detail-field" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
               </section>
               <OwnerBusinessAddressSection negocioId={negocioId} />

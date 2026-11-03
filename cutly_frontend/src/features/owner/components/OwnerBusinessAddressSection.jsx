@@ -102,7 +102,7 @@ export default function OwnerBusinessAddressSection({ negocioId }) {
     <section className="create-owner-panel owner-address-panel" aria-labelledby="owner-address-title">
       <div className="create-owner-heading">
         <div><span className="create-owner-icon"><MapPin size={17} /></span><div><h2 id="owner-address-title">Dirección del negocio</h2><p>Ubicación registrada para este negocio.</p></div></div>
-        {query.isSuccess && !isEditing && <button type="button" className="owners-secondary-button" onClick={() => { setShowSavedNotice(false); setIsEditing(true) }}><Pencil size={14} /> Editar dirección</button>}
+        {query.isSuccess && !isEditing && <button type="button" className="owners-secondary-button owner-address-edit-button" onClick={() => { setShowSavedNotice(false); setIsEditing(true) }}><Pencil size={14} /> Editar dirección</button>}
       </div>
       {showSavedNotice && <div className="owner-created-notice" role="status"><CheckCircle2 size={17} /><span>La dirección se guardó correctamente.</span><button type="button" className="icon-button" onClick={() => setShowSavedNotice(false)} aria-label="Cerrar confirmación"><X size={16} /></button></div>}
       {query.isPending ? <div className="owner-business-state" role="status"><LoaderCircle size={19} className="spin" /> Cargando dirección…</div>
