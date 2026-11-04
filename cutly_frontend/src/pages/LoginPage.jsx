@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, LoaderCircle, LockKeyhole, Mail, Sparkles } from 'lucide-react'
+import { ArrowRight, CalendarDays, LoaderCircle, LockKeyhole, Mail, Sparkles } from 'lucide-react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
@@ -62,12 +62,16 @@ export default function LoginPage() {
         <div className="story-content">
           <BrandMark light />
           <div className="story-copy">
-            <span className="eyebrow eyebrow-light"><Sparkles size={14} /> TU SALÓN, EN SINTONÍA</span>
-            <h1>Más tiempo para<br />hacer lo que <span>amás.</span></h1>
-            <p>Organizá tu peluquería en un solo lugar y hacé que cada día fluya mejor.</p>
+            <span className="eyebrow eyebrow-light"><Sparkles size={14} /> GESTIÓN SIMPLE, TODOS LOS DÍAS</span>
+            <h1>Tu negocio,<br />en orden. Tu tiempo,<br /><span>mejor aprovechado.</span></h1>
+            <p>Organizá turnos, administrá tu equipo y llevá el control de tus clientes y servicios desde un solo lugar.</p>
           </div>
-          <div className="preview-card"><div className="preview-heading">ACCESO ADMINISTRATIVO</div><p className="access-copy">Ingresá con tus credenciales para continuar de forma segura.</p></div>
-          <span className="story-footnote">UNA MEJOR EXPERIENCIA, PARA TODOS.</span>
+          <div className="preview-card login-agenda" aria-label="Vista previa de agenda">
+            <div className="preview-heading"><span className="agenda-icon"><CalendarDays size={15} /></span> AGENDA DE HOY <span className="agenda-count">3 turnos</span></div>
+            <div className="agenda-row"><span className="agenda-time">10:30</span><span className="agenda-entry"><strong>Consulta inicial</strong><small>Cliente nuevo · 45 min</small></span><span className="agenda-status">Confirmado</span></div>
+            <div className="agenda-row"><span className="agenda-time">11:30</span><span className="agenda-entry"><strong>Servicio agendado</strong><small>Con tu equipo · 60 min</small></span><span className="agenda-status agenda-status-next">En breve</span></div>
+          </div>
+          <span className="story-footnote">CLIENTES, EQUIPO Y SERVICIOS EN UN SOLO LUGAR.</span>
         </div>
         <div className="story-decoration story-decoration-one" />
         <div className="story-decoration story-decoration-two" />
@@ -76,8 +80,8 @@ export default function LoginPage() {
         <div className="login-panel-inner">
           <div className="mobile-brand"><BrandMark /></div>
           <span className="eyebrow">BIENVENIDO A CUTLY</span>
-          <h2>Tu espacio<br />te está esperando.</h2>
-          <p className="login-intro">Iniciá sesión para continuar con la gestión de tu salón.</p>
+          <h2>Ingresá a tu<br />espacio de trabajo.</h2>
+          <p className="login-intro">Iniciá sesión para continuar con la gestión de tu negocio.</p>
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <label htmlFor="email">Correo electrónico</label>
             <div className="input-wrap"><Mail size={17} aria-hidden="true" /><input id="email" name="email" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(errorMessage && !email)} required /></div>
@@ -91,7 +95,7 @@ export default function LoginPage() {
           </form>
           <p className="login-disclaimer">El espacio disponible depende del rol asociado a tu cuenta.</p>
         </div>
-        <footer className="panel-footer"><span>© 2026 Cutly</span><span>Hecho para hacer crecer tu salón.</span></footer>
+        <footer className="panel-footer"><span>© 2026 Cutly</span><span>Gestión simple para negocios de servicios.</span></footer>
       </section>
     </main>
   )
