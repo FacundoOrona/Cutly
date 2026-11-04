@@ -10,8 +10,8 @@ export async function getEmployeeBusiness() {
   return data
 }
 
-export async function getEmployeeAppointments(fecha) {
-  const { data } = await apiClient.get('/api/empleado/turnos', { params: { fecha } })
+export async function getEmployeeAppointments(fecha, status) {
+  const { data } = await apiClient.get('/api/empleado/turnos', { params: { fecha, status: status || undefined } })
   return data
 }
 

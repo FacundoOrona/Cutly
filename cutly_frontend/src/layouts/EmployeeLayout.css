@@ -1,0 +1,5 @@
+.employee-sidebar-upcoming-label{margin-top:23px}
+.employee-sidebar-upcoming{color:#879183;cursor:default;opacity:.72}
+.employee-sidebar-upcoming:hover{background:transparent}
+.employee-sidebar-upcoming>span{flex:1}
+.employee-sidebar-upcoming small{color:#9aa394;font-size:8px;font-weight:500;white-space:nowrap}

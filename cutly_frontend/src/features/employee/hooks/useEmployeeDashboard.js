@@ -3,7 +3,7 @@ import { getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile, updat
 
 export const employeeProfileQueryKey = ['employee', 'profile']
 export const employeeBusinessQueryKey = ['employee', 'business']
-export const employeeAppointmentsQueryKey = (fecha) => ['employee', 'appointments', { fecha }]
+export const employeeAppointmentsQueryKey = (fecha, status = '') => ['employee', 'appointments', { fecha, status }]
 
 export function useEmployeeProfile() {
   return useQuery({
@@ -19,10 +19,10 @@ export function useEmployeeBusiness() {
   })
 }
 
-export function useEmployeeAppointments(fecha) {
+export function useEmployeeAppointments(fecha, status = '') {
   return useQuery({
-    queryKey: employeeAppointmentsQueryKey(fecha),
-    queryFn: () => getEmployeeAppointments(fecha),
+    queryKey: employeeAppointmentsQueryKey(fecha, status),
+    queryFn: () => getEmployeeAppointments(fecha, status),
   })
 }
 

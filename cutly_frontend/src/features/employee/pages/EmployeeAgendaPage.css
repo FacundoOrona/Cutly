@@ -1,0 +1,32 @@
+.employee-agenda-page{max-width:1040px}
+.employee-agenda-heading{margin-bottom:24px}
+.employee-agenda-heading h1{margin:12px 0 6px;font-family:Manrope,sans-serif;font-size:clamp(32px,4vw,43px);line-height:1.12;letter-spacing:-1.7px;font-weight:700;color:#303b2d}
+.employee-agenda-controls{display:flex;align-items:end;justify-content:space-between;gap:16px;padding:15px;border:1px solid #e4eae1;border-radius:13px;background:#fff}
+.employee-agenda-date-controls{display:flex;align-items:center;gap:8px;min-width:0}
+.employee-agenda-nav,.employee-agenda-today{display:inline-flex;align-items:center;justify-content:center;min-height:39px;border:1px solid #dfe6dc;border-radius:9px;background:#fff;color:#4e6849;cursor:pointer}
+.employee-agenda-nav{width:39px;flex:none}
+.employee-agenda-today{padding:0 13px;font-size:11px;font-weight:700}
+.employee-agenda-nav:hover,.employee-agenda-today:hover:not(:disabled){background:#f0f5ee}
+.employee-agenda-today:disabled{opacity:.5;cursor:default}
+.employee-agenda-date-picker{display:flex;align-items:center;gap:8px;min-height:39px;padding:0 10px;border:1px solid #dfe6dc;border-radius:9px;color:#557452;background:#fff}
+.employee-agenda-date-picker input{min-width:132px;border:0;outline:0;color:#394837;font-size:11px;background:transparent}
+.employee-agenda-filter{display:grid;gap:5px;min-width:180px;color:#7d8878;font-size:9px;font-weight:700;letter-spacing:.4px}
+.employee-agenda-filter select{min-height:39px;padding:0 30px 0 10px;border:1px solid #dfe6dc;border-radius:9px;background:#fff;color:#394837;font-size:11px;letter-spacing:normal}
+.employee-agenda-results{margin-top:23px}
+.employee-agenda-list{display:grid;gap:8px}
+.employee-appointment-row.employee-agenda-row,.employee-appointment-row.employee-agenda-row.has-actions{grid-template-columns:105px minmax(0,1fr) minmax(280px,330px) 110px;column-gap:14px;align-items:center}
+.employee-agenda-row .employee-appointment-time{grid-column:1;grid-row:1}
+.employee-agenda-row .employee-appointment-details{grid-column:2;grid-row:1}
+.employee-agenda-row .employee-appointment-actions{grid-column:3;grid-row:1}
+.employee-agenda-row>.employee-status{grid-column:4;grid-row:1;justify-self:end}
+.employee-agenda-row .employee-appointment-time{display:grid;gap:3px;width:auto;font-size:12px;font-variant-numeric:tabular-nums}
+.employee-agenda-end-time{color:#8b9587;font-size:10px}
+.employee-agenda-row .employee-appointment-details{min-width:0}
+.employee-agenda-row .employee-appointment-details strong,.employee-agenda-row .employee-appointment-details span{font-size:11px;overflow-wrap:anywhere}
+.employee-agenda-row .employee-appointment-actions{display:flex;justify-content:flex-end;flex-wrap:nowrap;width:auto;padding:0}
+.employee-agenda-row .employee-action-button{white-space:nowrap}
+.employee-agenda-skeleton{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.employee-agenda-skeleton li{height:76px;border:1px solid #e6ebe3;border-radius:11px;background:linear-gradient(90deg,#fff 25%,#f3f6f1 50%,#fff 75%);background-size:200% 100%;animation:employee-shimmer 1.4s infinite}
+@media(max-width:900px){.employee-appointment-row.employee-agenda-row,.employee-appointment-row.employee-agenda-row.has-actions{grid-template-columns:88px minmax(0,1fr) 110px;column-gap:11px;row-gap:8px}.employee-agenda-row .employee-appointment-time{grid-column:1;grid-row:1}.employee-agenda-row .employee-appointment-details{grid-column:2;grid-row:1}.employee-agenda-row .employee-appointment-actions{grid-column:2/4;grid-row:2;justify-content:flex-start;flex-wrap:wrap}.employee-agenda-row>.employee-status,.employee-appointment-row.employee-agenda-row:not(.has-actions)>.employee-status{grid-column:3;grid-row:1;justify-self:end}.employee-agenda-row:not(.has-actions) .employee-appointment-actions{display:none}}
+@media(max-width:767px){.employee-agenda-controls{align-items:stretch;flex-direction:column}.employee-agenda-date-controls{justify-content:space-between}.employee-agenda-filter{min-width:0}.employee-appointment-row.employee-agenda-row,.employee-appointment-row.employee-agenda-row.has-actions{display:grid;grid-template-columns:66px minmax(0,1fr) auto;column-gap:9px;row-gap:8px}.employee-agenda-row .employee-appointment-time{grid-column:1;grid-row:1;align-self:start;font-size:10px}.employee-agenda-row .employee-appointment-details{grid-column:2;grid-row:1;overflow-wrap:anywhere}.employee-agenda-row>.employee-status{grid-column:3;grid-row:1;align-self:start}.employee-agenda-row .employee-appointment-actions{grid-column:2/4;grid-row:2;justify-content:flex-start;flex-wrap:wrap;width:auto;padding:0}.employee-agenda-row:not(.has-actions) .employee-appointment-actions{display:none}.employee-agenda-row .employee-action-feedback{grid-column:1/-1;grid-row:3}.employee-agenda-heading{margin-bottom:20px}}
+@media(max-width:400px){.employee-agenda-date-controls{gap:5px}.employee-agenda-nav{width:34px;min-height:36px}.employee-agenda-date-picker{gap:5px;padding-inline:6px}.employee-agenda-date-picker input{min-width:116px;font-size:10px}.employee-agenda-today{min-height:36px;padding-inline:9px}}

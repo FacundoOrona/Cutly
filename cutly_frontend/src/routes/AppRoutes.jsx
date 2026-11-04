@@ -22,6 +22,7 @@ import OwnerTransaccionesPage from '../features/owner/pages/OwnerTransaccionesPa
 import OwnerEstadisticasPage from '../features/owner/pages/OwnerEstadisticasPage.jsx'
 import EmployeeLayout from '../layouts/EmployeeLayout.jsx'
 import EmployeeHomePage from '../features/employee/pages/EmployeeHomePage.jsx'
+import EmployeeAgendaPage from '../features/employee/pages/EmployeeAgendaPage.jsx'
 import { getRoleDestination } from '../auth/roleNavigation.js'
 import useAuth from '../auth/useAuth.js'
 
@@ -66,6 +67,7 @@ export default function AppRoutes() {
             <Route element={<RequireRole role="EMPLOYEE" />}>
               <Route element={<EmployeeLayout />}>
                 <Route path="/employee" element={<EmployeeHomePage />} />
+                <Route path="/employee/agenda" element={<EmployeeAgendaPage />} />
               </Route>
             </Route>
           </Route>

@@ -1,10 +1,13 @@
-import { LogOut } from 'lucide-react'
-import { Outlet } from 'react-router-dom'
+import { Bell, CalendarDays, History, Home, LogOut, Menu, UserRound, X } from 'lucide-react'
+import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
+import './EmployeeLayout.css'
 
 export default function EmployeeLayout() {
   const { user, signOut } = useAuth()
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
 
   async function handleSignOut() {
@@ -17,18 +20,26 @@ export default function EmployeeLayout() {
 
   return (
     <main className="admin-page">
-      <aside className="admin-sidebar">
-        <div className="admin-sidebar-top"><BrandMark to="/employee" /></div>
+      <aside className={`admin-sidebar${isMenuOpen ? ' admin-sidebar-open' : ''}`}>
+        <div className="admin-sidebar-top"><BrandMark to="/employee" /><button className="icon-button mobile-menu-close" onClick={() => setIsMenuOpen(false)} aria-label="Cerrar menú"><X size={20} /></button></div>
         <p className="sidebar-label">MI ESPACIO</p>
-        <nav aria-label="Navegación del empleado" />
+        <nav aria-label="Navegación del empleado">
+          <NavLink end to="/employee" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Home size={17} /> Inicio</NavLink>
+          <NavLink to="/employee/agenda" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><CalendarDays size={17} /> Agenda</NavLink>
+          <p className="sidebar-label employee-sidebar-upcoming-label">PRÓXIMAMENTE</p>
+          <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><History size={17} /><span>Historial</span><small>Próximamente</small></div>
+          <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><UserRound size={17} /><span>Mi perfil</span><small>Próximamente</small></div>
+          <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><Bell size={17} /><span>Notificaciones</span><small>Próximamente</small></div>
+        </nav>
         <div className="sidebar-user">
           <span className="user-avatar">{(user?.nombre?.[0] || user?.email?.[0] || 'C').toUpperCase()}</span>
           <div className="user-details"><strong>{displayName}</strong><small>EMPLOYEE</small></div>
           <button className="icon-button" onClick={handleSignOut} aria-label="Cerrar sesión"><LogOut size={17} /></button>
         </div>
       </aside>
+      {isMenuOpen && <button className="sidebar-backdrop" aria-label="Cerrar menú" onClick={() => setIsMenuOpen(false)} />}
       <section className="admin-main">
-        <header className="admin-header"><span>Espacio del empleado</span><button className="header-signout" onClick={handleSignOut}><LogOut size={16} /> Cerrar sesión</button></header>
+        <header className="admin-header"><button className="icon-button mobile-menu-open" onClick={() => setIsMenuOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button><span>Espacio del empleado</span><button className="header-signout" onClick={handleSignOut}><LogOut size={16} /> Cerrar sesión</button></header>
         <div className="admin-content"><Outlet /></div>
         <footer className="dashboard-footer"><span>CUTLY</span><span>Espacio seguro para EMPLOYEE</span></footer>
       </section>
