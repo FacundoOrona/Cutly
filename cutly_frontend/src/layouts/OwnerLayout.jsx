@@ -46,7 +46,7 @@ function OwnerLayoutContent() {
         <div className="sidebar-user"><span className="user-avatar">{(user?.nombre?.[0] || user?.email?.[0] || 'C').toUpperCase()}</span><div className="user-details"><strong>{displayName}</strong><small>OWNER</small></div><button className="icon-button" onClick={handleSignOut} aria-label="Cerrar sesión"><LogOut size={17} /></button></div>
       </aside>
       {isMenuOpen && <button className="sidebar-backdrop" aria-label="Cerrar menú" onClick={closeMenu} />}
-      <section className="admin-main">
+      <section className="admin-main owner-layout-main">
         <header className="admin-header"><button className="icon-button mobile-menu-open" onClick={() => setIsMenuOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button><span>Espacio del propietario</span><button className="header-signout" onClick={handleSignOut}><LogOut size={16} /> Cerrar sesión</button></header>
         <div className="admin-content">{logoutError && <p className="form-error" role="alert">{logoutError}</p>}<Outlet /></div>
         <footer className="dashboard-footer"><span><Building2 size={14} /> CUTLY</span><span>Espacio seguro para OWNER</span></footer>
