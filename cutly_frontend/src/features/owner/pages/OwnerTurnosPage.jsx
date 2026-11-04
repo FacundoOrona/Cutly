@@ -64,6 +64,12 @@ function time(value) {
   return new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(parsed)
 }
 
+function turnoDateLabel(value) {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '—'
+  return new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }).format(parsed)
+}
+
 function money(value) {
   if (value == null || Number.isNaN(Number(value))) return '—'
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(value))
@@ -92,6 +98,36 @@ function financialSummary(turno) {
 function turnoStatusLabel(turno) {
   if (turno.status === 'COMPLETED') return turno.regularizadoFinancieramente ? 'Completado y regularizado' : 'Pendiente de regularización'
   return statusLabels[turno.status] || turno.status || 'Sin estado'
+}
+
+function turnoResponsableNombre(turno) {
+  return [turno.responsableNombre, turno.responsableApellido].filter(Boolean).join(' ').trim()
+}
+
+function turnoResponsableTipo(turno) {
+  return turno.tipoResponsable === 'EMPLEADO' ? 'Empleado' : turno.tipoResponsable === 'OWNER' ? 'Owner' : null
+}
+
+function OwnerTurnoMobileCard({ turno, renderActions }) {
+  const responsable = turnoResponsableNombre(turno)
+  const tipoResponsable = turnoResponsableTipo(turno)
+  const statusClass = `owner-turno-status-${String(turno.status || '').toLowerCase()}`
+  return <article className="owner-turno-mobile-card">
+    <header className="owner-turno-mobile-card-header">
+      <strong>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || 'Cliente'}</strong>
+      <span className={`owner-status owner-turno-status owner-turno-table-status ${statusClass}`}>{turnoStatusLabel(turno)}</span>
+    </header>
+    <div className="owner-turno-mobile-card-schedule">
+      <div><small>Fecha</small><strong>{turnoDateLabel(turno.fechaHoraInicio)}</strong></div>
+      <div><small>Inicio</small><strong>{time(turno.fechaHoraInicio)}</strong></div>
+    </div>
+    <div className="owner-turno-mobile-card-details">
+      <div><small>Responsable</small><strong>{responsable || 'Sin asignar'}</strong>{responsable && tipoResponsable && <span>{tipoResponsable}</span>}</div>
+      <div><small>Servicio</small><strong>{turno.servicioNombre || '—'}</strong></div>
+    </div>
+    <section className="owner-turno-mobile-card-financial"><small>Resumen económico</small>{financialSummary(turno)}</section>
+    <div className="owner-turno-mobile-card-actions">{renderActions(turno)}</div>
+  </article>
 }
 
 function errorCanRetry(error) {
@@ -295,8 +331,8 @@ export default function OwnerTurnosPage() {
     return <div className="owner-turno-row-actions">
       <button type="button" className="owners-secondary-button owner-turno-action owner-turno-detail-action" onClick={() => setSelectedTurno({ negocioId: activeBusinessId, turnoId: turno.turnoId })} aria-label={`Ver detalles del turno de ${turno.clienteNombre || 'cliente'} ${dateTime(turno.fechaHoraInicio)}`} title="Ver detalles"><Eye size={15} /></button>
       {actions.length > 0 && <div className="owner-turno-actions-menu">
-        <button ref={openActionsTurnoId === actionKey ? actionMenuTriggerRef : null} type="button" className="owners-secondary-button owner-turno-action owner-turno-menu-trigger" aria-label={`Más acciones para el turno de ${turno.clienteNombre || 'cliente'}`} aria-haspopup="menu" aria-expanded={openActionsTurnoId === actionKey} onClick={() => setOpenActionsTurnoId((current) => current === actionKey ? null : actionKey)} disabled={turnIsPending}><Ellipsis size={16} /></button>
-        {openActionsTurnoId === actionKey && <div ref={actionMenuPopoverRef} className="owner-turno-actions-popover" role="menu" aria-label="Acciones del turno">
+        <button ref={openActionsTurnoId === actionKey ? (node) => { if (node?.getClientRects().length) actionMenuTriggerRef.current = node } : null} type="button" className="owners-secondary-button owner-turno-action owner-turno-menu-trigger" aria-label={`Más acciones para el turno de ${turno.clienteNombre || 'cliente'}`} aria-haspopup="menu" aria-expanded={openActionsTurnoId === actionKey} onClick={() => setOpenActionsTurnoId((current) => current === actionKey ? null : actionKey)} disabled={turnIsPending}><Ellipsis size={16} /></button>
+        {openActionsTurnoId === actionKey && <div ref={(node) => { if (node?.getClientRects().length) actionMenuPopoverRef.current = node }} className="owner-turno-actions-popover" role="menu" aria-label="Acciones del turno">
           {actions.map((action) => {
             const details = actionDetails[action]
             const Icon = details.icon
@@ -367,7 +403,10 @@ export default function OwnerTurnosPage() {
           {isLoadingTurnos && turnos.length > 0 && <div className="owners-updating" role="status"><LoaderCircle size={14} className="spin" /> Actualizando turnos…</div>}
           {employeesQuery.isLoading && individualBusinessId && <div className="owners-updating" role="status">Cargando empleados y servicios…</div>}
           <div className="owner-turnos-count" aria-live="polite">{visibleTurnos.length} {visibleTurnos.length === 1 ? 'turno' : 'turnos'}{servicioId ? ' para el servicio seleccionado' : ''}</div>
-          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Cliente</th><th>Responsable</th><th>Inicio</th><th>Servicio</th><th>Resumen económico</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => { const responsable = [turno.responsableNombre, turno.responsableApellido].filter(Boolean).join(' ').trim(); const tipoResponsable = turno.tipoResponsable === 'EMPLEADO' ? 'Empleado' : turno.tipoResponsable === 'OWNER' ? 'Owner' : null; return <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td className="owner-turnos-responsible-cell" data-label="Responsable"><span>{responsable || 'Sin asignar'}</span>{responsable && tipoResponsable && <small>{tipoResponsable}</small>}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td className="owner-turnos-economic-cell" data-label="Resumen económico">{financialSummary(turno)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{turnoStatusLabel(turno)}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr> })}</tbody></table></div>}
+          {visibleTurnos.length === 0 ? <div className="owners-message owner-turnos-state"><CalendarDays size={21} /><p>{turnos.length ? 'No hay turnos para el servicio seleccionado.' : 'No hay turnos para los filtros elegidos.'}</p></div> : <>
+            <div className="owner-turnos-table-wrap"><table className="owners-table owner-turnos-table"><thead><tr><th>Cliente</th><th>Responsable</th><th>Inicio</th><th>Servicio</th><th>Resumen económico</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{visibleTurnos.map((turno) => { const responsable = turnoResponsableNombre(turno); const tipoResponsable = turnoResponsableTipo(turno); return <tr key={`${turno.negocioId}-${turno.turnoId}`}><td className="owner-turnos-truncate" data-label="Cliente" title={[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ')}>{[turno.clienteNombre, turno.clienteApellido].filter(Boolean).join(' ') || '—'}</td><td className="owner-turnos-responsible-cell" data-label="Responsable"><span>{responsable || 'Sin asignar'}</span>{responsable && tipoResponsable && <small>{tipoResponsable}</small>}</td><td data-label="Inicio">{time(turno.fechaHoraInicio)}</td><td className="owner-turnos-truncate" data-label="Servicio" title={turno.servicioNombre}>{turno.servicioNombre || '—'}</td><td className="owner-turnos-economic-cell" data-label="Resumen económico">{financialSummary(turno)}</td><td data-label="Estado"><span className={`owner-status owner-turno-status owner-turno-table-status owner-turno-status-${String(turno.status || '').toLowerCase()}`}>{turnoStatusLabel(turno)}</span></td><td className="owner-turnos-actions-cell" data-label="Acciones">{renderTurnoActions(turno)}</td></tr> })}</tbody></table></div>
+            <div className="owner-turnos-mobile-cards">{visibleTurnos.map((turno) => <OwnerTurnoMobileCard key={`${turno.negocioId}-${turno.turnoId}`} turno={turno} renderActions={renderTurnoActions} />)}</div>
+          </>}
         </>}
       </section>
     )}
