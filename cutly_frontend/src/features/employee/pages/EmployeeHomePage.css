@@ -29,18 +29,50 @@
 .employee-status{display:inline-flex;align-items:center;justify-content:center;flex:none;padding:6px 9px;border:1px solid #e1e8df;border-radius:99px;background:#f8faf7;color:#687663;font-size:9px;font-weight:700;white-space:nowrap}
 .employee-status-pending{border-color:#eee5cf;background:#faf6ea;color:#8c7138}
 .employee-status-confirmed{border-color:#dce9da;background:#eef5ec;color:#4c7349}
+.employee-status-in_progress{border-color:#d9e6e8;background:#eff5f6;color:#55777a}
+.employee-status-completed{border-color:#dce9da;background:#eef5ec;color:#4c7349}
+.employee-status-cancelled,.employee-status-rejected{border-color:#e4e7e1;background:#f4f5f2;color:#777f73}
+.employee-status-no_show{border-color:#efd8d4;background:#fff4f2;color:#99554b}
 .employee-next-empty{display:flex;align-items:center;gap:13px;padding:17px 19px;border:1px solid #e5eae2;border-radius:12px;background:#fff}
 .employee-next-empty-icon{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;background:#edf4eb;color:#5b8055}
 .employee-next-empty strong,.employee-empty-state strong{color:#3b4938;font-size:12px;font-weight:700}
 .employee-next-empty p{margin-top:4px;color:#8a9286;font-size:10px;line-height:1.5}
 .employee-appointments-list{margin:0;padding:0;list-style:none;border:1px solid #e4eae1;border-radius:12px;background:#fff;overflow:hidden}
-.employee-appointment-row{position:relative;display:flex;align-items:center;gap:13px;min-width:0;padding:13px 16px;border-bottom:1px solid #edf0eb}
+.employee-appointment-row{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:13px;min-width:0;padding:13px 16px;border-bottom:1px solid #edf0eb}
 .employee-appointment-row:last-child{border-bottom:0}
 .employee-appointment-time{width:48px;flex:none;color:#51634d;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
 .employee-appointment-marker{width:7px;height:7px;flex:none;border-radius:50%;background:#8cac83;box-shadow:0 0 0 4px #edf4eb}
 .employee-appointment-details{display:grid;gap:4px;min-width:0;flex:1}
 .employee-appointment-details strong{overflow:hidden;color:#3d483b;font-size:11px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
 .employee-appointment-details span{overflow:hidden;color:#899184;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.employee-appointment-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;width:100%;padding-left:0}
+.employee-action-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 10px;border:1px solid #dfe7dc;border-radius:8px;background:#fff;color:#53634f;font-size:10px;font-weight:700;line-height:1.2;cursor:pointer;transition:background .15s,border-color .15s,opacity .15s}
+.employee-action-button:hover:not(:disabled){border-color:#b9cbb4;background:#f6f9f5}
+.employee-action-button:focus-visible,.employee-confirm-dialog button:focus-visible{outline:2px solid #71936a;outline-offset:2px}
+.employee-action-button:disabled{opacity:.55;cursor:wait}
+.employee-action-button.is-primary{border-color:#d6e4d2;background:#edf5ea;color:#41653d}
+.employee-action-button.is-danger{border-color:#efd8d4;background:#fff8f7;color:#99554b}
+.employee-action-button.is-danger:hover:not(:disabled){border-color:#dfb8b1;background:#fff1ef}
+.employee-action-button.is-secondary{background:#fff;color:#53634f}
+.employee-action-spinner{animation:employee-spin .9s linear infinite}
+.employee-action-feedback{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border:1px solid #dbe8d8;border-radius:8px;background:#f3f8f1;color:#4e7049;font-size:10px;line-height:1.45}
+.employee-action-feedback.is-error{border-color:#efd8d4;background:#fff8f7;color:#8f4b43}
+.employee-action-feedback>span{flex:1}
+.employee-action-feedback>button{display:inline-flex;align-items:center;gap:5px;padding:4px 6px;border:0;border-radius:5px;background:transparent;color:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.employee-action-feedback>button:disabled{opacity:.55;cursor:wait}
+.employee-action-feedback .employee-feedback-dismiss{flex:none;padding:3px}
+.employee-confirm-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:18px;background:rgba(28,38,27,.42);backdrop-filter:blur(3px)}
+.employee-confirm-dialog{width:min(100%,410px);padding:22px;border:1px solid #e3e9e0;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(28,38,27,.2)}
+.employee-confirm-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.employee-confirm-icon{display:grid;place-items:center;width:40px;height:40px;margin-bottom:14px;border-radius:12px;background:#fff1ef;color:#99554b}
+.employee-confirm-icon.is-completar{background:#edf5ea;color:#41653d}
+.employee-confirm-close{display:grid;place-items:center;width:34px;height:34px;border:1px solid #e4e9e1;border-radius:9px;background:#fff;color:#758070;cursor:pointer}
+.employee-confirm-close:hover:not(:disabled){background:#f5f7f3;color:#465443}
+.employee-confirm-close:disabled{opacity:.55;cursor:wait}
+.employee-confirm-dialog h2{color:#303b2d;font-family:Manrope,sans-serif;font-size:19px;font-weight:750}
+.employee-confirm-dialog p{margin-top:9px;color:#758070;font-size:12px;line-height:1.6}
+.employee-confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+@keyframes employee-spin{to{transform:rotate(360deg)}}
 .employee-empty-state{display:flex;align-items:center;flex-direction:column;gap:8px;padding:27px 16px;border:1px dashed #dfe7dc;border-radius:12px;background:rgba(255,255,255,.55);color:#83917e;text-align:center}
 .employee-empty-state>svg{margin-bottom:2px;color:#8da487}
 .employee-empty-state p{color:#92998e;font-size:10px}
@@ -68,5 +100,7 @@
 .employee-list-skeleton span:last-child{border-bottom:0}
 @keyframes employee-shimmer{to{background-position:-200% 0}}
 @media(max-width:950px){.employee-metrics-grid,.employee-skeleton{grid-template-columns:repeat(2,minmax(0,1fr))}.employee-shortcuts-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.employee-dashboard-heading{margin-bottom:27px}.employee-heading-icon{width:41px;height:41px}.employee-dashboard-heading h1{font-size:32px;letter-spacing:-1.2px}.employee-section{margin-top:26px}.employee-section-heading h2{font-size:17px}.employee-metrics-grid,.employee-skeleton{gap:9px}.employee-metric{padding:13px}.employee-metric-top{font-size:9px}.employee-metric-icon{width:27px;height:27px}.employee-metric>strong{font-size:26px}.employee-next-card{align-items:flex-start;flex-wrap:wrap;gap:10px;padding:15px}.employee-next-time{min-width:89px}.employee-next-time span{font-size:20px}.employee-next-info{padding-top:2px}.employee-next-info strong{font-size:12px}.employee-next-info>span{font-size:10px}.employee-next-card>.employee-status{margin-left:99px}.employee-appointment-row{gap:10px;padding:12px 11px}.employee-appointment-time{width:41px;font-size:10px}.employee-appointment-details strong{font-size:10px}.employee-appointment-details span{font-size:9px}.employee-status{padding:5px 7px;font-size:8px}.employee-shortcuts-grid{gap:8px}.employee-shortcut{gap:8px;padding:10px}.employee-coming-soon{display:none}.employee-inline-error{align-items:flex-start;flex-direction:column;margin-top:-12px}.employee-inline-error button{align-self:flex-start}}
-@media(prefers-reduced-motion:reduce){.employee-heading-skeleton,.employee-skeleton span,.employee-panel-skeleton,.employee-list-skeleton span{animation:none}}
+@media(min-width:768px){.employee-appointment-row{display:grid;grid-template-columns:48px 7px minmax(80px,1fr) auto auto;column-gap:13px;row-gap:8px;align-items:center}.employee-appointment-row.has-actions{grid-template-columns:48px 7px minmax(80px,1fr) auto auto}.employee-appointment-time{grid-column:1;grid-row:1}.employee-appointment-marker{grid-column:2;grid-row:1}.employee-appointment-details{grid-column:3;grid-row:1}.employee-appointment-row>.employee-status{grid-column:5;grid-row:1}.employee-appointment-row:not(.has-actions)>.employee-status{grid-column:4}.employee-appointment-actions{grid-column:4;grid-row:1;justify-content:center;flex-wrap:nowrap;width:auto;padding:0}.employee-appointment-actions .employee-action-button{white-space:nowrap}.employee-action-feedback{grid-column:1/-1;grid-row:2}}
+@media(max-width:767px){.employee-appointment-actions{justify-content:flex-start;padding-left:58px}}
+@media(max-width:600px){.employee-dashboard-heading{margin-bottom:27px}.employee-heading-icon{width:41px;height:41px}.employee-dashboard-heading h1{font-size:32px;letter-spacing:-1.2px}.employee-section{margin-top:26px}.employee-section-heading h2{font-size:17px}.employee-metrics-grid,.employee-skeleton{gap:9px}.employee-metric{padding:13px}.employee-metric-top{font-size:9px}.employee-metric-icon{width:27px;height:27px}.employee-metric>strong{font-size:26px}.employee-next-card{align-items:flex-start;flex-wrap:wrap;gap:10px;padding:15px}.employee-next-time{min-width:89px}.employee-next-time span{font-size:20px}.employee-next-info{padding-top:2px}.employee-next-info strong{font-size:12px}.employee-next-info>span{font-size:10px}.employee-next-card>.employee-status{margin-left:99px}.employee-appointment-row{gap:10px;padding:12px 11px}.employee-appointment-time{width:41px;font-size:10px}.employee-appointment-details strong{font-size:10px}.employee-appointment-details span{font-size:9px}.employee-appointment-actions{justify-content:flex-start;gap:6px;padding-left:58px}.employee-action-button{min-height:36px;padding:8px 9px;font-size:9px}.employee-action-feedback{align-items:flex-start;flex-wrap:wrap}.employee-action-feedback>span{flex-basis:calc(100% - 26px)}.employee-confirm-dialog{padding:19px}.employee-confirm-actions{flex-wrap:wrap}.employee-confirm-actions .employee-action-button{flex:1}.employee-status{padding:5px 7px;font-size:8px}.employee-shortcuts-grid{gap:8px}.employee-shortcut{gap:8px;padding:10px}.employee-coming-soon{display:none}.employee-inline-error{align-items:flex-start;flex-direction:column;margin-top:-12px}.employee-inline-error button{align-self:flex-start}}
+@media(prefers-reduced-motion:reduce){.employee-heading-skeleton,.employee-skeleton span,.employee-panel-skeleton,.employee-list-skeleton span,.employee-action-spinner{animation:none}}

@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile } from '../api/employeeApi.js'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile, updateEmployeeAppointmentStatus } from '../api/employeeApi.js'
 
 export const employeeProfileQueryKey = ['employee', 'profile']
 export const employeeBusinessQueryKey = ['employee', 'business']
@@ -23,5 +23,25 @@ export function useEmployeeAppointments(fecha) {
   return useQuery({
     queryKey: employeeAppointmentsQueryKey(fecha),
     queryFn: () => getEmployeeAppointments(fecha),
+  })
+}
+
+export function useEmployeeAppointmentAction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateEmployeeAppointmentStatus,
+    onSuccess: (updatedTurno) => {
+      queryClient.setQueriesData({ queryKey: ['employee', 'appointments'] }, (cached) => {
+        if (!Array.isArray(cached)) return cached
+        return cached.map((turno) => String(turno.turnoId) === String(updatedTurno.turnoId) ? updatedTurno : turno)
+      })
+      return queryClient.invalidateQueries({ queryKey: ['employee', 'appointments'] })
+    },
+    onError: (error) => {
+      if (error.response?.status === 409) {
+        return queryClient.invalidateQueries({ queryKey: ['employee', 'appointments'] })
+      }
+      return undefined
+    },
   })
 }
