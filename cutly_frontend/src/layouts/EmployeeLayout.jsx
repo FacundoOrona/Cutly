@@ -26,9 +26,9 @@ export default function EmployeeLayout() {
         <nav aria-label="Navegación del empleado">
           <NavLink end to="/employee" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Home size={17} /> Inicio</NavLink>
           <NavLink to="/employee/agenda" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><CalendarDays size={17} /> Agenda</NavLink>
-          <p className="sidebar-label employee-sidebar-upcoming-label">PRÓXIMAMENTE</p>
+          <p className="sidebar-label employee-sidebar-upcoming-label">MI CUENTA</p>
           <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><History size={17} /><span>Historial</span><small>Próximamente</small></div>
-          <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><UserRound size={17} /><span>Mi perfil</span><small>Próximamente</small></div>
+          <NavLink to="/employee/perfil" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><UserRound size={17} /> Mi perfil</NavLink>
           <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><Bell size={17} /><span>Notificaciones</span><small>Próximamente</small></div>
         </nav>
         <div className="sidebar-user">

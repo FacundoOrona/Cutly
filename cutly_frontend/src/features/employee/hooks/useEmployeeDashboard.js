@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile, updateEmployeeAppointmentStatus } from '../api/employeeApi.js'
+import { getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile, updateEmployeeAppointmentStatus, updateEmployeeProfile } from '../api/employeeApi.js'
 
 export const employeeProfileQueryKey = ['employee', 'profile']
 export const employeeBusinessQueryKey = ['employee', 'business']
@@ -9,6 +9,14 @@ export function useEmployeeProfile() {
   return useQuery({
     queryKey: employeeProfileQueryKey,
     queryFn: getEmployeeProfile,
+  })
+}
+
+export function useUpdateEmployeeProfile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateEmployeeProfile,
+    onSuccess: (profile) => queryClient.setQueryData(employeeProfileQueryKey, profile),
   })
 }
 
