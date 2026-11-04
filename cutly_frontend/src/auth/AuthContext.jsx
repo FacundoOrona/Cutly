@@ -39,10 +39,8 @@ export function AuthProvider({ children }) {
     }
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession))
     setSession(nextSession)
-    if (data.rol === 'SUPER_ADMIN') navigate('/dashboard', { replace: true })
-    else if (data.rol === 'OWNER') navigate('/owner', { replace: true })
-    else navigate('/acceso-denegado', { replace: true })
-  }, [navigate])
+    return nextSession.user
+  }, [])
 
   const signOut = useCallback(async () => {
     let logoutError

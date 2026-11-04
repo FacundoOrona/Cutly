@@ -20,14 +20,15 @@ import OwnerClientesPage from '../features/owner/pages/OwnerClientesPage.jsx'
 import OwnerDeudasPage from '../features/owner/pages/OwnerDeudasPage.jsx'
 import OwnerTransaccionesPage from '../features/owner/pages/OwnerTransaccionesPage.jsx'
 import OwnerEstadisticasPage from '../features/owner/pages/OwnerEstadisticasPage.jsx'
+import EmployeeLayout from '../layouts/EmployeeLayout.jsx'
+import EmployeeHomePage from '../features/employee/pages/EmployeeHomePage.jsx'
+import { getRoleDestination } from '../auth/roleNavigation.js'
 import useAuth from '../auth/useAuth.js'
 
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth()
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (role === 'SUPER_ADMIN') return <Navigate to="/dashboard" replace />
-  if (role === 'OWNER') return <Navigate to="/owner" replace />
-  return <Navigate to="/acceso-denegado" replace />
+  return <Navigate to={getRoleDestination(role)} replace />
 }
 
 export default function AppRoutes() {
@@ -60,6 +61,11 @@ export default function AppRoutes() {
                 <Route path="/owner/cuentas-corrientes" element={<OwnerDeudasPage />} />
                 <Route path="/owner/transacciones" element={<OwnerTransaccionesPage />} />
                 <Route path="/owner/estadisticas" element={<OwnerEstadisticasPage />} />
+              </Route>
+            </Route>
+            <Route element={<RequireRole role="EMPLOYEE" />}>
+              <Route element={<EmployeeLayout />}>
+                <Route path="/employee" element={<EmployeeHomePage />} />
               </Route>
             </Route>
           </Route>

@@ -1,6 +1,6 @@
-export default function BrandMark({ light = false }) {
+export default function BrandMark({ light = false, to = '/dashboard' }) {
   return (
-    <a className={`brand ${light ? 'brand-light' : ''}`} href="/dashboard" aria-label="Cutly, inicio">
+    <a className={`brand ${light ? 'brand-light' : ''}`} href={to} aria-label="Cutly, inicio">
       <span className="brand-icon" aria-hidden="true">
         <svg className="brand-symbol" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M23.8 7.9a11 11 0 1 0 0 16.2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />

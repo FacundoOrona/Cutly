@@ -1,5 +1,6 @@
 package com.dev.cutly.auth.security;
 
+import com.dev.cutly.empleado.service.EmpleadoAccesoService;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -22,13 +23,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final TokenInvalidoRepository tokenInvalidoRepository;
+    private final EmpleadoAccesoService empleadoAccesoService;
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil,
                                    UserDetailsService userDetailsService,
-                                   TokenInvalidoRepository tokenInvalidoRepository) {
+                                   TokenInvalidoRepository tokenInvalidoRepository,
+                                   EmpleadoAccesoService empleadoAccesoService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.tokenInvalidoRepository = tokenInvalidoRepository;
+        this.empleadoAccesoService = empleadoAccesoService;
     }
 
     @Override
@@ -56,6 +60,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()
                         || !jwtUtil.isTokenValid(token, userDetails)) {
+                    sendUnauthorized(response);
+                    return;
+                }
+
+                if (request.getRequestURI().startsWith("/api/empleado/")
+                        && userDetails.getAuthorities().stream()
+                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_EMPLOYEE"))
+                        && !empleadoAccesoService.tienePerfilActivo(email)) {
                     sendUnauthorized(response);
                     return;
                 }

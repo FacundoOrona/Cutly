@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays, LoaderCircle, LockKeyhole, Mail, Sparkles } f
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
+import { canRoleAccessPath, getRoleDestination } from '../auth/roleNavigation.js'
 
 function getLoginError(error) {
   const status = error.response?.status
@@ -20,12 +21,6 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-
-  function getRoleDestination(currentRole) {
-    if (currentRole === 'SUPER_ADMIN') return '/dashboard'
-    if (currentRole === 'OWNER') return '/owner'
-    return '/acceso-denegado'
-  }
 
   if (isInitializing) return <main className="session-loading" role="status">Verificando sesión…</main>
   if (isAuthenticated) {
@@ -46,9 +41,12 @@ export default function LoginPage() {
     }
     setIsSubmitting(true)
     try {
-      await signIn(normalizedEmail, contrasena)
-      const destination = location.state?.from?.pathname
-      if (destination && destination !== '/login') navigate(destination, { replace: true })
+      const authenticatedUser = await signIn(normalizedEmail, contrasena)
+      const requestedPath = location.state?.from?.pathname
+      const destination = canRoleAccessPath(authenticatedUser.rol, requestedPath)
+        ? requestedPath
+        : getRoleDestination(authenticatedUser.rol)
+      navigate(destination, { replace: true })
     } catch (error) {
       setErrorMessage(error.response ? getLoginError(error) : error.message?.includes('sesión válida') ? error.message : getLoginError(error))
     } finally {

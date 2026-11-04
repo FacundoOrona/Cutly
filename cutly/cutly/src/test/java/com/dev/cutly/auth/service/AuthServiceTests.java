@@ -3,6 +3,7 @@ package com.dev.cutly.auth.service;
 import com.dev.cutly.auth.dto.RegistroOwnerRequest;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
 import com.dev.cutly.auth.security.JwtUtil;
+import com.dev.cutly.empleado.service.EmpleadoAccesoService;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +23,8 @@ class AuthServiceTests {
                 usuarioRepository,
                 mock(org.springframework.security.crypto.password.PasswordEncoder.class),
                 mock(JwtUtil.class),
-                mock(TokenInvalidoRepository.class)
+                mock(TokenInvalidoRepository.class),
+                mock(EmpleadoAccesoService.class)
         );
         RegistroOwnerRequest request = new RegistroOwnerRequest(
                 "Ana", "Pérez", "ana@example.com", "44047980", "password-segura"

@@ -8,6 +8,7 @@ import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
 import com.dev.cutly.auth.security.JwtUtil;
+import com.dev.cutly.empleado.service.EmpleadoAccesoService;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final TokenInvalidoRepository tokenInvalidoRepository;
+    private final EmpleadoAccesoService empleadoAccesoService;
 
-    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, TokenInvalidoRepository tokenInvalidoRepository) {
+    public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, TokenInvalidoRepository tokenInvalidoRepository, EmpleadoAccesoService empleadoAccesoService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.tokenInvalidoRepository = tokenInvalidoRepository;
+        this.empleadoAccesoService = empleadoAccesoService;
     }
 
     public AuthResponse registrarCliente(RegistroClienteRequest request) {
@@ -89,6 +92,10 @@ public class AuthService {
         }
 
         if (usuario.getStatus() != UsuarioStatus.ACTIVE) {
+            throw new BadCredentialsException("Email o contraseña incorrectos");
+        }
+
+        if (usuario.getRol() == Rol.EMPLOYEE && !empleadoAccesoService.tienePerfilActivo(usuario.getEmail())) {
             throw new BadCredentialsException("Email o contraseña incorrectos");
         }
 
