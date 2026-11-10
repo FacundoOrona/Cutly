@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, LoaderCircle, Search, X } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import ClientBusinessCard from '../components/ClientBusinessCard.jsx'
 import { getClientBusinessesErrorMessage } from '../api/clientApi.js'
 import useClientBusinesses from '../hooks/useClientBusinesses.js'
@@ -14,9 +15,11 @@ function BusinessSkeleton() {
 }
 
 export default function ClientExplorePage() {
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
+  const location = useLocation()
+  const restoredState = location.state?.catalogState
+  const [searchInput, setSearchInput] = useState(() => restoredState?.searchInput || '')
+  const [search, setSearch] = useState(() => restoredState?.search || '')
+  const [page, setPage] = useState(() => restoredState?.page || 0)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -80,7 +83,7 @@ export default function ClientExplorePage() {
             <span>{start ? `Mostrando ${start}–${start + showing - 1} de ${total} negocios` : `${total} negocios`}</span>
           </div>
           <div className={`client-business-grid${query.isFetching ? ' client-business-grid-loading' : ''}`} aria-busy={query.isFetching}>
-            {businesses.map((business) => <ClientBusinessCard key={business.negocioId} business={business} />)}
+            {businesses.map((business) => <ClientBusinessCard key={business.negocioId} business={business} catalogState={{ searchInput, search, page }} />)}
           </div>
           <nav className="client-explore-pagination" aria-label="Paginación de negocios">
             <button type="button" onClick={() => setPage(Math.max(0, pageNumber - 1))} disabled={first || query.isFetching}>Anterior</button>

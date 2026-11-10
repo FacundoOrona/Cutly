@@ -1,11 +1,12 @@
 import { MapPin } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-export default function ClientBusinessCard({ business }) {
+export default function ClientBusinessCard({ business, catalogState }) {
   const cityAndProvince = [business.ciudad, business.provincia].filter(Boolean).join(', ')
   const address = [business.calle, business.numero].filter(Boolean).join(' ')
 
   return (
-    <article className="client-business-card">
+    <Link className="client-business-card" to={`/client/negocios/${business.negocioId}`} state={{ catalogState }} aria-label={`Ver detalle de ${business.nombre || 'negocio'}`}>
       <div className="client-business-card-mark" aria-hidden="true">
         {business.nombre?.trim()?.charAt(0)?.toUpperCase() || 'C'}
       </div>
@@ -19,6 +20,6 @@ export default function ClientBusinessCard({ business }) {
           </div>
         )}
       </div>
-    </article>
+    </Link>
   )
 }

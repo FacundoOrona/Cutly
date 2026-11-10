@@ -17,6 +17,9 @@
 .client-business-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;transition:opacity .15s}
 .client-business-grid-loading{opacity:.58}
 .client-business-card{display:flex;min-width:0;min-height:138px;gap:14px;padding:18px;border:1px solid #e4eae1;border-radius:13px;background:#fff;box-shadow:0 3px 12px rgba(36,54,35,.025)}
+.client-business-card{color:inherit;text-decoration:none;transition:border-color .18s,transform .18s,box-shadow .18s}
+.client-business-card:hover{transform:translateY(-2px);border-color:#cbdac7;box-shadow:0 9px 24px rgba(36,54,35,.06)}
+.client-business-card:focus-visible{outline:3px solid #91b18a;outline-offset:3px}
 .client-business-card-mark{display:grid;width:42px;height:42px;flex:none;place-items:center;border:1px solid #dce8d8;border-radius:12px;background:linear-gradient(145deg,#f3f8f0,#e9f1e6);color:#547452;font-family:Manrope,sans-serif;font-size:17px;font-weight:750}
 .client-business-card-content{display:grid;align-content:start;gap:7px;min-width:0}
 .client-business-card-content h2{margin:1px 0 0;color:#304532;font-size:14px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
