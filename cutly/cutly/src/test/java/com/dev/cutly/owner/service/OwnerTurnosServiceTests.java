@@ -6,6 +6,7 @@ import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
@@ -74,6 +75,7 @@ class OwnerTurnosServiceTests {
     @Mock private ResultadoFinancieroTurnoRepository resultadoRepository;
     @Mock private PagoRepository pagoRepository;
     @Mock private DeudaClienteRepository deudaRepository;
+    @Mock private NotificacionTurnoService notificacionTurnoService;
 
     private OwnerTurnosService service;
     private Negocio negocio;
@@ -83,7 +85,7 @@ class OwnerTurnosServiceTests {
         service = new OwnerTurnosService(turnoRepository, ownerNegocioService, clienteLocalRepository,
                 ownerClienteLocalService, servicioRepository, empleadoRepository,
                 empleadoServicioRepository, usuarioRepository, horarioValidator, resultadoRepository,
-                deudaRepository, pagoRepository, null);
+                deudaRepository, pagoRepository, null, notificacionTurnoService);
         negocio = new Negocio();
         negocio.setNegocioId(NEGOCIO_ID);
         negocio.setNombre("Negocio test");

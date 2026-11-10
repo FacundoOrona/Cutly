@@ -6,6 +6,7 @@ import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
 import com.dev.cutly.owner.dto.turno.ResumenFinancieroTurnoDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
@@ -67,6 +68,7 @@ public class OwnerTurnosService {
     private final DeudaClienteRepository deudaRepository;
     private final PagoRepository pagoRepository;
     private final IdempotenciaFinancieraRepository idempotenciaRepository;
+    private final NotificacionTurnoService notificacionTurnoService;
 
     @Autowired
     public OwnerTurnosService(
@@ -82,7 +84,8 @@ public class OwnerTurnosService {
             ResultadoFinancieroTurnoRepository resultadoRepository,
             DeudaClienteRepository deudaRepository,
             PagoRepository pagoRepository,
-            IdempotenciaFinancieraRepository idempotenciaRepository
+            IdempotenciaFinancieraRepository idempotenciaRepository,
+            NotificacionTurnoService notificacionTurnoService
     ) {
         this.turnoRepository = turnoRepository;
         this.ownerNegocioService = ownerNegocioService;
@@ -97,6 +100,7 @@ public class OwnerTurnosService {
         this.deudaRepository = deudaRepository;
         this.pagoRepository = pagoRepository;
         this.idempotenciaRepository = idempotenciaRepository;
+        this.notificacionTurnoService = notificacionTurnoService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -190,7 +194,9 @@ public class OwnerTurnosService {
         turno.setOwnerResponsable(ownerResponsable);
         turno.setServicio(servicio);
         turno.setObservaciones(request.observaciones());
-        return aDto(turnoRepository.save(turno));
+        Turno turnoGuardado = turnoRepository.save(turno);
+        notificacionTurnoService.notificarNuevoTurnoAsignado(turnoGuardado);
+        return aDto(turnoGuardado);
     }
 
     private void validarAsignacionServicio(Empleado empleado, Servicio servicio) {

@@ -8,6 +8,7 @@ import com.dev.cutly.negocio.enums.DiaSemana;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.negocio.repository.HorarioNegocioRepository;
 import com.dev.cutly.negocio.repository.NegocioRepository;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.pago.entity.Pago;
@@ -67,6 +68,7 @@ class OwnerTurnoManualRollbackTests {
     @Autowired private PagoRepository pagoRepository;
 
     @MockitoBean private OwnerNegocioService ownerNegocioService;
+    @MockitoBean private NotificacionTurnoService notificacionTurnoService;
 
     private Negocio negocio;
     private Long servicioId;

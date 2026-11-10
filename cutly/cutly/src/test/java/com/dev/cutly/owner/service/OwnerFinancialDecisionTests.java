@@ -5,6 +5,7 @@ import com.dev.cutly.cliente.repository.ClienteLocalRepository;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
@@ -48,6 +49,7 @@ class OwnerFinancialDecisionTests {
     @Mock DeudaClienteRepository deudaRepository;
     @Mock PagoRepository pagoRepository;
     @Mock IdempotenciaFinancieraRepository idempotenciaRepository;
+    @Mock NotificacionTurnoService notificacionTurnoService;
     OwnerTurnosService service;
     Negocio negocio;
     Turno turno;
@@ -55,7 +57,8 @@ class OwnerFinancialDecisionTests {
     @BeforeEach void setup() {
         service = new OwnerTurnosService(turnoRepository, ownerNegocioService, clienteLocalRepository, ownerClienteLocalService,
                 servicioRepository, empleadoRepository, empleadoServicioRepository, usuarioRepository, horarioValidator,
-                resultadoRepository, deudaRepository, pagoRepository, idempotenciaRepository);
+                resultadoRepository, deudaRepository, pagoRepository, idempotenciaRepository,
+                notificacionTurnoService);
         Usuario owner = new Usuario(); owner.setUsuarioId(7L); owner.setNombre("Owner"); owner.setApellido("Test");
         negocio = new Negocio(); negocio.setNegocioId(9L); negocio.setOwner(owner); negocio.setNombre("Negocio"); negocio.setStatus(NegocioStatus.ACTIVE);
         ClienteLocal cliente = new ClienteLocal(); cliente.setClienteLocalId(11L); cliente.setNombre("Cliente"); cliente.setApellido("Local");

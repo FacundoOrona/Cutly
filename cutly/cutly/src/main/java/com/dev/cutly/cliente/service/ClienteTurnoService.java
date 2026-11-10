@@ -7,6 +7,7 @@ import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.negocio.repository.NegocioRepository;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
@@ -41,11 +42,13 @@ public class ClienteTurnoService {
     private final EmpleadoRepository empleadoRepository;
     private final EmpleadoServiciorRepository empleadoServicioRepository;
     private final TurnoHorarioValidator horarioValidator;
+    private final NotificacionTurnoService notificacionTurnoService;
 
     public ClienteTurnoService(TurnoRepository turnoRepository, UsuarioRepository usuarioRepository,
                                NegocioRepository negocioRepository, ServicioRepository servicioRepository,
                                EmpleadoRepository empleadoRepository, EmpleadoServiciorRepository empleadoServicioRepository,
-                               TurnoHorarioValidator horarioValidator) {
+                               TurnoHorarioValidator horarioValidator,
+                               NotificacionTurnoService notificacionTurnoService) {
         this.turnoRepository = turnoRepository;
         this.usuarioRepository = usuarioRepository;
         this.negocioRepository = negocioRepository;
@@ -53,6 +56,7 @@ public class ClienteTurnoService {
         this.empleadoRepository = empleadoRepository;
         this.empleadoServicioRepository = empleadoServicioRepository;
         this.horarioValidator = horarioValidator;
+        this.notificacionTurnoService = notificacionTurnoService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -95,7 +99,9 @@ public class ClienteTurnoService {
             turno.setEmpleado(bloqueado);
             turno.setServicio(servicio);
             turno.setObservaciones(request.observaciones());
-            return aDto(turnoRepository.save(turno));
+            Turno turnoGuardado = turnoRepository.save(turno);
+            notificacionTurnoService.notificarNuevoTurnoAsignado(turnoGuardado);
+            return aDto(turnoGuardado);
         }
         throw new ResponseStatusException(HttpStatus.CONFLICT, "No hay empleados disponibles para el horario solicitado");
     }

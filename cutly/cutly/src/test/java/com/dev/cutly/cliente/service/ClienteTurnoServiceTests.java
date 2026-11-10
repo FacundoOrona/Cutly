@@ -10,6 +10,7 @@ import com.dev.cutly.negocio.enums.DiaSemana;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.negocio.repository.HorarioNegocioRepository;
 import com.dev.cutly.negocio.repository.NegocioRepository;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.servicio.entity.EmpleadoServicio;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
@@ -56,6 +57,7 @@ class ClienteTurnoServiceTests {
     @Mock private EmpleadoRepository empleadoRepository;
     @Mock private EmpleadoServiciorRepository empleadoServicioRepository;
     @Mock private HorarioNegocioRepository horarioRepository;
+    @Mock private NotificacionTurnoService notificacionTurnoService;
 
     private ClienteTurnoService service;
     private Usuario cliente;
@@ -69,7 +71,7 @@ class ClienteTurnoServiceTests {
     void setUp() {
         service = new ClienteTurnoService(turnoRepository, usuarioRepository, negocioRepository,
                 servicioRepository, empleadoRepository, empleadoServicioRepository,
-                new TurnoHorarioValidator(horarioRepository));
+                new TurnoHorarioValidator(horarioRepository), notificacionTurnoService);
         cliente = usuario(CLIENTE_ID, Rol.CLIENT, "Carla", "Cliente");
         Usuario owner = usuario(10L, Rol.OWNER, "Olga", "Owner");
         negocio = new Negocio();
