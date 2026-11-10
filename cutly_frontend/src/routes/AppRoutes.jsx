@@ -28,6 +28,7 @@ import EmployeeProfilePage from '../features/employee/pages/EmployeeProfilePage.
 import EmployeeNotificationsPage from '../features/employee/pages/EmployeeNotificationsPage.jsx'
 import ClientLayout from '../layouts/ClientLayout.jsx'
 import ClientHomePage from '../features/client/pages/ClientHomePage.jsx'
+import ClientExplorePage from '../features/client/pages/ClientExplorePage.jsx'
 import ClientPlaceholderPage from '../features/client/pages/ClientPlaceholderPage.jsx'
 import RegisterPage from '../features/client/pages/RegisterPage.jsx'
 import ClientLoginPage from '../features/client/pages/ClientLoginPage.jsx'
@@ -87,7 +88,7 @@ export default function AppRoutes() {
             <Route element={<RequireRole role="CLIENT" />}>
               <Route element={<ClientLayout />}>
                 <Route path="/client" element={<ClientHomePage />} />
-                <Route path="/client/explorar" element={<ClientPlaceholderPage title="Explorar" description="La búsqueda de negocios y servicios estará disponible próximamente." />} />
+                <Route path="/client/explorar" element={<ClientExplorePage />} />
                 <Route path="/client/turnos" element={<ClientPlaceholderPage title="Mis turnos" description="La consulta y gestión de tus turnos estará disponible próximamente." />} />
                 <Route path="/client/cuenta" element={<ClientPlaceholderPage title="Cuenta" description="La información y configuración de tu cuenta estarán disponibles próximamente." />} />
               </Route>
