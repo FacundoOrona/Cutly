@@ -26,6 +26,10 @@ import EmployeeAgendaPage from '../features/employee/pages/EmployeeAgendaPage.js
 import EmployeeHistoryPage from '../features/employee/pages/EmployeeHistoryPage.jsx'
 import EmployeeProfilePage from '../features/employee/pages/EmployeeProfilePage.jsx'
 import EmployeeNotificationsPage from '../features/employee/pages/EmployeeNotificationsPage.jsx'
+import ClientLayout from '../layouts/ClientLayout.jsx'
+import ClientHomePage from '../features/client/pages/ClientHomePage.jsx'
+import ClientPlaceholderPage from '../features/client/pages/ClientPlaceholderPage.jsx'
+import RegisterPage from '../features/client/pages/RegisterPage.jsx'
 import { getRoleDestination } from '../auth/roleNavigation.js'
 import useAuth from '../auth/useAuth.js'
 
@@ -43,6 +47,7 @@ export default function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegisterPage />} />
           <Route path="/acceso-denegado" element={<AccessDeniedPage />} />
           <Route element={<RequireAuth />}>
             <Route element={<RequireRole role="SUPER_ADMIN" />}>
@@ -74,6 +79,14 @@ export default function AppRoutes() {
                 <Route path="/employee/historial" element={<EmployeeHistoryPage />} />
                 <Route path="/employee/perfil" element={<EmployeeProfilePage />} />
                 <Route path="/employee/notificaciones" element={<EmployeeNotificationsPage />} />
+              </Route>
+            </Route>
+            <Route element={<RequireRole role="CLIENT" />}>
+              <Route element={<ClientLayout />}>
+                <Route path="/client" element={<ClientHomePage />} />
+                <Route path="/client/explorar" element={<ClientPlaceholderPage title="Explorar" description="La búsqueda de negocios y servicios estará disponible próximamente." />} />
+                <Route path="/client/turnos" element={<ClientPlaceholderPage title="Mis turnos" description="La consulta y gestión de tus turnos estará disponible próximamente." />} />
+                <Route path="/client/cuenta" element={<ClientPlaceholderPage title="Cuenta" description="La información y configuración de tu cuenta estarán disponibles próximamente." />} />
               </Route>
             </Route>
           </Route>

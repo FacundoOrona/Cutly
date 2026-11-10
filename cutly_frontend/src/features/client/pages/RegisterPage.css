@@ -1,0 +1,30 @@
+.client-register-page{min-height:100vh;padding:0 clamp(18px,6vw,72px);background:radial-gradient(ellipse at 78% 15%,rgba(217,230,212,.45),transparent 32%),#f5f7f4}
+.client-register-header{display:flex;min-height:78px;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e4e9e1}
+.client-register-back{display:inline-flex;align-items:center;gap:7px;color:#566151;font-size:11px;font-weight:600}
+.client-register-back:hover,.client-register-login a:hover{text-decoration:underline;text-underline-offset:3px}
+.client-register-back:focus-visible,.client-register-login a:focus-visible{outline:3px solid #91b18a;outline-offset:3px;border-radius:2px}
+.client-register-card{width:min(100%,600px);margin:34px auto 45px;padding:clamp(22px,5vw,38px);border:1px solid #e5eae2;border-radius:17px;background:#fff;box-shadow:0 12px 38px rgba(36,54,35,.045)}
+.client-register-eyebrow{display:inline-flex;align-items:center;gap:7px;color:#6e8d68;font-size:9px;font-weight:700;letter-spacing:1.2px}
+.client-register-card h1{margin:14px 0 7px;color:#263b2b;font-family:Manrope,sans-serif;font-size:35px;font-weight:650;letter-spacing:-1.4px}
+.client-register-intro{color:#737a72;font-size:12px;line-height:1.6}
+.client-register-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 13px;margin-top:25px}
+.client-register-field{display:grid;min-width:0;align-content:start;gap:7px;color:#384337;font-size:11px;font-weight:600}
+.client-register-field-wide{grid-column:1/-1}
+.client-register-input-wrap{display:flex;min-width:0;min-height:44px;align-items:center;gap:9px;padding:0 11px;border:1px solid #dfe5dc;border-radius:9px;background:#fff;color:#899286}
+.client-register-input-wrap:focus-within{border-color:#668465;box-shadow:0 0 0 3px rgba(102,132,101,.13)}
+.client-register-input-wrap:has(input[aria-invalid=true]){border-color:#c98279}
+.client-register-input-wrap input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#20261f;font-size:12px}
+.client-register-input-wrap input:focus-visible{outline:0}
+.client-register-field-error,.client-register-field-hint{font-size:9px;font-weight:400;line-height:1.45}
+.client-register-field-error{color:#a13931}
+.client-register-field-hint{color:#81877e}
+.client-register-submit-error{grid-column:1/-1;margin:0;padding:10px 12px;border:1px solid #efd8d4;border-radius:9px;background:#fbefed;color:#99483f;font-size:11px;line-height:1.5}
+.client-register-submit{grid-column:1/-1;display:flex;min-height:46px;align-items:center;justify-content:center;gap:8px;margin-top:2px;border:0;border-radius:9px;background:#304b34;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:background .18s,transform .18s}
+.client-register-submit:hover:not(:disabled){transform:translateY(-1px);background:#263b2b}
+.client-register-submit:focus-visible{outline:3px solid #91b18a;outline-offset:3px}
+.client-register-submit:disabled{opacity:.68;cursor:wait}
+.client-register-login{margin-top:20px;color:#737a72;font-size:10px;text-align:center}
+.client-register-login a{color:#3e6341;font-weight:700}
+.client-register-footer{padding:16px 0 22px;border-top:1px solid #e4e9e1;color:#858c82;font-size:10px;text-align:center}
+@media(max-width:560px){.client-register-header{min-height:68px}.client-register-header .brand{font-size:19px}.client-register-header .brand-icon{width:30px;height:30px}.client-register-card{margin:22px auto 30px;padding:22px 17px;border-radius:14px}.client-register-card h1{font-size:30px}.client-register-form{grid-template-columns:1fr;gap:14px}.client-register-field-wide{grid-column:auto}}
+@media(prefers-reduced-motion:reduce){.client-register-submit{transition:none}}

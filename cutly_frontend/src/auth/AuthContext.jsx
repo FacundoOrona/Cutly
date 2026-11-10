@@ -14,6 +14,28 @@ function readStoredSession() {
   return null
 }
 
+function saveAuthenticatedSession(data, expectedRole) {
+  if (typeof data?.token !== 'string' || !data.token.trim() || !data?.rol || data.rol !== expectedRole) {
+    throw new Error('La respuesta del servidor no contiene una sesión válida.')
+  }
+
+  const nextSession = {
+    token: data.token,
+    user: {
+      userId: data.userId,
+      dni: data.dni,
+      nombre: data.nombre,
+      apellido: data.apellido,
+      email: data.email,
+      status: data.status,
+      rol: data.rol,
+      fechaExpiracion: data.fechaExpiracion,
+    },
+  }
+  sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession))
+  return nextSession
+}
+
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
   const [session, setSession] = useState(readStoredSession)
@@ -21,23 +43,14 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback(async (email, contrasena) => {
     const { data } = await apiClient.post('/auth/iniciarSesion', { email, contrasena })
-    if (!data?.token || !data?.rol) {
-      throw new Error('La respuesta del servidor no contiene una sesión válida.')
-    }
-    const nextSession = {
-      token: data.token,
-      user: {
-        userId: data.userId,
-        dni: data.dni,
-        nombre: data.nombre,
-        apellido: data.apellido,
-        email: data.email,
-        status: data.status,
-        rol: data.rol,
-        fechaExpiracion: data.fechaExpiracion,
-      },
-    }
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession))
+    const nextSession = saveAuthenticatedSession(data, data?.rol)
+    setSession(nextSession)
+    return nextSession.user
+  }, [])
+
+  const registerClient = useCallback(async (clientData) => {
+    const { data } = await apiClient.post('/auth/registro-cliente', clientData)
+    const nextSession = saveAuthenticatedSession(data, 'CLIENT')
     setSession(nextSession)
     return nextSession.user
   }, [])
@@ -77,8 +90,9 @@ export function AuthProvider({ children }) {
     user: session?.user ?? null,
     role: session?.user?.rol ?? null,
     signIn,
+    registerClient,
     signOut,
-  }), [isInitializing, session, signIn, signOut])
+  }), [isInitializing, session, signIn, registerClient, signOut])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

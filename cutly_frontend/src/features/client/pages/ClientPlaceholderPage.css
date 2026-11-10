@@ -1,0 +1,9 @@
+.client-placeholder-page{display:grid;gap:22px}
+.client-placeholder-back{display:inline-flex;width:max-content;align-items:center;gap:7px;color:#557452;font-size:11px;font-weight:600}
+.client-placeholder-back:hover{text-decoration:underline}
+.client-placeholder-back:focus-visible{outline:3px solid #91b18a;outline-offset:3px;border-radius:3px}
+.client-placeholder-card{display:grid;justify-items:start;gap:12px;padding:clamp(24px,5vw,42px);border:1px solid #e5eae2;border-radius:16px;background:#fff}
+.client-placeholder-icon{display:grid;width:46px;height:46px;place-items:center;border-radius:13px;background:#edf3eb;color:#557452}
+.client-placeholder-eyebrow{color:#6e8d68;font-size:9px;font-weight:700;letter-spacing:1.3px}
+.client-placeholder-card h1{color:#263b2b;font-family:Manrope,sans-serif;font-size:clamp(28px,4vw,40px);font-weight:650;letter-spacing:-1.4px}
+.client-placeholder-card>p{max-width:500px;color:#737a72;font-size:13px;line-height:1.7}

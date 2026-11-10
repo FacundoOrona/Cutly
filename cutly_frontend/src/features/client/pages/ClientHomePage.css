@@ -1,0 +1,18 @@
+.client-home-page{display:grid;gap:28px}
+.client-home-welcome{padding:clamp(24px,5vw,42px);border:1px solid #e4eae0;border-radius:18px;background:radial-gradient(ellipse at 90% 8%,rgba(217,230,212,.55),transparent 42%),#fff}
+.client-home-eyebrow{display:inline-flex;align-items:center;gap:7px;color:#6e8d68;font-size:9px;font-weight:700;letter-spacing:1.3px}
+.client-home-welcome h1{margin:18px 0 10px;color:#263b2b;font-family:Manrope,sans-serif;font-size:clamp(34px,5vw,52px);font-weight:650;letter-spacing:-2px;line-height:1.12}
+.client-home-welcome>p{max-width:520px;color:#737a72;font-size:14px;line-height:1.7}
+.client-home-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.client-home-card{display:flex;min-width:0;min-height:118px;align-items:center;gap:13px;padding:19px;border:1px solid #e5eae2;border-radius:14px;background:#fff;color:#53604f;transition:border-color .18s,transform .18s,box-shadow .18s}
+.client-home-card:hover{transform:translateY(-2px);border-color:#cbdac7;box-shadow:0 9px 24px rgba(36,54,35,.06)}
+.client-home-card:focus-visible{outline:3px solid #91b18a;outline-offset:3px}
+.client-home-card-primary{border-color:#d8e4d4;background:#fafff8}
+.client-home-card-icon{display:grid;width:42px;height:42px;flex:none;place-items:center;border-radius:12px;background:#eaf1e8;color:#557452}
+.client-home-card-copy{display:grid;min-width:0;flex:1;gap:5px}
+.client-home-card-copy strong{color:#354b37;font-size:13px;font-weight:700}
+.client-home-card-copy small{color:#81877e;font-size:10px;line-height:1.55}
+.client-home-card>svg{flex:none;color:#6d8868}
+.client-home-note{color:#81877e;font-size:11px;line-height:1.6}
+@media(max-width:640px){.client-home-page{gap:19px}.client-home-welcome{padding:24px 20px;border-radius:14px}.client-home-welcome h1{font-size:35px;letter-spacing:-1.5px}.client-home-welcome>p{font-size:12px}.client-home-actions{grid-template-columns:1fr;gap:10px}.client-home-card{min-height:96px;padding:15px}.client-home-note{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.client-home-card{transition:none}}

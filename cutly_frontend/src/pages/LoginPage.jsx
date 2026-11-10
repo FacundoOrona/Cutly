@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { ArrowRight, CalendarDays, LoaderCircle, LockKeyhole, Mail, Sparkles } from 'lucide-react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
 import { canRoleAccessPath, getRoleDestination } from '../auth/roleNavigation.js'
+import './LoginPage.css'
 
 function getLoginError(error) {
   const status = error.response?.status
@@ -79,7 +80,7 @@ export default function LoginPage() {
           <div className="mobile-brand"><BrandMark /></div>
           <span className="eyebrow">BIENVENIDO A CUTLY</span>
           <h2>Ingresá a tu<br />espacio de trabajo.</h2>
-          <p className="login-intro">Iniciá sesión para continuar con la gestión de tu negocio.</p>
+          <p className="login-intro">Iniciá sesión para reservar turnos o continuar con la gestión de tu negocio.</p>
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <label htmlFor="email">Correo electrónico</label>
             <div className="input-wrap"><Mail size={17} aria-hidden="true" /><input id="email" name="email" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(errorMessage && !email)} required /></div>
@@ -91,6 +92,7 @@ export default function LoginPage() {
               {isSubmitting ? <><LoaderCircle size={17} className="spin" /> Ingresando…</> : <>Iniciar sesión <ArrowRight size={17} /> </>}
             </button>
           </form>
+          <p className="login-register-prompt">¿Sos cliente? <Link className="login-register-link" to="/registro">Crear una cuenta</Link></p>
           <p className="login-disclaimer">El espacio disponible depende del rol asociado a tu cuenta.</p>
         </div>
         <footer className="panel-footer"><span>© 2026 Cutly</span><span>Gestión simple para negocios de servicios.</span></footer>

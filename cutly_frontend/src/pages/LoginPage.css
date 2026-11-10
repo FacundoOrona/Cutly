@@ -1,0 +1,4 @@
+.login-register-prompt{margin-top:18px;color:#737a72;font-size:12px;text-align:center}
+.login-register-link{color:#3e6341;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.login-register-link:hover{color:#263b2b}
+.login-register-link:focus-visible{outline:3px solid #91b18a;outline-offset:3px;border-radius:2px}
