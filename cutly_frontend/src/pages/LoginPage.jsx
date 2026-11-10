@@ -42,14 +42,14 @@ export default function LoginPage() {
     }
     setIsSubmitting(true)
     try {
-      const authenticatedUser = await signIn(normalizedEmail, contrasena)
+      const authenticatedUser = await signIn(normalizedEmail, contrasena, ['SUPER_ADMIN', 'OWNER', 'EMPLOYEE'])
       const requestedPath = location.state?.from?.pathname
       const destination = canRoleAccessPath(authenticatedUser.rol, requestedPath)
         ? requestedPath
         : getRoleDestination(authenticatedUser.rol)
       navigate(destination, { replace: true })
     } catch (error) {
-      setErrorMessage(error.response ? getLoginError(error) : error.message?.includes('sesión válida') ? error.message : getLoginError(error))
+      setErrorMessage(error.response ? getLoginError(error) : error.message?.includes('sesión válida') || error.message?.includes('debe ingresar') ? error.message : getLoginError(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -93,6 +93,7 @@ export default function LoginPage() {
             </button>
           </form>
           <p className="login-register-prompt">¿Sos cliente? <Link className="login-register-link" to="/registro">Crear una cuenta</Link></p>
+          <p className="login-register-prompt">¿Buscás reservar un turno? <Link className="login-register-link" to="/client/login">Ingresá como cliente.</Link></p>
           <p className="login-disclaimer">El espacio disponible depende del rol asociado a tu cuenta.</p>
         </div>
         <footer className="panel-footer"><span>© 2026 Cutly</span><span>Gestión simple para negocios de servicios.</span></footer>

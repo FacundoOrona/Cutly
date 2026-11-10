@@ -30,6 +30,7 @@ import ClientLayout from '../layouts/ClientLayout.jsx'
 import ClientHomePage from '../features/client/pages/ClientHomePage.jsx'
 import ClientPlaceholderPage from '../features/client/pages/ClientPlaceholderPage.jsx'
 import RegisterPage from '../features/client/pages/RegisterPage.jsx'
+import ClientLoginPage from '../features/client/pages/ClientLoginPage.jsx'
 import { getRoleDestination } from '../auth/roleNavigation.js'
 import useAuth from '../auth/useAuth.js'
 
@@ -47,7 +48,9 @@ export default function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/client/login" element={<ClientLoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
+          <Route path="/client/registro" element={<RegisterPage />} />
           <Route path="/acceso-denegado" element={<AccessDeniedPage />} />
           <Route element={<RequireAuth />}>
             <Route element={<RequireRole role="SUPER_ADMIN" />}>

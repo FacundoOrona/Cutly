@@ -87,7 +87,7 @@ export default function RegisterPage() {
 
   return (
     <main className="client-register-page">
-      <header className="client-register-header"><BrandMark to="/login" /><Link to="/login" className="client-register-back"><ArrowLeft size={15} aria-hidden="true" /> Volver al login</Link></header>
+      <header className="client-register-header"><BrandMark to="/client/login" /><Link to="/client/login" className="client-register-back"><ArrowLeft size={15} aria-hidden="true" /> Volver al login</Link></header>
       <section className="client-register-card">
         <span className="client-register-eyebrow"><UserRound size={14} aria-hidden="true" /> CUENTA CLIENTE</span>
         <h1>Creá tu cuenta</h1>
@@ -136,7 +136,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="client-register-login">¿Ya tenés una cuenta? <Link to="/login">Iniciá sesión</Link></p>
+        <p className="client-register-login">¿Ya tenés una cuenta? <Link to="/client/login">Iniciá sesión</Link></p>
       </section>
       <footer className="client-register-footer">© 2026 Cutly</footer>
     </main>

@@ -41,8 +41,13 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(readStoredSession)
   const [isInitializing] = useState(false)
 
-  const signIn = useCallback(async (email, contrasena) => {
+  const signIn = useCallback(async (email, contrasena, allowedRoles) => {
     const { data } = await apiClient.post('/auth/iniciarSesion', { email, contrasena })
+    if (allowedRoles && data?.rol && !allowedRoles.includes(data.rol)) {
+      throw new Error(data?.rol === 'CLIENT'
+        ? 'Esta cuenta debe ingresar desde el acceso para clientes.'
+        : 'Esta cuenta debe ingresar desde el acceso para negocios.')
+    }
     const nextSession = saveAuthenticatedSession(data, data?.rol)
     setSession(nextSession)
     return nextSession.user
@@ -62,9 +67,10 @@ export function AuthProvider({ children }) {
     } catch (error) {
       logoutError = error
     } finally {
+      const loginPath = session?.user?.rol === 'CLIENT' ? '/client/login' : '/login'
       sessionStorage.removeItem(SESSION_STORAGE_KEY)
       setSession(null)
-      navigate('/login', { replace: true })
+      navigate(loginPath, { replace: true })
     }
     if (logoutError) throw logoutError
   }, [navigate, session])
@@ -73,10 +79,18 @@ export function AuthProvider({ children }) {
     const interceptorId = apiClient.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401 && sessionStorage.getItem(SESSION_STORAGE_KEY)) {
+        const requestUrl = error.config?.url || ''
+        const isPublicAuthenticationRequest = /\/auth\/(iniciarSesion|registro-cliente)(?:\?|$)/.test(requestUrl)
+        if (error.response?.status === 401 && !isPublicAuthenticationRequest && sessionStorage.getItem(SESSION_STORAGE_KEY)) {
+          let expiredRole
+          try {
+            expiredRole = JSON.parse(sessionStorage.getItem(SESSION_STORAGE_KEY))?.user?.rol
+          } catch {
+            expiredRole = null
+          }
           sessionStorage.removeItem(SESSION_STORAGE_KEY)
           setSession(null)
-          navigate('/login', { replace: true, state: { sessionExpired: true } })
+          navigate(expiredRole === 'CLIENT' ? '/client/login' : '/login', { replace: true, state: { sessionExpired: true } })
         }
         return Promise.reject(error)
       },

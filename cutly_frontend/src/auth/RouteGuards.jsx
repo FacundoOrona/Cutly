@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import useAuth from './useAuth.js'
+import { getLoginDestination } from './roleNavigation.js'
 
 function LoadingSession() {
   return <main className="session-loading" role="status">Verificando sesión…</main>
@@ -9,7 +10,7 @@ export function RequireAuth() {
   const { isAuthenticated, isInitializing } = useAuth()
   const location = useLocation()
   if (isInitializing) return <LoadingSession />
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace state={{ from: location }} />
+  return isAuthenticated ? <Outlet /> : <Navigate to={getLoginDestination(location.pathname)} replace state={{ from: location }} />
 }
 
 export function RequireRole({ role }) {

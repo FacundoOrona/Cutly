@@ -6,6 +6,10 @@ export function getRoleDestination(role) {
   return '/acceso-denegado'
 }
 
+export function getLoginDestination(pathname) {
+  return pathname === '/client' || pathname?.startsWith('/client/') ? '/client/login' : '/login'
+}
+
 export function canRoleAccessPath(role, pathname) {
   if (!pathname) return false
   if (role === 'SUPER_ADMIN') return pathname === '/dashboard' || pathname.startsWith('/admin/')
