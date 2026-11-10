@@ -89,6 +89,11 @@ export async function getEmployeeAppointments(fecha, status) {
   return data
 }
 
+export async function getEmployeeAppointmentHistory(fecha, status) {
+  const { data } = await apiClient.get('/api/empleado/turnos/historial', { params: { fecha: fecha || undefined, status: status || undefined } })
+  return data
+}
+
 export async function confirmEmployeeAppointment(turnoId) {
   const { data } = await apiClient.patch(`/api/empleado/turnos/${turnoId}/confirmar`)
   return data

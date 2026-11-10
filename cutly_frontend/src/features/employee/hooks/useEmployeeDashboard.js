@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile, updateEmployeeAppointmentStatus, updateEmployeeProfile } from '../api/employeeApi.js'
+import { getEmployeeAppointmentHistory, getEmployeeAppointments, getEmployeeBusiness, getEmployeeProfile, updateEmployeeAppointmentStatus, updateEmployeeProfile } from '../api/employeeApi.js'
 
 export const employeeProfileQueryKey = ['employee', 'profile']
 export const employeeBusinessQueryKey = ['employee', 'business']
 export const employeeAppointmentsQueryKey = (fecha, status = '') => ['employee', 'appointments', { fecha, status }]
+export const employeeAppointmentHistoryQueryKey = (fecha = '', status = '') => ['employee', 'appointment-history', { fecha, status }]
 
 export function useEmployeeProfile() {
   return useQuery({
@@ -31,6 +32,14 @@ export function useEmployeeAppointments(fecha, status = '') {
   return useQuery({
     queryKey: employeeAppointmentsQueryKey(fecha, status),
     queryFn: () => getEmployeeAppointments(fecha, status),
+  })
+}
+
+export function useEmployeeAppointmentHistory(fecha = '', status = '') {
+  return useQuery({
+    queryKey: employeeAppointmentHistoryQueryKey(fecha, status),
+    queryFn: () => getEmployeeAppointmentHistory(fecha, status),
+    placeholderData: (previousData) => previousData,
   })
 }
 
