@@ -3,3 +3,4 @@
 .employee-sidebar-upcoming:hover{background:transparent}
 .employee-sidebar-upcoming>span{flex:1}
 .employee-sidebar-upcoming small{color:#9aa394;font-size:8px;font-weight:500;white-space:nowrap}
+.employee-notification-badge{display:grid;place-items:center;min-width:19px;height:19px;margin-left:auto;padding:0 5px;border-radius:99px;background:#557452;color:#fff;font-size:9px;font-weight:750;font-variant-numeric:tabular-nums;line-height:1}

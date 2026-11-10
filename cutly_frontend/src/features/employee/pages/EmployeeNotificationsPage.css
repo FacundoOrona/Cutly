@@ -1,0 +1,29 @@
+.employee-notifications-page{width:min(100%,1040px);margin:0 auto;color:#303b2d}
+.employee-notifications-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:27px}
+.employee-notifications-heading h1{margin:10px 0 7px;font-family:Manrope,sans-serif;font-size:clamp(32px,4vw,43px);line-height:1.12;letter-spacing:-1.7px;font-weight:700;color:#303b2d}
+.employee-notifications-heading p{color:#7b8478;font-size:12px;line-height:1.6}
+.employee-notifications-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:none}
+.employee-notifications-heading-icon{display:grid;place-items:center;width:48px;height:48px;flex:none;border:1px solid #e1e9de;border-radius:14px;background:#fff;color:#557452}
+.employee-notifications-count{padding:7px 10px;border:1px solid #e2e9df;border-radius:99px;background:#fff;color:#667461;font-size:10px;font-weight:700}
+.employee-notifications-list{display:grid;gap:9px;margin:0;padding:0;list-style:none}
+.employee-notification-card{position:relative;display:flex;align-items:flex-start;gap:14px;min-width:0;padding:17px 18px;border:1px solid #e4eae1;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(38,54,38,.025)}
+.employee-notification-card.is-unread{border-color:#d7e4d2;background:linear-gradient(105deg,#f5f8f3,#fff 78%)}
+.employee-notification-indicator{width:8px;height:8px;margin-top:5px;flex:none;border-radius:50%;background:#d7ddd3}
+.employee-notification-card.is-unread .employee-notification-indicator{background:#6e9365;box-shadow:0 0 0 4px #e8f0e5}
+.employee-notification-copy{display:grid;gap:7px;min-width:0;flex:1}
+.employee-notification-title-row{display:flex;align-items:center;gap:9px;min-width:0}
+.employee-notification-title-row h2{min-width:0;color:#3b4938;font-size:12px;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
+.employee-notification-unread-label{flex:none;padding:3px 7px;border-radius:99px;background:#eaf2e7;color:#55764e;font-size:8px;font-weight:750;letter-spacing:.2px}
+.employee-notification-copy>p{color:#727e6e;font-size:11px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-wrap}
+.employee-notification-copy time{color:#92998e;font-size:9px;font-variant-numeric:tabular-nums}
+.employee-notification-action{flex:none;align-self:center;white-space:nowrap}
+.employee-notifications-all-read{display:flex;align-items:center;gap:7px;margin:0 0 13px;padding:10px 12px;border:1px solid #e1e9de;border-radius:9px;background:#f7faf6;color:#597653;font-size:10px;font-weight:650}
+.employee-notifications-empty{margin-top:2px}
+.employee-notifications-error{display:flex;align-items:flex-start;flex-direction:column;gap:9px;padding:17px;border:1px solid #f0deda;border-radius:11px;background:#fff9f8;color:#895047}
+.employee-notifications-error strong{font-size:12px}
+.employee-notifications-error p,.employee-notifications-mutation-error{font-size:10px;line-height:1.5}
+.employee-notifications-mutation-error{margin-bottom:12px;padding:10px 12px;border:1px solid #f0deda;border-radius:9px;background:#fff9f8;color:#895047}
+.employee-notifications-skeleton{display:grid;gap:9px}
+.employee-notifications-skeleton span{display:block;height:106px;border:1px solid #e9eee7;border-radius:12px;background:linear-gradient(90deg,#fff 25%,#f1f4ef 50%,#fff 75%);background-size:200% 100%;animation:employee-shimmer 1.4s infinite}
+@media(max-width:600px){.employee-notifications-heading{align-items:flex-start;margin-bottom:21px}.employee-notifications-heading h1{font-size:32px;letter-spacing:-1.2px}.employee-notifications-header-actions{flex-direction:column;align-items:flex-end;gap:7px}.employee-notifications-heading-icon{width:41px;height:41px}.employee-notifications-header-actions .employee-action-button{max-width:180px;white-space:normal;text-align:center}.employee-notification-card{gap:11px;padding:14px 12px}.employee-notification-card{flex-wrap:wrap}.employee-notification-copy{flex-basis:calc(100% - 23px)}.employee-notification-action{margin-left:19px}}
+@media(prefers-reduced-motion:reduce){.employee-notifications-skeleton span{animation:none}}

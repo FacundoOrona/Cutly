@@ -3,10 +3,13 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
+import { useEmployeeNotifications } from '../features/employee/hooks/useEmployeeNotifications.js'
 import './EmployeeLayout.css'
 
 export default function EmployeeLayout() {
   const { user, signOut } = useAuth()
+  const notificationsQuery = useEmployeeNotifications()
+  const unreadCount = (notificationsQuery.data ?? []).filter((notification) => notification.leida === false).length
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
 
@@ -29,7 +32,9 @@ export default function EmployeeLayout() {
           <p className="sidebar-label employee-sidebar-upcoming-label">MI CUENTA</p>
           <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><History size={17} /><span>Historial</span><small>Próximamente</small></div>
           <NavLink to="/employee/perfil" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><UserRound size={17} /> Mi perfil</NavLink>
-          <div className="sidebar-item employee-sidebar-upcoming" aria-disabled="true"><Bell size={17} /><span>Notificaciones</span><small>Próximamente</small></div>
+          <NavLink to="/employee/notificaciones" onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}>
+            <Bell size={17} /><span>Notificaciones</span>{unreadCount > 0 && <span className="employee-notification-badge" aria-label={`${unreadCount} sin leer`}>{unreadCount}</span>}
+          </NavLink>
         </nav>
         <div className="sidebar-user">
           <span className="user-avatar">{(user?.nombre?.[0] || user?.email?.[0] || 'C').toUpperCase()}</span>

@@ -12,6 +12,31 @@ export async function getEmployeeBusiness() {
   return data
 }
 
+export async function getEmployeeNotifications() {
+  const { data } = await apiClient.get('/api/empleado/notificaciones')
+  return data
+}
+
+export async function markEmployeeNotificationAsRead(notificationId) {
+  const { data } = await apiClient.patch(`/api/empleado/notificaciones/${notificationId}/leer`)
+  return data
+}
+
+export async function markAllEmployeeNotificationsAsRead() {
+  const { data } = await apiClient.patch('/api/empleado/notificaciones/leer-todas')
+  return data
+}
+
+export function getEmployeeNotificationErrorMessage(error) {
+  const status = error.response?.status
+  const message = error.response?.data?.mensaje || error.response?.data?.message
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permiso para consultar tus notificaciones.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return 'No pudimos completar la operación por un problema del servidor. Intentá más tarde.'
+  return message || 'No pudimos actualizar las notificaciones. Intentá nuevamente.'
+}
+
 export async function updateEmployeeProfile(profile) {
   const { data } = await apiClient.patch('/api/empleado/perfil', profile)
   return data
