@@ -75,6 +75,15 @@ export function AuthProvider({ children }) {
     if (logoutError) throw logoutError
   }, [navigate, session])
 
+  const updateUser = useCallback((userUpdates) => {
+    setSession((current) => {
+      if (!current) return current
+      const nextSession = { ...current, user: { ...current.user, ...userUpdates } }
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession))
+      return nextSession
+    })
+  }, [])
+
   useEffect(() => {
     const interceptorId = apiClient.interceptors.response.use(
       (response) => response,
@@ -106,7 +115,8 @@ export function AuthProvider({ children }) {
     signIn,
     registerClient,
     signOut,
-  }), [isInitializing, session, signIn, registerClient, signOut])
+    updateUser,
+  }), [isInitializing, session, signIn, registerClient, signOut, updateUser])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

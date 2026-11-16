@@ -32,7 +32,7 @@ import ClientExplorePage from '../features/client/pages/ClientExplorePage.jsx'
 import ClientBusinessDetailPage from '../features/client/pages/ClientBusinessDetailPage.jsx'
 import ClientAppointmentsPage from '../features/client/pages/ClientAppointmentsPage.jsx'
 import ClientAppointmentDetailPage from '../features/client/pages/ClientAppointmentDetailPage.jsx'
-import ClientPlaceholderPage from '../features/client/pages/ClientPlaceholderPage.jsx'
+import ClientProfilePage from '../features/client/pages/ClientProfilePage.jsx'
 import RegisterPage from '../features/client/pages/RegisterPage.jsx'
 import ClientLoginPage from '../features/client/pages/ClientLoginPage.jsx'
 import { getRoleDestination } from '../auth/roleNavigation.js'
@@ -95,7 +95,7 @@ export default function AppRoutes() {
                 <Route path="/client/negocios/:negocioId" element={<ClientBusinessDetailPage />} />
                 <Route path="/client/turnos" element={<ClientAppointmentsPage />} />
                 <Route path="/client/turnos/:turnoId" element={<ClientAppointmentDetailPage />} />
-                <Route path="/client/cuenta" element={<ClientPlaceholderPage title="Cuenta" description="La información y configuración de tu cuenta estarán disponibles próximamente." />} />
+                <Route path="/client/cuenta" element={<ClientProfilePage />} />
               </Route>
             </Route>
           </Route>

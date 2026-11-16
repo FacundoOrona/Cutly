@@ -1,5 +1,46 @@
 import apiClient from '../../../services/apiClient.js'
 
+export async function fetchClientProfile() {
+  const { data } = await apiClient.get('/api/cliente/perfil')
+  return data
+}
+
+export async function updateClientProfile(payload) {
+  const { data } = await apiClient.patch('/api/cliente/perfil', payload)
+  return data
+}
+
+export async function changeClientPassword(payload) {
+  const { data } = await apiClient.patch('/api/cliente/perfil/cambiar-contrasena', payload)
+  return data
+}
+
+export function getClientProfileError(error, operation = 'load') {
+  const status = error.response?.status
+  const message = error.response?.data?.mensaje
+  if (status === 400) return { message: message || 'Revisá los datos ingresados.', fieldErrors: {} }
+  if (status === 401) return { message: 'Tu sesión venció. Iniciá sesión nuevamente.', fieldErrors: {} }
+  if (status === 403) return { message: 'No tenés permisos para acceder a esta sección.', fieldErrors: {} }
+  if (status === 409 && operation === 'profile') {
+    const field = message?.toLowerCase().includes('dni') ? 'dni' : message?.toLowerCase().includes('email') ? 'email' : null
+    return { message: message || 'El email o el DNI ya está registrado.', fieldErrors: field ? { [field]: message } : {} }
+  }
+  if (!error.response) return { message: 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.', fieldErrors: {} }
+  if (status >= 500) return { message: 'No pudimos completar la operación por un problema del servidor. Intentá más tarde.', fieldErrors: {} }
+  return { message: message || (operation === 'load' ? 'No pudimos cargar tu perfil.' : 'No pudimos completar la operación.'), fieldErrors: {} }
+}
+
+export function getClientPasswordError(error) {
+  const status = error.response?.status
+  const message = error.response?.data?.mensaje
+  if (status === 400) return message || 'Revisá la contraseña actual y la nueva contraseña.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para cambiar la contraseña.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return 'No pudimos cambiar la contraseña por un problema del servidor. Intentá más tarde.'
+  return message || 'No pudimos cambiar la contraseña. Intentá nuevamente.'
+}
+
 export async function fetchClientAppointments() {
   const { data } = await apiClient.get('/api/cliente/turnos')
   if (!Array.isArray(data)) throw new Error('El servidor devolvió una respuesta de turnos que no pudimos interpretar.')
