@@ -19,6 +19,8 @@
 .client-profile-field input[aria-invalid=true]{border-color:#c96a61;background:#fffafa}
 .client-profile-field input:disabled{opacity:.7}
 .client-profile-field-error{color:#ad4840;font-size:10px;font-weight:500;line-height:1.45}
+.client-profile-email-confirmation{display:grid;max-width:540px;gap:11px}
+.client-profile-email-warning{margin:0;padding:11px 13px;border:1px solid #e8e4d5;border-left:3px solid #c4ae72;border-radius:9px;background:#fbfaf6;color:#6c654f;font-size:11px;line-height:1.6}
 .client-profile-submit-error{margin:0;color:#a7443c;font-size:11px;line-height:1.55}
 .client-profile-actions{display:flex;justify-content:flex-end;gap:9px;padding-top:2px}
 .client-profile-button{display:inline-flex;min-height:38px;align-items:center;justify-content:center;gap:7px;padding:0 13px;border:1px solid transparent;border-radius:9px;font:inherit;font-size:10px;font-weight:700;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}

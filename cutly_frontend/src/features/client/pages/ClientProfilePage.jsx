@@ -100,13 +100,14 @@ export default function ClientProfilePage() {
     if (profilePendingRef.current) return
     const trimmed = Object.fromEntries(FIELDS.map(({ key }) => [key, values[key].trim()]))
     const original = valuesFrom(profile)
-    const errors = validateProfile(trimmed, emailConfirmation, original.email)
+    const originalEmail = original.email.trim()
+    const errors = validateProfile(trimmed, emailConfirmation, originalEmail)
     setFieldErrors(errors)
     setProfileError('')
     setProfileNotice('')
     if (Object.keys(errors).length) return
 
-    const changed = FIELDS.some(({ key }) => trimmed[key] !== original[key])
+    const changed = FIELDS.some(({ key }) => trimmed[key] !== (key === 'email' ? originalEmail : original[key]))
     if (!changed) {
       setEditing(false)
       setValues(null)
@@ -129,7 +130,7 @@ export default function ClientProfilePage() {
       setValues(null)
       setFieldErrors({})
       setEditing(false)
-      if (updated.email !== original.email) {
+      if (updated.email !== originalEmail) {
         setProfileNotice('Tu email se actualizó. Vamos a cerrar tu sesión para que ingreses con el email nuevo.')
         try {
           await signOut()
@@ -208,7 +209,8 @@ export default function ClientProfilePage() {
             const errorId = `client-profile-${key}-error`
             return <label className="client-profile-field" htmlFor={`client-profile-${key}`} key={key}><span>{label}<b aria-hidden="true"> *</b></span><input id={`client-profile-${key}`} type={type} value={values[key]} maxLength={maxLength} minLength={minLength} required disabled={updateMutation.isPending} autoComplete={autoComplete} aria-invalid={Boolean(fieldErrors[key])} aria-describedby={fieldErrors[key] ? errorId : undefined} onChange={(event) => changeProfileField(key, event.target.value)} />{fieldErrors[key] && <small className="client-profile-field-error" id={errorId}>{fieldErrors[key]}</small>}</label>
           })}</div>
-          {values.email.trim() !== profile.email && <div className="client-profile-email-confirmation"><label className="client-profile-field" htmlFor="client-profile-confirm-email"><span>Confirmar nuevo email<b aria-hidden="true"> *</b></span><input id="client-profile-confirm-email" type="email" value={emailConfirmation} maxLength={150} required disabled={updateMutation.isPending} autoComplete="email" aria-invalid={Boolean(fieldErrors.confirmarEmail)} aria-describedby={fieldErrors.confirmarEmail ? 'client-profile-confirm-email-error' : undefined} onChange={(event) => { setEmailConfirmation(event.target.value); setFieldErrors((current) => ({ ...current, confirmarEmail: undefined })); setProfileError('') }} />{fieldErrors.confirmarEmail && <small className="client-profile-field-error" id="client-profile-confirm-email-error">{fieldErrors.confirmarEmail}</small>}</label><p className="client-profile-email-warning" role="note">Importante: si cambiás tu email, tu sesión se cerrará automáticamente. Después tendrás que volver a iniciar sesión utilizando tu nuevo correo electrónico.</p></div>}
+          {values.email.trim() !== profile.email.trim() && <div className="client-profile-email-confirmation"><label className="client-profile-field" htmlFor="client-profile-confirm-email"><span>Confirmar nuevo email<b aria-hidden="true"> *</b></span><input id="client-profile-confirm-email" type="email" value={emailConfirmation} maxLength={150} required disabled={updateMutation.isPending} autoComplete="email" aria-invalid={Boolean(fieldErrors.confirmarEmail)} aria-describedby={fieldErrors.confirmarEmail ? 'client-profile-confirm-email-error' : undefined} onChange={(event) => { setEmailConfirmation(event.target.value); setFieldErrors((current) => ({ ...current, confirmarEmail: undefined })); setProfileError('') }} />{fieldErrors.confirmarEmail && <small className="client-profile-field-error" id="client-profile-confirm-email-error">{fieldErrors.confirmarEmail}</small>}</label></div>}
+          <p className="client-profile-email-warning" role="note">Importante: si cambiás tu email, tu sesión se cerrará automáticamente. Después tendrás que volver a iniciar sesión utilizando tu nuevo correo electrónico.</p>
           {profileError && <p className="client-profile-submit-error" role="alert">{profileError}</p>}
           <div className="client-profile-actions"><button type="button" className="client-profile-button is-secondary" onClick={cancelEditing} disabled={updateMutation.isPending}><X size={15} /> Cancelar</button><button type="submit" className="client-profile-button is-primary" disabled={updateMutation.isPending}>{updateMutation.isPending ? <><LoaderCircle size={15} className="client-profile-spinner" /> Guardando…</> : <><CheckCircle2 size={15} /> Guardar cambios</>}</button></div>
         </form> : <dl className="client-profile-card client-profile-values">{FIELDS.map(({ key, label }) => <div className="client-profile-value" key={key}><dt>{label}</dt><dd>{profile[key] || '—'}</dd></div>)}</dl>}
