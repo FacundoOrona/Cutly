@@ -71,7 +71,7 @@ export default function ClientBusinessDetailPage() {
         </section>
       )}
 
-      <ClientBookingSection negocioId={negocioId} servicesQuery={servicesQuery} employeesQuery={employeesQuery} />
+      <ClientBookingSection negocioId={negocioId} negocioNombre={business.nombre} servicesQuery={servicesQuery} employeesQuery={employeesQuery} />
 
       <section className="client-detail-section" aria-labelledby="client-services-title">
         <div className="client-detail-section-heading"><span className="client-detail-section-icon"><Clock3 size={18} aria-hidden="true" /></span><div><h2 id="client-services-title">Servicios</h2><p>Opciones disponibles en este negocio</p></div></div>

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, ArrowDown, CalendarDays, Check, Clock3, LoaderCircle, Sparkles, UserRound, X } from 'lucide-react'
+import { AlertCircle, ArrowDown, BadgeCheck, CalendarDays, Check, Clock3, LoaderCircle, Sparkles, UserRound, X } from 'lucide-react'
+import { getClientAppointmentErrorMessage, isClientAvailabilityConflict } from '../api/clientApi.js'
 import { useClientAvailability, useClientEmployeeAvailability } from '../hooks/useClientAvailability.js'
+import { useCreateClientAppointment } from '../hooks/useCreateClientAppointment.js'
 import './ClientBookingSection.css'
 
 const currencyFormatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
@@ -22,16 +24,37 @@ function errorMessage(error) {
   return error.response?.data?.mensaje || 'No pudimos consultar los horarios en este momento. Intentá nuevamente.'
 }
 
-export default function ClientBookingSection({ negocioId, servicesQuery, employeesQuery }) {
+function appointmentErrorMessage(error) {
+  const status = error.response?.status
+  if ([400, 401, 403, 404, 409, 500].includes(status) || status >= 501) {
+    return getClientAppointmentErrorMessage(error)
+  }
+  if (!error.response) return getClientAppointmentErrorMessage(error)
+  return 'No pudimos confirmar la reserva. Revisá los datos e intentá nuevamente.'
+}
+
+function displayTime(dateTime) {
+  return typeof dateTime === 'string' ? dateTime.slice(11, 16) : ''
+}
+
+function displayDateTime(dateTime) {
+  return typeof dateTime === 'string' && dateTime.length >= 10 ? displayDate(dateTime.slice(0, 10)) : 'No disponible'
+}
+
+export default function ClientBookingSection({ negocioId, negocioNombre, servicesQuery, employeesQuery }) {
   const today = localDateString(new Date())
   const [servicioId, setServicioId] = useState('')
   const [empleadoId, setEmpleadoId] = useState('any')
   const [fecha, setFecha] = useState(today)
   const [slotSelection, setSlotSelection] = useState(null)
-  const [continued, setContinued] = useState(false)
+  const [step, setStep] = useState('selection')
+  const [submitError, setSubmitError] = useState('')
+  const [conflictMessage, setConflictMessage] = useState('')
+  const [createdAppointment, setCreatedAppointment] = useState(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const sectionRef = useRef(null)
   const pendingScrollRef = useRef(false)
+  const createAppointment = useCreateClientAppointment()
 
   useEffect(() => {
     if (!isExpanded || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined
@@ -93,14 +116,50 @@ export default function ClientBookingSection({ negocioId, servicesQuery, employe
 
   const clearSlot = () => {
     setSlotSelection(null)
-    setContinued(false)
+    setStep('selection')
+    setSubmitError('')
+    setConflictMessage('')
   }
 
   const assignedEmployeeId = selectedSlot?.empleadoId
   const assignedEmployee = employees.find((employee) => String(employee.empleadoId) === String(assignedEmployeeId))
-  const assignedEmployeeName = assignedEmployee
-    ? [present(assignedEmployee.nombre), present(assignedEmployee.apellido)].filter(Boolean).join(' ')
+  const definitiveEmployee = empleadoId === 'any'
+    ? assignedEmployee
+    : employees.find((employee) => String(employee.empleadoId) === empleadoId) || assignedEmployee
+  const definitiveEmployeeName = definitiveEmployee
+    ? [present(definitiveEmployee.nombre), present(definitiveEmployee.apellido)].filter(Boolean).join(' ')
     : ''
+
+  const continueToReview = () => {
+    if (!selectedSlot || !selectedService || createAppointment.isPending || createdAppointment) return
+    setSubmitError('')
+    setConflictMessage('')
+    setStep('review')
+  }
+
+  const confirmAppointment = async () => {
+    if (!selectedSlot || !selectedService || createAppointment.isPending || createdAppointment) return
+    setSubmitError('')
+    try {
+      const result = await createAppointment.mutateAsync({
+        negocioId: Number(negocioId),
+        servicioId: Number(selectedService.servicioId),
+        empleadoId: Number(selectedSlot.empleadoId),
+        fechaHoraInicio: selectedSlot.fechaHoraInicio,
+      })
+      setCreatedAppointment(result)
+      setStep('success')
+    } catch (error) {
+      if (isClientAvailabilityConflict(error)) {
+        setConflictMessage(getClientAppointmentErrorMessage(error))
+        setSlotSelection(null)
+        setStep('selection')
+        await availability.refetch()
+        return
+      }
+      setSubmitError(appointmentErrorMessage(error))
+    }
+  }
 
   return (
     <section ref={sectionRef} className={`client-booking${isExpanded ? ' is-expanded' : ''}`} aria-labelledby="client-booking-title">
@@ -113,14 +172,51 @@ export default function ClientBookingSection({ negocioId, servicesQuery, employe
         <button className="client-booking-invite" type="button" aria-expanded={false} aria-controls="client-booking-form" onClick={expandBooking}>
           <span>Reservar un turno</span><ArrowDown size={17} aria-hidden="true" />
         </button>
-      ) : (
-        <button className="client-booking-collapse" type="button" aria-expanded={true} aria-controls="client-booking-form" onClick={collapseBooking}>
+      ) : step !== 'success' ? (
+        <button className="client-booking-collapse" type="button" aria-expanded={true} aria-controls="client-booking-form" onClick={collapseBooking} disabled={createAppointment.isPending}>
           <X size={15} aria-hidden="true" /><span>Ocultar reserva</span>
         </button>
-      )}
+      ) : null}
 
       <div className={`client-booking-form-panel${isExpanded ? ' is-open' : ''}`} id="client-booking-form" aria-hidden={!isExpanded} inert={!isExpanded} onTransitionEnd={handleFormTransitionEnd}>
         <div className="client-booking-form-inner">
+      {step === 'success' ? (
+        <section className="client-booking-success" aria-live="polite" aria-labelledby="client-booking-success-title">
+          <span className="client-booking-success-icon"><BadgeCheck size={25} aria-hidden="true" /></span>
+          <div className="client-booking-success-heading"><h3 id="client-booking-success-title">¡Tu reserva fue creada!</h3><p>Guardá estos datos para tenerlos a mano.</p></div>
+          <dl className="client-booking-result-list">
+            {createdAppointment?.turnoId != null && <div><dt>Turno</dt><dd>#{createdAppointment.turnoId}</dd></div>}
+            <div><dt>Negocio</dt><dd>{present(createdAppointment?.negocioNombre) || 'No disponible'}</dd></div>
+            <div><dt>Servicio</dt><dd>{present(createdAppointment?.servicioNombre) || 'No disponible'}</dd></div>
+            <div><dt>Profesional</dt><dd>{[present(createdAppointment?.empleadoNombre), present(createdAppointment?.empleadoApellido)].filter(Boolean).join(' ') || 'No disponible'}</dd></div>
+            <div><dt>Fecha</dt><dd>{displayDateTime(createdAppointment?.fechaHoraInicio)}</dd></div>
+            <div><dt>Hora</dt><dd>{displayTime(createdAppointment?.fechaHoraInicio) || 'No disponible'}{displayTime(createdAppointment?.fechaHoraFin) ? ` a ${displayTime(createdAppointment.fechaHoraFin)}` : ''}</dd></div>
+            <div><dt>Estado</dt><dd>{present(createdAppointment?.status) || 'No informado'}</dd></div>
+          </dl>
+        </section>
+      ) : step === 'review' ? (
+        <section className="client-booking-review" aria-labelledby="client-booking-review-title">
+          <div className="client-booking-review-heading"><span className="client-booking-review-icon"><Sparkles size={18} aria-hidden="true" /></span><div><h3 id="client-booking-review-title">Revisá tu reserva</h3><p>Confirmá que los datos sean correctos.</p></div></div>
+          <dl className="client-booking-review-list">
+            <div><dt>Negocio</dt><dd>{present(negocioNombre) || 'No disponible'}</dd></div>
+            <div><dt>Servicio</dt><dd>{present(selectedService?.nombre) || 'No disponible'}</dd></div>
+            <div><dt>Precio</dt><dd>{selectedService?.precio !== null && selectedService?.precio !== undefined && Number.isFinite(Number(selectedService.precio)) ? currencyFormatter.format(Number(selectedService.precio)) : 'Precio no disponible'}</dd></div>
+            <div><dt>Duración</dt><dd>{selectedService?.duracionMinutos != null ? `${selectedService.duracionMinutos} min` : 'No disponible'}</dd></div>
+            <div><dt>Profesional</dt><dd>{definitiveEmployeeName || (selectedSlot?.empleadoId != null ? `Profesional #${selectedSlot.empleadoId}` : 'No disponible')}</dd></div>
+            <div><dt>Fecha</dt><dd>{displayDateTime(selectedSlot?.fechaHoraInicio)}</dd></div>
+            <div><dt>Horario</dt><dd>{displayTime(selectedSlot?.fechaHoraInicio) || 'No disponible'}{displayTime(selectedSlot?.fechaHoraFin) ? ` a ${displayTime(selectedSlot.fechaHoraFin)}` : ''}</dd></div>
+          </dl>
+          {submitError && <div className="client-booking-submit-error" role="alert"><AlertCircle size={17} aria-hidden="true" /><span>{submitError}</span></div>}
+          <div className="client-booking-review-actions">
+            <button className="client-booking-back" type="button" onClick={() => { setStep('selection'); setSubmitError('') }} disabled={createAppointment.isPending}>Volver a modificar</button>
+            <button className="client-booking-confirm" type="button" onClick={confirmAppointment} disabled={createAppointment.isPending || !selectedSlot || !selectedService || Boolean(createdAppointment)}>
+              {createAppointment.isPending && <LoaderCircle size={16} aria-hidden="true" />}
+              {createAppointment.isPending ? 'Confirmando reserva…' : 'Confirmar reserva'}
+            </button>
+          </div>
+        </section>
+      ) : <>
+      {conflictMessage && <div className="client-booking-conflict" role="alert"><AlertCircle size={17} aria-hidden="true" /><span>{conflictMessage} Elegí otro horario para continuar.</span></div>}
       {servicesQuery.isPending ? <div className="client-booking-state"><LoaderCircle size={18} aria-hidden="true" /> Cargando servicios…</div> : servicesQuery.isError ? (
         <div className="client-booking-error" role="alert"><AlertCircle size={17} /><span>No pudimos cargar los servicios para reservar.</span><button type="button" onClick={() => servicesQuery.refetch()}>Reintentar</button></div>
       ) : services.length === 0 ? <p className="client-booking-empty">Este negocio todavía no tiene servicios activos para reservar.</p> : (
@@ -167,7 +263,7 @@ export default function ClientBookingSection({ negocioId, servicesQuery, employe
 
             <div className="client-booking-slot-panel" aria-live="polite">
               <div className="client-booking-slots-heading"><Clock3 size={17} aria-hidden="true" /><div><h3>Horarios disponibles</h3><p>{fecha ? displayDate(fecha) : 'Elegí una fecha'}</p></div></div>
-              {!selectedService || !fecha ? <p className="client-booking-empty">Elegí un servicio y una fecha para consultar los horarios.</p> : availability.isPending ? (
+              {!selectedService || !fecha ? <p className="client-booking-empty">Elegí un servicio y una fecha para consultar los horarios.</p> : availability.isPending || availability.isFetching ? (
                 <div className="client-booking-state"><LoaderCircle size={18} aria-hidden="true" /> Buscando horarios…</div>
               ) : availability.isError ? (
                 <div className="client-booking-error" role="alert"><AlertCircle size={17} /><span>{errorMessage(availability.error)}</span><button type="button" onClick={() => availability.refetch()}>Reintentar</button></div>
@@ -175,7 +271,7 @@ export default function ClientBookingSection({ negocioId, servicesQuery, employe
                 <div className="client-booking-slots">
                   {availability.data.map((slot, index) => {
                     const selected = selectedSlot === slot
-                    return <button className={`client-booking-slot${selected ? ' is-selected' : ''}`} type="button" key={`${slot.fechaHoraInicio}-${slot.empleadoId}-${index}`} aria-pressed={selected} onClick={() => { setSlotSelection({ selectionKey, slot }); setContinued(false) }}>
+                    return <button className={`client-booking-slot${selected ? ' is-selected' : ''}`} type="button" key={`${slot.fechaHoraInicio}-${slot.empleadoId}-${index}`} aria-pressed={selected} onClick={() => { setSlotSelection({ selectionKey, slot }); setConflictMessage(''); setSubmitError('') }}>
                       {typeof slot.fechaHoraInicio === 'string' ? slot.fechaHoraInicio.slice(11, 16) : '—'}
                     </button>
                   })}
@@ -186,13 +282,13 @@ export default function ClientBookingSection({ negocioId, servicesQuery, employe
 
           {selectedSlot && selectedService && (
             <div className="client-booking-summary" aria-live="polite">
-              <div className="client-booking-summary-copy"><span className="client-booking-summary-icon"><Sparkles size={17} aria-hidden="true" /></span><div><strong>Tu selección</strong><p>{present(selectedService.nombre) || 'Servicio'} · {displayDate(fecha)} · {selectedSlot.fechaHoraInicio.slice(11, 16)}{assignedEmployeeName ? ` · ${assignedEmployeeName}` : ''}</p><small>{selectedService.precio !== null && selectedService.precio !== undefined && Number.isFinite(Number(selectedService.precio)) ? currencyFormatter.format(Number(selectedService.precio)) : 'Precio no disponible'}{selectedService.duracionMinutos !== null && selectedService.duracionMinutos !== undefined ? ` · ${selectedService.duracionMinutos} min` : ''}</small></div></div>
-              <button className="client-booking-continue" type="button" onClick={() => setContinued(true)}>Continuar</button>
-              {continued && <p className="client-booking-next-step" role="status">Tu selección está lista. En el siguiente paso podrás revisar y confirmar el turno.</p>}
+              <div className="client-booking-summary-copy"><span className="client-booking-summary-icon"><Sparkles size={17} aria-hidden="true" /></span><div><strong>Tu selección</strong><p>{present(selectedService.nombre) || 'Servicio'} · {displayDate(fecha)} · {displayTime(selectedSlot.fechaHoraInicio)}{definitiveEmployeeName ? ` · ${definitiveEmployeeName}` : ''}</p><small>{selectedService.precio !== null && selectedService.precio !== undefined && Number.isFinite(Number(selectedService.precio)) ? currencyFormatter.format(Number(selectedService.precio)) : 'Precio no disponible'}{selectedService.duracionMinutos !== null && selectedService.duracionMinutos !== undefined ? ` · ${selectedService.duracionMinutos} min` : ''}</small></div></div>
+              <button className="client-booking-continue" type="button" onClick={continueToReview}>Continuar</button>
             </div>
           )}
         </>
       )}
+      </>}
         </div>
       </div>
     </section>
