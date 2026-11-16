@@ -16,6 +16,30 @@
 .client-appointment-status-cancelled,.client-appointment-status-rejected{border-color:#eed8d4;background:#fbf2f0;color:#9a5d53}
 .client-appointment-status-no-show{border-color:#e5d9ea;background:#f8f3fa;color:#80638b}
 .client-appointment-detail-section{display:grid;gap:15px;padding:19px;border:1px solid #e4eae1;border-radius:14px;background:#fff}
+.client-appointment-actions-section{align-items:start}
+.client-appointment-cancel-trigger{display:inline-flex;min-height:40px;align-items:center;justify-content:center;padding:0 14px;border:1px solid #ead5d1;border-radius:9px;background:#fff8f6;color:#99594f;font:650 11px 'DM Sans',sans-serif;cursor:pointer;transition:background .18s,border-color .18s}
+.client-appointment-cancel-trigger:hover:not(:disabled){border-color:#d7b7b1;background:#fff1ee}
+.client-appointment-cancel-trigger:focus-visible,.client-appointment-cancel-close:focus-visible,.client-appointment-cancel-dialog-actions button:focus-visible{outline:3px solid #91b18a;outline-offset:2px}
+.client-appointment-cancel-trigger:disabled{opacity:.55;cursor:wait}
+.client-appointment-cancel-success{padding:12px 14px;border:1px solid #d3e5cf;border-radius:10px;background:#f2f8f0;color:#4e704b;font-size:11px;font-weight:650}
+.client-appointment-cancel-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:18px;background:rgba(28,38,27,.42);backdrop-filter:blur(3px)}
+.client-appointment-cancel-dialog{width:min(100%,420px);padding:22px;border:1px solid #e3e9e0;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(28,38,27,.2)}
+.client-appointment-cancel-dialog:focus{outline:none}
+.client-appointment-cancel-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.client-appointment-cancel-dialog-icon{display:grid;width:40px;height:40px;place-items:center;border:1px solid #eed8d4;border-radius:12px;background:#fbf2f0;color:#9a5d53}
+.client-appointment-cancel-close{display:grid;width:34px;height:34px;place-items:center;border:0;border-radius:8px;background:transparent;color:#687262;cursor:pointer}
+.client-appointment-cancel-close:hover:not(:disabled){background:#f3f5f1}
+.client-appointment-cancel-close:disabled{opacity:.5;cursor:wait}
+.client-appointment-cancel-dialog h2{margin:16px 0 0;color:#303b2d;font-family:Manrope,sans-serif;font-size:19px;font-weight:750}
+.client-appointment-cancel-dialog>p{margin:9px 0 0;color:#758070;font-size:12px;line-height:1.6}
+.client-appointment-cancel-dialog>p.client-appointment-cancel-error{padding:10px 11px;border:1px solid #eeddd9;border-radius:9px;background:#fff9f8;color:#895c54;font-size:11px}
+.client-appointment-cancel-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.client-appointment-cancel-dialog-actions button{display:inline-flex;min-height:38px;align-items:center;justify-content:center;gap:7px;padding:0 12px;border:1px solid #dfe7dc;border-radius:8px;font:600 10px 'DM Sans',sans-serif;cursor:pointer}
+.client-appointment-cancel-secondary{background:#fff;color:#4f674e}
+.client-appointment-cancel-secondary:hover:not(:disabled){background:#f5f8f3}
+.client-appointment-cancel-confirm{border-color:#e7cbc6!important;background:#9a5d53;color:#fff}
+.client-appointment-cancel-confirm:hover:not(:disabled){background:#854a42}
+.client-appointment-cancel-dialog-actions button:disabled{opacity:.55;cursor:wait}
 .client-appointment-detail-section-heading{display:flex;align-items:center;gap:8px;color:#6f8d69}
 .client-appointment-detail-section-heading h2{margin:0;color:#344a36;font-size:13px;font-weight:700}
 .client-appointment-detail-primary-value{margin:0;color:#304532;font-size:14px;font-weight:700;line-height:1.5;overflow-wrap:anywhere}
@@ -36,4 +60,5 @@
 .client-appointment-detail-message button:disabled{opacity:.55;cursor:wait}
 @keyframes client-appointment-detail-spin{to{transform:rotate(360deg)}}
 @media(max-width:560px){.client-appointment-detail-hero{flex-wrap:wrap;gap:12px}.client-appointment-detail-hero-copy{flex-basis:calc(100% - 60px)}.client-appointment-detail-hero>.client-appointment-status{margin-left:58px}.client-appointment-detail-grid{grid-template-columns:1fr}.client-appointment-detail-section{padding:16px}}
+@media(max-width:460px){.client-appointment-cancel-dialog{padding:19px}.client-appointment-cancel-dialog-actions{flex-direction:column-reverse}.client-appointment-cancel-dialog-actions button{width:100%;min-height:42px}}
 @media(prefers-reduced-motion:reduce){.client-appointment-detail-loading svg{animation:none}}

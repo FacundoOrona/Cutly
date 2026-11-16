@@ -14,6 +14,14 @@ export async function fetchClientAppointmentById(turnoId) {
   return data
 }
 
+export async function cancelClientAppointment(turnoId) {
+  const { data } = await apiClient.patch(`/api/cliente/turnos/${turnoId}/cancelar`)
+  if (!data || typeof data !== 'object' || data.turnoId === undefined) {
+    throw new Error('El servidor devolvió una respuesta de cancelación que no pudimos interpretar.')
+  }
+  return data
+}
+
 export async function fetchClientBusinesses({ nombre, page = 0, size = 20, sort = 'nombre,asc' }) {
   const params = { page, size, sort }
   if (nombre?.trim()) params.nombre = nombre.trim()
@@ -144,4 +152,14 @@ export function getClientAppointmentDetailErrorMessage(error) {
   if (status >= 500) return 'No pudimos cargar el detalle de este turno en este momento.'
   if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
   return backendMessage || error.message || 'No pudimos cargar el detalle de este turno. Intentá nuevamente.'
+}
+
+export function getClientAppointmentCancellationErrorMessage(error) {
+  const status = error.response?.status
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para cancelar este turno.'
+  if (status === 404) return 'El turno no está disponible para esta cuenta.'
+  if (status === 409) return 'El turno cambió de estado y ya no puede cancelarse. Actualizamos su información.'
+  if (!error.response) return 'No pudimos confirmar el resultado. Actualizamos la información del turno; revisá su estado antes de volver a intentarlo.'
+  return 'No se pudo completar la cancelación del turno. Intentá nuevamente.'
 }
