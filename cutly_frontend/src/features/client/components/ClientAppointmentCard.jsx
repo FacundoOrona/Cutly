@@ -1,4 +1,5 @@
 import { CalendarDays, Clock3, Scissors } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { formatClientAppointmentDate, formatClientAppointmentTime } from '../utils/clientAppointmentDateTime.js'
 import './ClientAppointmentCard.css'
 
@@ -56,6 +57,13 @@ export default function ClientAppointmentCard({ appointment }) {
           </div>
           {professional && <div className="client-appointment-detail client-appointment-professional"><span>Profesional</span><strong>{professional}</strong></div>}
           <div className="client-appointment-price">{formatPrice(appointment.precio)}</div>
+          <Link
+            className="client-appointment-detail-link"
+            to={`/client/turnos/${appointment.turnoId}`}
+            aria-label={`Ver detalle del turno ${appointment.turnoId}`}
+          >
+            Ver detalle
+          </Link>
         </div>
       </div>
     </article>

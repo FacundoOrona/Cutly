@@ -19,4 +19,7 @@
 .client-appointment-professional span{color:#90978d}
 .client-appointment-professional strong{color:#566351;font-weight:600}
 .client-appointment-price{margin-left:auto;color:#405941;font-size:12px;font-weight:700;white-space:nowrap}
+.client-appointment-detail-link{display:inline-flex;min-height:32px;align-items:center;justify-content:center;padding:0 10px;border:1px solid #dce8d8;border-radius:8px;background:#f7faf5;color:#4e704b;font-size:10px;font-weight:700;text-decoration:none;transition:border-color .18s,background .18s}
+.client-appointment-detail-link:hover{border-color:#b9cdb4;background:#edf5ea}
+.client-appointment-detail-link:focus-visible{outline:3px solid #91b18a;outline-offset:2px}
 @media(max-width:480px){.client-appointment-card{padding:15px}.client-appointment-card-heading{flex-wrap:wrap}.client-appointment-card-details{gap:10px 14px}.client-appointment-price{width:100%;margin:0}}
