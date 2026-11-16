@@ -31,6 +31,52 @@ export async function fetchClientBusinessEmployees(id) {
   return data
 }
 
+export async function fetchClientAvailability({ negocioId, fecha, servicioId, empleadoId }) {
+  const params = { fecha, servicioId }
+  if (empleadoId !== undefined && empleadoId !== null) params.empleadoId = empleadoId
+
+  const { data } = await apiClient.get(`/api/cliente/negocios/${negocioId}/disponibilidad`, { params })
+  if (!Array.isArray(data)) throw new Error('El servidor devolvió una respuesta de disponibilidad que no pudimos interpretar.')
+  return data
+}
+
+export async function fetchClientEmployeeAvailability({ negocioId, empleadoId, fecha, servicioId }) {
+  const { data } = await apiClient.get(
+    `/api/cliente/negocios/${negocioId}/empleados/${empleadoId}/disponibilidad`,
+    { params: { fecha, servicioId } },
+  )
+  if (!Array.isArray(data)) throw new Error('El servidor devolvió una respuesta de disponibilidad que no pudimos interpretar.')
+  return data
+}
+
+export async function createClientAppointment(appointment) {
+  const { negocioId, servicioId, empleadoId, fechaHoraInicio, observaciones } = appointment
+  const { data } = await apiClient.post('/api/cliente/turnos', {
+    negocioId,
+    servicioId,
+    empleadoId,
+    fechaHoraInicio,
+    observaciones,
+  })
+  return data
+}
+
+export const isClientAvailabilityConflict = (error) => error.response?.status === 409
+
+export function getClientAppointmentErrorMessage(error) {
+  const status = error.response?.status
+  const backendMessage = error.response?.data?.mensaje
+  if (status === 409 && backendMessage) return backendMessage
+  if (status === 400) return backendMessage || 'La solicitud de reserva no es válida.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para realizar esta reserva.'
+  if (status === 404) return backendMessage || 'El negocio, servicio o empleado ya no está disponible.'
+  if (status === 409) return 'Ese horario ya no está disponible. Consultá los horarios nuevamente.'
+  if (status >= 500) return 'No pudimos completar la reserva en este momento.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  return backendMessage || error.message || 'No pudimos completar la reserva.'
+}
+
 export function getClientBusinessErrorMessage(error) {
   if (error.response?.status === 404) return 'Este negocio no existe o ya no está disponible.'
   return getClientBusinessesErrorMessage(error)

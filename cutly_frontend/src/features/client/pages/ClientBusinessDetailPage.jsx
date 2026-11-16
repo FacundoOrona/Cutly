@@ -1,5 +1,7 @@
-import { AlertCircle, ArrowLeft, Clock3, LoaderCircle, Mail, MapPin, Phone, Users } from 'lucide-react'
+import { useState } from 'react'
+import { AlertCircle, ArrowLeft, ChevronDown, Clock3, LoaderCircle, Mail, MapPin, Phone, Users } from 'lucide-react'
 import { Link, useLocation, useParams } from 'react-router-dom'
+import ClientBookingSection from '../components/ClientBookingSection.jsx'
 import { getClientBusinessEmployeesErrorMessage, getClientBusinessErrorMessage, getClientBusinessServicesErrorMessage } from '../api/clientApi.js'
 import { useClientBusiness, useClientBusinessEmployees, useClientBusinessServices } from '../hooks/useClientBusinessDetail.js'
 import './ClientBusinessDetailPage.css'
@@ -27,6 +29,8 @@ export default function ClientBusinessDetailPage() {
   const sectionsEnabled = validId(negocioId) && Boolean(business) && !businessQuery.isError
   const servicesQuery = useClientBusinessServices(negocioId, sectionsEnabled)
   const employeesQuery = useClientBusinessEmployees(negocioId, sectionsEnabled)
+  const [servicesOpen, setServicesOpen] = useState(false)
+  const [teamOpen, setTeamOpen] = useState(false)
 
   if (!validId(negocioId)) {
     return <DetailMessage title="Negocio no disponible" message="El identificador del negocio no es válido." backState={backState} />
@@ -67,29 +71,45 @@ export default function ClientBusinessDetailPage() {
         </section>
       )}
 
+      <ClientBookingSection negocioId={negocioId} servicesQuery={servicesQuery} employeesQuery={employeesQuery} />
+
       <section className="client-detail-section" aria-labelledby="client-services-title">
         <div className="client-detail-section-heading"><span className="client-detail-section-icon"><Clock3 size={18} aria-hidden="true" /></span><div><h2 id="client-services-title">Servicios</h2><p>Opciones disponibles en este negocio</p></div></div>
-        {servicesQuery.isPending ? <SectionLoading label="los servicios" /> : (
-          <SectionState error={servicesQuery.isError ? getClientBusinessServicesErrorMessage(servicesQuery.error) : null} onRetry={() => servicesQuery.refetch()}>
-            {servicesQuery.data?.length ? <div className="client-detail-services">{servicesQuery.data.map((service) => (
-              <article className="client-detail-service" key={service.servicioId}>
-                <div className="client-detail-service-copy"><h3>{present(service.nombre) || 'Servicio'}</h3>{present(service.descripcion) && <p>{present(service.descripcion)}</p>}</div>
-                <div className="client-detail-service-meta"><strong>{service.precio !== null && service.precio !== undefined && Number.isFinite(Number(service.precio)) ? currencyFormatter.format(Number(service.precio)) : 'Precio no disponible'}</strong>{service.duracionMinutos !== null && service.duracionMinutos !== undefined && <span>{service.duracionMinutos} min</span>}</div>
-              </article>
-            ))}</div> : <p className="client-detail-empty">Este negocio todavía no tiene servicios activos para mostrar.</p>}
-          </SectionState>
-        )}
+        <button className="client-detail-disclosure" type="button" aria-expanded={servicesOpen} aria-controls="client-services-content" onClick={() => setServicesOpen((open) => !open)}>
+          <span>{servicesOpen ? 'Ocultar servicios' : 'Conocé nuestros servicios'}</span><ChevronDown size={17} aria-hidden="true" />
+        </button>
+        <div className={`client-detail-disclosure-content${servicesOpen ? ' is-open' : ''}`} id="client-services-content" aria-hidden={!servicesOpen} inert={!servicesOpen}>
+          <div className="client-detail-disclosure-inner">
+          {servicesQuery.isPending ? <SectionLoading label="los servicios" /> : (
+            <SectionState error={servicesQuery.isError ? getClientBusinessServicesErrorMessage(servicesQuery.error) : null} onRetry={() => servicesQuery.refetch()}>
+              {servicesQuery.data?.length ? <div className="client-detail-services">{servicesQuery.data.map((service) => (
+                <article className="client-detail-service" key={service.servicioId}>
+                  <div className="client-detail-service-copy"><h3>{present(service.nombre) || 'Servicio'}</h3>{present(service.descripcion) && <p>{present(service.descripcion)}</p>}</div>
+                  <div className="client-detail-service-meta"><strong>{service.precio !== null && service.precio !== undefined && Number.isFinite(Number(service.precio)) ? currencyFormatter.format(Number(service.precio)) : 'Precio no disponible'}</strong>{service.duracionMinutos !== null && service.duracionMinutos !== undefined && <span>{service.duracionMinutos} min</span>}</div>
+                </article>
+              ))}</div> : <p className="client-detail-empty">Este negocio todavía no tiene servicios activos para mostrar.</p>}
+            </SectionState>
+          )}
+          </div>
+        </div>
       </section>
 
       <section className="client-detail-section" aria-labelledby="client-team-title">
         <div className="client-detail-section-heading"><span className="client-detail-section-icon"><Users size={18} aria-hidden="true" /></span><div><h2 id="client-team-title">Nuestro equipo</h2><p>Personas activas en este negocio</p></div></div>
-        {employeesQuery.isPending ? <SectionLoading label="el equipo" /> : (
-          <SectionState error={employeesQuery.isError ? getClientBusinessEmployeesErrorMessage(employeesQuery.error) : null} onRetry={() => employeesQuery.refetch()}>
-            {employeesQuery.data?.length ? <ul className="client-detail-team">{employeesQuery.data.map((employee) => (
-              <li key={employee.empleadoId}><span aria-hidden="true">{present(employee.nombre).charAt(0).toUpperCase() || 'C'}</span><strong>{[present(employee.nombre), present(employee.apellido)].filter(Boolean).join(' ') || 'Integrante del equipo'}</strong></li>
-            ))}</ul> : <p className="client-detail-empty">No hay integrantes activos para mostrar en este momento.</p>}
-          </SectionState>
-        )}
+        <button className="client-detail-disclosure" type="button" aria-expanded={teamOpen} aria-controls="client-team-content" onClick={() => setTeamOpen((open) => !open)}>
+          <span>{teamOpen ? 'Ocultar equipo' : 'Conocé nuestro equipo'}</span><ChevronDown size={17} aria-hidden="true" />
+        </button>
+        <div className={`client-detail-disclosure-content${teamOpen ? ' is-open' : ''}`} id="client-team-content" aria-hidden={!teamOpen} inert={!teamOpen}>
+          <div className="client-detail-disclosure-inner">
+          {employeesQuery.isPending ? <SectionLoading label="el equipo" /> : (
+            <SectionState error={employeesQuery.isError ? getClientBusinessEmployeesErrorMessage(employeesQuery.error) : null} onRetry={() => employeesQuery.refetch()}>
+              {employeesQuery.data?.length ? <ul className="client-detail-team">{employeesQuery.data.map((employee) => (
+                <li key={employee.empleadoId}><span aria-hidden="true">{present(employee.nombre).charAt(0).toUpperCase() || 'C'}</span><strong>{[present(employee.nombre), present(employee.apellido)].filter(Boolean).join(' ') || 'Integrante del equipo'}</strong></li>
+              ))}</ul> : <p className="client-detail-empty">No hay integrantes activos para mostrar en este momento.</p>}
+            </SectionState>
+          )}
+          </div>
+        </div>
       </section>
     </section>
   )

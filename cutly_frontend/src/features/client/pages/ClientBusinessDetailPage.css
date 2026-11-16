@@ -17,6 +17,15 @@
 .client-detail-contact-items a:hover{border-color:#cbdac7;background:#f8fbf7}
 .client-detail-contact-items svg{flex:none;color:#6f8d69}
 .client-detail-section{gap:17px}
+.client-detail-disclosure{display:flex;min-height:46px;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border:1px solid #dfe8db;border-radius:10px;background:linear-gradient(110deg,#f7fbf5,#fff);color:#466443;text-align:left;font:650 11px 'DM Sans',sans-serif;cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s}
+.client-detail-disclosure:hover{border-color:#b9cdb4;background:#f4f9f1;box-shadow:0 3px 12px rgba(42,67,41,.045)}
+.client-detail-disclosure svg{flex:none;color:#688764;transition:transform .2s ease}
+.client-detail-disclosure[aria-expanded=true]{border-color:#b9cdb4;background:#f4f9f1}
+.client-detail-disclosure[aria-expanded=true] svg{transform:rotate(180deg)}
+.client-detail-disclosure:focus-visible{outline:3px solid #91b18a;outline-offset:3px;border-radius:7px}
+.client-detail-disclosure-content{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .28s ease,opacity .22s ease}
+.client-detail-disclosure-content.is-open{grid-template-rows:1fr;opacity:1}
+.client-detail-disclosure-inner{min-height:0;overflow:hidden}
 .client-detail-section-heading{display:flex;align-items:center;gap:11px}
 .client-detail-section-icon{display:grid;width:37px;height:37px;flex:none;place-items:center;border-radius:11px;background:#edf3eb;color:#557452}
 .client-detail-section-heading>div{display:grid;gap:3px}
@@ -49,4 +58,4 @@
 @keyframes client-detail-spin{to{transform:rotate(360deg)}}
 @media(max-width:760px){.client-detail-hero{gap:14px;padding:22px 18px}.client-detail-mark{width:48px;height:48px;border-radius:13px;font-size:20px}.client-detail-contact,.client-detail-section{padding:16px}.client-detail-services{grid-template-columns:1fr}.client-detail-team{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.client-business-detail{gap:14px}.client-detail-hero{gap:12px;padding:19px 15px}.client-detail-mark{width:42px;height:42px;font-size:18px}.client-detail-hero h1{font-size:29px}.client-detail-contact,.client-detail-section{padding:14px}.client-detail-contact-items{display:grid}.client-detail-team{grid-template-columns:1fr}.client-detail-service{padding:12px}.client-detail-service-meta strong{font-size:11px}}
-@media(prefers-reduced-motion:reduce){.client-detail-section-loading svg,.client-detail-loading svg{animation:none}}
+@media(prefers-reduced-motion:reduce){.client-detail-section-loading svg,.client-detail-loading svg{animation:none}.client-detail-disclosure,.client-detail-disclosure svg,.client-detail-disclosure-content{transition:none}}
