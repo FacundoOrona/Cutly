@@ -1,0 +1,38 @@
+.client-appointments-page{display:grid;gap:30px;min-width:0}
+.client-appointments-heading{display:grid;gap:8px}
+.client-appointments-eyebrow{color:#6e8d68;font-size:9px;font-weight:750;letter-spacing:1.3px}
+.client-appointments-heading h1{margin:0;color:#263b2b;font-family:Manrope,sans-serif;font-size:clamp(30px,4vw,42px);font-weight:650;letter-spacing:-1.5px;line-height:1.15}
+.client-appointments-heading p{max-width:520px;margin:0;color:#737a72;font-size:13px;line-height:1.65}
+.client-appointments-sections{display:grid;gap:30px;min-width:0}
+.client-appointments-section{display:grid;gap:13px;min-width:0}
+.client-appointments-section-heading{display:flex;align-items:center;gap:9px}
+.client-appointments-section-mark{display:grid;width:32px;height:32px;flex:none;place-items:center;border:1px solid #dce8d8;border-radius:9px;background:#f0f6ed;color:#5b7c57}
+.client-appointments-section-heading h2{margin:0;color:#354b37;font-size:15px;font-weight:700}
+.client-appointments-count{display:inline-grid;min-width:23px;height:23px;place-items:center;padding:0 6px;border:1px solid #e2e9df;border-radius:99px;background:#fff;color:#667460;font-size:9px;font-weight:700}
+.client-appointments-list{display:grid;gap:10px}
+.client-appointments-empty{display:grid;justify-items:center;gap:9px;padding:27px 18px;border:1px solid #e5eae2;border-radius:14px;background:#fff;text-align:center}
+.client-appointments-empty-icon{display:grid;width:42px;height:42px;place-items:center;border-radius:13px;background:#edf3eb;color:#557452}
+.client-appointments-empty h3,.client-appointments-empty p{margin:0}
+.client-appointments-empty h3{color:#344a36;font-size:13px;font-weight:700}
+.client-appointments-empty p{max-width:420px;color:#7a8177;font-size:11px;line-height:1.6}
+.client-appointments-empty a{display:inline-flex;min-height:36px;align-items:center;margin-top:3px;padding:0 13px;border:1px solid #d7e4d3;border-radius:8px;background:#f5f9f3;color:#4e704b;font-size:10px;font-weight:700;text-decoration:none}
+.client-appointments-empty a:hover{border-color:#b7cbb2;background:#edf5ea}
+.client-appointments-empty a:focus-visible,.client-appointments-error button:focus-visible{outline:3px solid #91b18a;outline-offset:2px}
+.client-appointments-history-empty{min-height:82px;align-content:center;padding:18px}
+.client-appointments-loading{display:grid;gap:11px}
+.client-appointments-loading-label{display:flex;align-items:center;gap:7px;color:#778173;font-size:11px}
+.client-appointments-loading-label svg{animation:client-appointments-spin 1s linear infinite}
+.client-appointments-skeleton{display:flex;min-height:127px;gap:13px;padding:17px;border:1px solid #e8ede6;border-radius:14px;background:#fff}
+.client-appointments-skeleton>span{width:36px;height:36px;flex:none;border-radius:10px;background:#edf1eb}
+.client-appointments-skeleton>div{display:grid;align-content:start;gap:9px;flex:1;padding-top:3px}
+.client-appointments-skeleton i{height:9px;border-radius:99px;background:#edf1eb}.client-appointments-skeleton i:first-child{width:48%;height:12px}.client-appointments-skeleton i:last-child{width:68%}
+.client-appointments-error{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:13px;padding:20px;border:1px solid #eeddd9;border-radius:13px;background:#fff9f8;color:#9c5d52}
+.client-appointments-error>div h2{margin:0 0 4px;color:#684d47;font-size:13px}
+.client-appointments-error>div p{margin:0;color:#79645f;font-size:10px;line-height:1.55}
+.client-appointments-error button{min-height:36px;padding:0 12px;border:1px solid #e8d2cd;border-radius:8px;background:#fff;color:#8b594f;font:600 10px 'DM Sans',sans-serif;cursor:pointer}
+.client-appointments-error button:hover:not(:disabled){background:#fff2ef}
+.client-appointments-error button:disabled{opacity:.55;cursor:wait}
+@keyframes client-appointments-spin{to{transform:rotate(360deg)}}
+@media(max-width:520px){.client-appointments-page{gap:24px}.client-appointments-sections{gap:24px}.client-appointments-heading h1{font-size:34px}.client-appointments-error{grid-template-columns:auto minmax(0,1fr);gap:10px}.client-appointments-error button{grid-column:2;width:max-content}}
+@media(max-width:380px){.client-appointments-heading h1{font-size:30px}.client-appointments-section-heading h2{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.client-appointments-loading-label svg{animation:none}}

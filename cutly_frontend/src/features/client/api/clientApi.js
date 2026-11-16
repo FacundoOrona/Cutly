@@ -1,5 +1,11 @@
 import apiClient from '../../../services/apiClient.js'
 
+export async function fetchClientAppointments() {
+  const { data } = await apiClient.get('/api/cliente/turnos')
+  if (!Array.isArray(data)) throw new Error('El servidor devolvió una respuesta de turnos que no pudimos interpretar.')
+  return data
+}
+
 export async function fetchClientBusinesses({ nombre, page = 0, size = 20, sort = 'nombre,asc' }) {
   const params = { page, size, sort }
   if (nombre?.trim()) params.nombre = nombre.trim()
@@ -109,4 +115,14 @@ export function getClientBusinessesErrorMessage(error) {
   if (status >= 500) return 'El servicio no está disponible en este momento. Intentá más tarde.'
   if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
   return error.message || 'No pudimos cargar los negocios. Intentá nuevamente.'
+}
+
+export function getClientAppointmentsErrorMessage(error) {
+  const status = error.response?.status
+  const backendMessage = error.response?.data?.mensaje
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para consultar tus turnos.'
+  if (status >= 500) return 'No pudimos cargar tus turnos en este momento.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  return backendMessage || error.message || 'No pudimos cargar tus turnos. Intentá nuevamente.'
 }
