@@ -6,13 +6,21 @@ import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.owner.dto.negocio.ActualizarNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.CrearNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.OwnerNegocioDto;
+import com.dev.cutly.suscripcion.entity.PlanSuscripcion;
+import com.dev.cutly.suscripcion.entity.Suscripcion;
+import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
+import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
+import com.dev.cutly.suscripcion.service.PlanSuscripcionService;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -20,14 +28,29 @@ public class OwnerNegocioService {
 
     private final NegocioRepository negocioRepository;
     private final UsuarioRepository usuarioRepository;
+    private final SuscripcionRepository suscripcionRepository;
+    private final PlanSuscripcionService planSuscripcionService;
 
-    public OwnerNegocioService(NegocioRepository negocioRepository, UsuarioRepository usuarioRepository) {
+    public OwnerNegocioService(
+            NegocioRepository negocioRepository,
+            UsuarioRepository usuarioRepository,
+            SuscripcionRepository suscripcionRepository,
+            PlanSuscripcionService planSuscripcionService
+    ) {
         this.negocioRepository = negocioRepository;
         this.usuarioRepository = usuarioRepository;
+        this.suscripcionRepository = suscripcionRepository;
+        this.planSuscripcionService = planSuscripcionService;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OwnerNegocioDto crearNegocio(CrearNegocioRequestDto request, String emailOwner) {
-        Usuario owner = obtenerOwnerAutenticado(emailOwner);
+        Usuario ownerAutenticado = obtenerOwnerAutenticado(emailOwner);
+        Usuario owner = usuarioRepository.findWithLockingByUsuarioId(ownerAutenticado.getUsuarioId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "No se pudo identificar al owner autenticado"));
+
+        boolean esPrimerNegocio = negocioRepository.findByOwner_UsuarioId(owner.getUsuarioId()).isEmpty();
         Negocio negocio = new Negocio();
         negocio.setNombre(request.nombre());
         negocio.setDescripcion(request.descripcion());
@@ -35,7 +58,22 @@ public class OwnerNegocioService {
         negocio.setEmail(request.email());
         negocio.setStatus(NegocioStatus.ACTIVE);
         negocio.setOwner(owner);
-        return aDto(negocioRepository.save(negocio));
+        Negocio negocioGuardado = negocioRepository.save(negocio);
+
+        if (esPrimerNegocio) {
+            LocalDate fechaInicio = LocalDate.now();
+            PlanSuscripcion planPrueba = planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
+
+            Suscripcion suscripcion = new Suscripcion();
+            suscripcion.setStatus(SuscripcionStatus.TRIAL);
+            suscripcion.setFechaInicio(fechaInicio);
+            suscripcion.setFechaVencimiento(fechaInicio.plusDays(13));
+            suscripcion.setPlan(planPrueba);
+            suscripcion.setNegocio(negocioGuardado);
+            suscripcionRepository.save(suscripcion);
+        }
+
+        return aDto(negocioGuardado);
     }
 
     public List<OwnerNegocioDto> listarNegocios(String emailOwner) {
