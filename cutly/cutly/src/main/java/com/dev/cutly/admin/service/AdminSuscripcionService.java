@@ -88,6 +88,7 @@ public class AdminSuscripcionService {
                 suscripcion.getStatus(),
                 suscripcion.getFechaInicio(),
                 suscripcion.getFechaVencimiento(),
+                suscripcion.getPrecioContratado(),
                 suscripcion.getPlan().getPlanId(),
                 suscripcion.getPlan().getNombre(),
                 suscripcion.getNegocio().getNegocioId(),

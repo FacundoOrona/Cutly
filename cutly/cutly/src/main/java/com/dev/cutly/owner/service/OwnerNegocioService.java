@@ -69,6 +69,7 @@ public class OwnerNegocioService {
             suscripcion.setFechaInicio(fechaInicio);
             suscripcion.setFechaVencimiento(fechaInicio.plusDays(13));
             suscripcion.setPlan(planPrueba);
+            suscripcion.asignarPrecioContratado(planPrueba.getPrecioMensual());
             suscripcion.setNegocio(negocioGuardado);
             suscripcionRepository.save(suscripcion);
         }

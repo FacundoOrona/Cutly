@@ -1,18 +1,20 @@
 package com.dev.cutly.suscripcion.service;
 
 import com.dev.cutly.suscripcion.entity.PlanSuscripcion;
+import com.dev.cutly.suscripcion.enums.TipoPlanSuscripcion;
 import com.dev.cutly.suscripcion.repository.PlanSuscripcionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class PlanSuscripcionService {
 
     private static final String NOMBRE_PLAN_PRUEBA = "Prueba gratuita";
-    private static final BigDecimal PRECIO_PLAN_PRUEBA = BigDecimal.ZERO;
+    private static final Logger logger = LoggerFactory.getLogger(PlanSuscripcionService.class);
 
     private final PlanSuscripcionRepository planSuscripcionRepository;
 
@@ -22,32 +24,65 @@ public class PlanSuscripcionService {
 
     @Transactional
     public PlanSuscripcion obtenerOCrearPlanPruebaGratuita() {
-        List<PlanSuscripcion> candidatos = planSuscripcionRepository
-                .findByNombreIgnoreCase(NOMBRE_PLAN_PRUEBA);
+        List<PlanSuscripcion> planes = planSuscripcionRepository.findAll();
+        List<PlanSuscripcion> candidatosNombre = planes.stream()
+                .filter(plan -> plan.getNombre() != null
+                        && NOMBRE_PLAN_PRUEBA.equalsIgnoreCase(plan.getNombre().trim()))
+                .toList();
+        List<PlanSuscripcion> candidatosTipo = planes.stream()
+                .filter(plan -> plan.getTipo() == TipoPlanSuscripcion.TRIAL)
+                .toList();
 
-        if (candidatos.size() > 1) {
+        if (candidatosNombre.size() > 1 || candidatosTipo.size() > 1) {
+            throw new IllegalStateException("Se detectaron varios candidatos al plan TRIAL");
+        }
+
+        if (!candidatosTipo.isEmpty()
+                && (candidatosNombre.isEmpty() || candidatosTipo.get(0) != candidatosNombre.get(0))) {
             throw new IllegalStateException(
-                    "Hay más de un plan que coincide con el nombre de prueba gratuita"
+                    "Existe un plan TRIAL cuyo nombre no coincide exactamente con Prueba gratuita"
             );
         }
 
-        if (!candidatos.isEmpty()) {
-            PlanSuscripcion plan = candidatos.get(0);
-            if (!NOMBRE_PLAN_PRUEBA.equals(plan.getNombre())
-                    || plan.getPrecioMensual() == null
-                    || plan.getPrecioMensual().compareTo(PRECIO_PLAN_PRUEBA) != 0
-                    || !plan.isActivo()) {
+        if (!candidatosNombre.isEmpty()) {
+            PlanSuscripcion planTrial = candidatosNombre.get(0);
+            if (!NOMBRE_PLAN_PRUEBA.equals(planTrial.getNombre())) {
                 throw new IllegalStateException(
-                        "El plan Prueba gratuita existente no cumple el nombre, precio y estado aprobados"
+                        "Existe una variante ambigua del nombre reservado Prueba gratuita"
                 );
             }
-            return plan;
+            if (planTrial.getTipo() == TipoPlanSuscripcion.COMERCIAL) {
+                throw new IllegalStateException("El plan Prueba gratuita está clasificado como COMERCIAL");
+            }
+            planTrial.validarPropiedadesTrial();
+            planTrial.clasificarComoTrial();
+            planSuscripcionRepository.save(planTrial);
+        } else {
+            if (!candidatosTipo.isEmpty()) {
+                throw new IllegalStateException("Existe un plan TRIAL contradictorio");
+            }
+            PlanSuscripcion planTrial = PlanSuscripcion.crearPlanTrial();
+            planSuscripcionRepository.save(planTrial);
+            candidatosNombre = List.of(planTrial);
         }
 
-        PlanSuscripcion plan = new PlanSuscripcion();
-        plan.setNombre(NOMBRE_PLAN_PRUEBA);
-        plan.setPrecioMensual(PRECIO_PLAN_PRUEBA);
-        plan.setActivo(true);
-        return planSuscripcionRepository.save(plan);
+        int planesClasificados = 0;
+        for (PlanSuscripcion plan : planes) {
+            if (plan == (candidatosNombre.isEmpty() ? null : candidatosNombre.get(0))) continue;
+            if (plan.getTipo() == TipoPlanSuscripcion.TRIAL) {
+                throw new IllegalStateException("Solo puede existir un plan TRIAL");
+            }
+            if (plan.getTipo() == null) {
+                plan.clasificarComoComercial();
+                planSuscripcionRepository.save(plan);
+                planesClasificados++;
+            }
+        }
+
+        if (planesClasificados > 0) {
+            logger.info("Se clasificaron {} planes preexistentes como COMERCIAL", planesClasificados);
+        }
+
+        return candidatosNombre.get(0);
     }
 }

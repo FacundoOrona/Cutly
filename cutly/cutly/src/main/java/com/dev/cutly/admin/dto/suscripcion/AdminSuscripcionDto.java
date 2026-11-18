@@ -2,6 +2,7 @@ package com.dev.cutly.admin.dto.suscripcion;
 
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record AdminSuscripcionDto(
@@ -9,6 +10,7 @@ public record AdminSuscripcionDto(
         SuscripcionStatus status,
         LocalDate fechaInicio,
         LocalDate fechaVencimiento,
+        BigDecimal precioContratado,
         Long planId,
         String nombrePlan,
         Long negocioId,
