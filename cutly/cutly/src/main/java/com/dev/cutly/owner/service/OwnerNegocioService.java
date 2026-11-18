@@ -56,7 +56,7 @@ public class OwnerNegocioService {
         negocio.setDescripcion(request.descripcion());
         negocio.setTelefono(request.telefono());
         negocio.setEmail(request.email());
-        negocio.setStatus(NegocioStatus.ACTIVE);
+        negocio.setStatus(esPrimerNegocio ? NegocioStatus.ACTIVE : NegocioStatus.INACTIVE);
         negocio.setOwner(owner);
         Negocio negocioGuardado = negocioRepository.save(negocio);
 
@@ -106,6 +106,10 @@ public class OwnerNegocioService {
     public OwnerNegocioDto actualizarEstado(Long id, NegocioStatus destino, String emailOwner) {
         Usuario owner = obtenerOwnerAutenticado(emailOwner);
         Negocio negocio = buscarNegocioPropio(id, owner.getUsuarioId());
+        if (destino == NegocioStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Los negocios solo pueden ser habilitados por SUPER_ADMIN");
+        }
         NegocioStatus actual = negocio.getStatus();
 
         boolean transicionValida = actual == destino

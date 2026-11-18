@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> {
 
+    boolean existsByNegocio_NegocioId(Long negocioId);
+
     long countByStatus(SuscripcionStatus status);
 
     long countByStatusIn(Collection<SuscripcionStatus> estados);

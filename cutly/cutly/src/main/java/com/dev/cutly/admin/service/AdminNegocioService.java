@@ -4,6 +4,7 @@ import com.dev.cutly.admin.dto.negocio.AdminNegocioDto;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.negocio.repository.NegocioRepository;
+import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,9 +16,14 @@ import java.util.NoSuchElementException;
 public class AdminNegocioService {
 
     private final NegocioRepository negocioRepository;
+    private final SuscripcionRepository suscripcionRepository;
 
-    public AdminNegocioService(NegocioRepository negocioRepository) {
+    public AdminNegocioService(
+            NegocioRepository negocioRepository,
+            SuscripcionRepository suscripcionRepository
+    ) {
         this.negocioRepository = negocioRepository;
+        this.suscripcionRepository = suscripcionRepository;
     }
 
     public List<AdminNegocioDto> listarNegocios() {
@@ -36,6 +42,11 @@ public class AdminNegocioService {
         if (!transicionValida(negocio.getStatus(), status)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede cambiar el estado del negocio de " + negocio.getStatus() + " a " + status);
+        }
+        if (status == NegocioStatus.ACTIVE
+                && !suscripcionRepository.existsByNegocio_NegocioId(negocio.getNegocioId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede habilitar un negocio sin una suscripción asociada");
         }
         if (negocio.getStatus() == status) {
             return aDto(negocio);
