@@ -11,6 +11,7 @@ public record ResumenFinancieroTurnoDto(
         MetodoPago metodoPago,
         BigDecimal totalAbonado,
         BigDecimal saldoPendiente,
-        BigDecimal montoAcordado
+        BigDecimal montoAcordado,
+        String estadoDeuda
 ) {
 }

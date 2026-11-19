@@ -5,6 +5,7 @@ import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.owner.dto.estadistica.OwnerEmpleadoEstadisticaDto;
 import com.dev.cutly.owner.dto.estadistica.OwnerServicioEstadisticaDto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,6 +19,15 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 
 public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecificationExecutor<Turno> {
+    @Override
+    @EntityGraph(attributePaths = {"negocio", "cliente", "clienteLocal", "empleado.usuario", "ownerResponsable", "servicio"})
+    List<Turno> findAll(Specification<Turno> spec, Sort sort);
+    @Query("select n, count(t) from Turno t join t.negocio n "
+            + "where n.status = com.dev.cutly.negocio.enums.NegocioStatus.ACTIVE "
+            + "and t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta "
+            + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "
+            + "group by n order by count(t) desc, n.negocioId asc")
+    List<Object[]> rankingNegociosClientes(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from Turno t where t.turnoId = :turnoId and t.negocio.negocioId = :negocioId")

@@ -11,6 +11,13 @@ import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.negocio.repository.DireccionRepository;
 import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.review.repository.ReviewRepository;
+import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.suscripcion.service.RelojSuscripcion;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import org.springframework.data.domain.Page;
@@ -30,6 +37,7 @@ public class ClienteNegocioService {
     private final EmpleadoRepository empleadoRepository;
     private final ReviewRepository reviewRepository;
     private final ControlAccesoSuscripcion controlAccesoSuscripcion;
+    private final TurnoRepository turnoRepository;
 
     public ClienteNegocioService(
             NegocioRepository negocioRepository,
@@ -37,7 +45,8 @@ public class ClienteNegocioService {
             ServicioRepository servicioRepository,
             EmpleadoRepository empleadoRepository,
             ReviewRepository reviewRepository,
-            ControlAccesoSuscripcion controlAccesoSuscripcion
+            ControlAccesoSuscripcion controlAccesoSuscripcion,
+            TurnoRepository turnoRepository
     ) {
         this.negocioRepository = negocioRepository;
         this.direccionRepository = direccionRepository;
@@ -45,6 +54,7 @@ public class ClienteNegocioService {
         this.empleadoRepository = empleadoRepository;
         this.reviewRepository = reviewRepository;
         this.controlAccesoSuscripcion = controlAccesoSuscripcion;
+        this.turnoRepository = turnoRepository;
     }
 
     public Page<ClienteNegocioDto> listar(String nombre, Pageable pageable) {
@@ -57,6 +67,20 @@ public class ClienteNegocioService {
                 .map(this::aDto);
     }
 
+    public List<ClienteNegocioDto> top10() {
+        LocalDateTime hasta = RelojSuscripcion.fechaHoraActual();
+        LocalDateTime desde = hasta.minusDays(30);
+        List<Object[]> ranking = turnoRepository.rankingNegociosClientes(desde, hasta);
+        List<Long> ids = ranking.stream().map(row -> ((Negocio) row[0]).getNegocioId()).toList();
+        Set<Long> consultables = controlAccesoSuscripcion.negociosConsultablesPorCliente(ids);
+        List<Negocio> elegibles = ranking.stream().map(row -> (Negocio) row[0])
+                .filter(n -> consultables.contains(n.getNegocioId())).limit(10).toList();
+        if (elegibles.isEmpty()) return List.of();
+        Map<Long, DireccionNegocio> direcciones = direccionRepository
+                .findAllByNegocio_NegocioIdIn(elegibles.stream().map(Negocio::getNegocioId).toList())
+                .stream().collect(Collectors.toMap(d -> d.getNegocio().getNegocioId(), Function.identity()));
+        return elegibles.stream().map(n -> aDto(n, direcciones.get(n.getNegocioId()))).toList();
+    }
     public ClienteNegocioDto obtener(Long id) {
         return aDto(buscar(id));
     }
@@ -125,21 +149,15 @@ public class ClienteNegocioService {
     }
 
     private ClienteNegocioDto aDto(Negocio n) {
-        DireccionNegocio d = direccionRepository
-                .findByNegocio_NegocioId(n.getNegocioId())
-                .orElse(null);
+        DireccionNegocio d = direccionRepository.findByNegocio_NegocioId(n.getNegocioId()).orElse(null);
+        return aDto(n, d);
+    }
 
+    private ClienteNegocioDto aDto(Negocio n, DireccionNegocio d) {
         return new ClienteNegocioDto(
-                n.getNegocioId(),
-                n.getNombre(),
-                n.getDescripcion(),
-                n.getTelefono(),
-                n.getEmail(),
-                n.getStatus(),
-                d == null ? null : d.getCalle(),
-                d == null ? null : d.getNumero(),
-                d == null ? null : d.getCiudad(),
-                d == null ? null : d.getProvincia(),
+                n.getNegocioId(), n.getNombre(), n.getDescripcion(), n.getTelefono(), n.getEmail(), n.getStatus(),
+                d == null ? null : d.getCalle(), d == null ? null : d.getNumero(),
+                d == null ? null : d.getCiudad(), d == null ? null : d.getProvincia(),
                 d == null ? null : d.getCodigoPostal()
         );
     }

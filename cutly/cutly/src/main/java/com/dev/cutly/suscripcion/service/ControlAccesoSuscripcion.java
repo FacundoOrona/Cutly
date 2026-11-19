@@ -11,6 +11,9 @@ import com.dev.cutly.usuario.repository.UsuarioRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ControlAccesoSuscripcion {
@@ -72,6 +75,18 @@ public class ControlAccesoSuscripcion {
 
     public boolean clientePuedeConsultarNegocio(Long negocioId) {
         Suscripcion suscripcion = suscripcion(negocioId);
+        return clientePuedeConsultar(suscripcion);
+    }
+
+    public Set<Long> negociosConsultablesPorCliente(Collection<Long> negocioIds) {
+        if (negocioIds.isEmpty()) return Set.of();
+        return suscripcionRepository.findAllByNegocio_NegocioIdIn(negocioIds).stream()
+                .filter(this::clientePuedeConsultar)
+                .map(s -> s.getNegocio().getNegocioId())
+                .collect(Collectors.toSet());
+    }
+
+    private boolean clientePuedeConsultar(Suscripcion suscripcion) {
         if (suscripcion == null || estadoBloqueado(suscripcion)) return false;
         if (suscripcion.getStatus() == SuscripcionStatus.EXPIRED
                 || suscripcion.getStatus() == SuscripcionStatus.ACTIVE) return true;

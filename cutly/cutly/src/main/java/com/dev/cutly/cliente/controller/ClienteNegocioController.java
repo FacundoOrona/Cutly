@@ -32,6 +32,14 @@ public class ClienteNegocioController {
         }
     }
 
+    @GetMapping("/top")
+    public ResponseEntity<?> top10() {
+        try {
+            return ResponseEntity.ok(service.top10());
+        } catch (DataAccessException e) {
+            return errorInterno("No se pudo consultar el ranking de negocios");
+        }
+    }
     @GetMapping("/{negocioId}")
     public ResponseEntity<?> obtener(
             @PathVariable Long negocioId

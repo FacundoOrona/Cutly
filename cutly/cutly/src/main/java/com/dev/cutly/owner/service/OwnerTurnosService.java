@@ -423,11 +423,14 @@ public class OwnerTurnosService {
             DecisionFinanciera decision = (DecisionFinanciera) fila[1];
             BigDecimal monto = (BigDecimal) fila[2];
             if (decision == DecisionFinanciera.GRATUIDAD) {
-                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, null, null, null, null, null));
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision,
+                        BigDecimal.ZERO, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null));
             } else if (decision == DecisionFinanciera.COBRO_DIRECTO) {
-                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, null, null, monto));
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision,
+                        monto, null, monto, BigDecimal.ZERO, monto, null));
             } else {
-                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision, monto, null, BigDecimal.ZERO, monto, monto));
+                resumenes.put(turnoId, new ResumenFinancieroTurnoDto(decision,
+                        monto, null, BigDecimal.ZERO, monto, monto, "PENDIENTE"));
             }
         }
         Set<Long> turnosCobroDirecto = new java.util.HashSet<>();
@@ -440,18 +443,24 @@ public class OwnerTurnosService {
             Long turnoId = (Long) fila[0];
             ResumenFinancieroTurnoDto previo = resumenes.get(turnoId);
             if (previo != null && previo.decisionFinanciera() == DecisionFinanciera.COBRO_DIRECTO) {
+                BigDecimal totalAbonado = (BigDecimal) fila[1];
                 resumenes.put(turnoId, new ResumenFinancieroTurnoDto(previo.decisionFinanciera(),
-                        (BigDecimal) fila[1], (MetodoPago) fila[2], null, null, previo.montoAcordado()));
+                        previo.montoAcordado(), (MetodoPago) fila[2], totalAbonado, BigDecimal.ZERO,
+                        previo.montoAcordado(), null));
             }
         }
         if (!turnosCuentaCorriente.isEmpty()) for (Object[] fila : pagoRepository.findDeudasConAbonosPorTurnoIds(turnosCuentaCorriente)) {
             Long turnoId = (Long) fila[0];
             ResumenFinancieroTurnoDto previo = resumenes.get(turnoId);
             if (previo != null && previo.decisionFinanciera() == DecisionFinanciera.CUENTA_CORRIENTE) {
+                BigDecimal montoDeuda = (BigDecimal) fila[1];
                 BigDecimal totalAbonado = (BigDecimal) fila[2];
+                BigDecimal saldoPendiente = montoDeuda.subtract(totalAbonado);
+                String estadoDeuda = totalAbonado.signum() == 0 ? "PENDIENTE"
+                        : saldoPendiente.signum() <= 0 ? "PAGADA" : "PARCIAL";
                 resumenes.put(turnoId, new ResumenFinancieroTurnoDto(previo.decisionFinanciera(),
-                        previo.montoAcordado(), null, totalAbonado,
-                        ((BigDecimal) fila[1]).subtract(totalAbonado), previo.montoAcordado()));
+                        previo.montoAcordado(), null, totalAbonado, saldoPendiente,
+                        previo.montoAcordado(), estadoDeuda));
             }
         }
         return resumenes;
