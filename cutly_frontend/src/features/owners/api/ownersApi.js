@@ -13,6 +13,24 @@ export async function fetchOwners({ nombre, email, status, page, size }) {
   return data
 }
 
+export async function fetchOwnerById(id) {
+  const { data } = await apiClient.get(`/api/admin/owners/${id}`)
+  if (!data || typeof data !== 'object' || data.ownerId === undefined || !Array.isArray(data.negocios)) {
+    throw new Error('El servidor devolvió una respuesta de owner que no pudimos interpretar.')
+  }
+  return data
+}
+
+export function getOwnerDetailErrorMessage(error) {
+  const status = error.response?.status
+  if (status === 404) return 'Este owner no existe o ya no está disponible.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return 'No tenés permisos para consultar este owner.'
+  if (status >= 500) return 'El servicio no está disponible en este momento. Podés reintentar.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá nuevamente.'
+  return error.response?.data?.mensaje || 'No pudimos cargar los datos del owner.'
+}
+
 export async function createOwner(owner) {
   const { data } = await apiClient.post('/api/admin/owners', owner)
   // Never return or persist the JWT included in AuthResponse.

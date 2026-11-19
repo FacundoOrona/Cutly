@@ -6,6 +6,14 @@ import { getBusinessErrorMessage, getUpdateBusinessStatusErrorMessage } from '..
 import { useBusiness, useUpdateBusinessStatus } from '../hooks/useBusinesses.js'
 
 const statusLabels = { ACTIVE: 'Activo', INACTIVE: 'Inactivo', SUSPENDED: 'Suspendido' }
+const subscriptionStatusLabels = { ACTIVE: 'Activa', TRIAL: 'Prueba', EXPIRED: 'Vencida', SUSPENDED: 'Suspendida', CANCELLED: 'Cancelada' }
+const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
+
+function formatDate(value) {
+  if (!value) return '—'
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
+}
 
 export default function BusinessDetailPage() {
   const { id } = useParams()
@@ -44,6 +52,14 @@ export default function BusinessDetailPage() {
     ['Teléfono', business.telefono],
     ['Email', business.email],
     ['Estado', statusLabels[business.status] || business.status || 'Sin estado'],
+    ['Estado de suscripción', subscriptionStatusLabels[business.estadoSuscripcion] || business.estadoSuscripcion || 'Sin suscripción'],
+    ['Plan', business.nombrePlan],
+    ['Tipo de plan', business.tipoPlan],
+    ['Precio contratado', business.precioContratado === null || business.precioContratado === undefined ? '—' : money.format(Number(business.precioContratado))],
+    ['Inicio de suscripción', formatDate(business.fechaInicioSuscripcion)],
+    ['Vencimiento de suscripción', formatDate(business.fechaVencimientoSuscripcion)],
+    ['Plazo de suscripción', business.diasRestantes !== null && business.diasRestantes !== undefined ? `${business.diasRestantes} días restantes` : business.diasAtraso !== null && business.diasAtraso !== undefined ? `${business.diasAtraso} días de atraso` : '—'],
+    ['Acceso por suscripción', business.suscripcionHabilitada ? 'Habilitado' : 'No habilitado'],
   ] : []
 
   return (
