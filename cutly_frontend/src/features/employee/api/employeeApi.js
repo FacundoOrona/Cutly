@@ -12,8 +12,13 @@ export async function getEmployeeBusiness() {
   return data
 }
 
-export async function getEmployeeNotifications() {
-  const { data } = await apiClient.get('/api/empleado/notificaciones')
+export async function getEmployeeNotifications(page = 0, size = 20) {
+  const { data } = await apiClient.get('/api/empleado/notificaciones', { params: { page, size } })
+  return data
+}
+
+export async function getEmployeeUnreadNotificationCount() {
+  const { data } = await apiClient.get('/api/empleado/notificaciones/no-leidas/contador')
   return data
 }
 

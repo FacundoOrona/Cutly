@@ -1,7 +1,9 @@
-import { Bell, Check, CheckCheck, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { Bell, Check, CheckCheck, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 import { getEmployeeNotificationErrorMessage } from '../api/employeeApi.js'
 import {
   useEmployeeNotifications,
+  useEmployeeUnreadNotificationCount,
   useMarkAllEmployeeNotificationsAsRead,
   useMarkEmployeeNotificationAsRead,
 } from '../hooks/useEmployeeNotifications.js'
@@ -28,11 +30,15 @@ function NotificationsSkeleton() {
 }
 
 export default function EmployeeNotificationsPage() {
-  const notificationsQuery = useEmployeeNotifications()
-  const markReadMutation = useMarkEmployeeNotificationAsRead()
+  const [page, setPage] = useState(0)
+  const notificationsQuery = useEmployeeNotifications(page)
+  const unreadCountQuery = useEmployeeUnreadNotificationCount()
+  const markReadMutation = useMarkEmployeeNotificationAsRead(page)
   const markAllMutation = useMarkAllEmployeeNotificationsAsRead()
-  const notifications = notificationsQuery.data ?? []
-  const unreadCount = notifications.filter((notification) => notification.leida === false).length
+  const result = notificationsQuery.data
+  const notifications = result?.content ?? []
+  const unreadCount = unreadCountQuery.data?.cantidad
+  const totalPages = result?.totalPages ?? 0
   const isUpdating = markReadMutation.isPending || markAllMutation.isPending
   const mutationError = markReadMutation.error || markAllMutation.error
 
@@ -44,10 +50,10 @@ export default function EmployeeNotificationsPage() {
         <p>Las novedades importantes de tu espacio, en un solo lugar.</p>
       </div>
       <div className="employee-notifications-header-actions">
-        {notificationsQuery.isSuccess && <span className="employee-notifications-count" aria-live="polite">
+        {unreadCountQuery.isSuccess && <span className="employee-notifications-count" aria-live="polite">
           {unreadCount} sin leer
         </span>}
-        {notificationsQuery.isSuccess && unreadCount > 0 && <button type="button" className="employee-action-button is-primary" disabled={isUpdating}
+        {unreadCountQuery.isSuccess && unreadCount > 0 && <button type="button" className="employee-action-button is-primary" disabled={isUpdating}
           onClick={() => markAllMutation.mutate()}>
           {markAllMutation.isPending ? <RefreshCw size={14} className="employee-action-spinner" /> : <CheckCheck size={15} />}
           {markAllMutation.isPending ? 'Marcando…' : 'Marcar todas como leídas'}
@@ -68,6 +74,8 @@ export default function EmployeeNotificationsPage() {
     </div>}
 
     {mutationError && <p className="employee-notifications-mutation-error" role="alert">{getEmployeeNotificationErrorMessage(mutationError)}</p>}
+
+    {unreadCountQuery.isError && <p className="employee-notifications-mutation-error" role="alert">No pudimos actualizar el contador de notificaciones no leídas.</p>}
 
     {notificationsQuery.isSuccess && notifications.length === 0 && <div className="employee-empty-state employee-notifications-empty">
       <Bell size={21} /><strong>No tenés notificaciones</strong><p>Cuando haya novedades, las vas a encontrar acá.</p>
@@ -98,6 +106,15 @@ export default function EmployeeNotificationsPage() {
           </li>
         })}
       </ul>
+      {totalPages > 1 && <nav className="employee-notifications-pagination" aria-label="Páginas de notificaciones">
+        <button type="button" className="employee-action-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0 || notificationsQuery.isFetching}>
+          <ChevronLeft size={15} /> Anterior
+        </button>
+        <span>Página {(result.number ?? page) + 1} de {totalPages}</span>
+        <button type="button" className="employee-action-button" onClick={() => setPage((current) => current + 1)} disabled={(result.number ?? page) + 1 >= totalPages || notificationsQuery.isFetching}>
+          Siguiente <ChevronRight size={15} />
+        </button>
+      </nav>}
     </>}
   </section>
 }

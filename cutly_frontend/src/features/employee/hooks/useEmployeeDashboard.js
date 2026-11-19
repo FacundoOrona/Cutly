@@ -52,10 +52,12 @@ export function useEmployeeAppointmentAction() {
         if (!Array.isArray(cached)) return cached
         return cached.map((turno) => String(turno.turnoId) === String(updatedTurno.turnoId) ? updatedTurno : turno)
       })
+      queryClient.invalidateQueries({ queryKey: ['employee', 'appointment-history'] })
       return queryClient.invalidateQueries({ queryKey: ['employee', 'appointments'] })
     },
     onError: (error) => {
       if (error.response?.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ['employee', 'appointment-history'] })
         return queryClient.invalidateQueries({ queryKey: ['employee', 'appointments'] })
       }
       return undefined

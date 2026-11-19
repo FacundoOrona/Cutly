@@ -22,7 +22,7 @@ function validate(values) {
     const label = key === 'nombre' ? 'El nombre' : 'El apellido'
     const value = values[key]
     if (!value.trim()) errors[key] = `${label} es obligatorio.`
-    else if (value.trim().length < 2 || value.length > 20) errors[key] = `${label} debe tener entre 2 y 20 caracteres.`
+    else if (value.length > 20) errors[key] = `${label} no puede superar los 20 caracteres.`
   }
   if (!values.dni.trim()) errors.dni = 'El DNI es obligatorio.'
   else if (values.dni.length < 7 || values.dni.length > 9) errors.dni = 'El DNI debe tener entre 7 y 9 caracteres.'

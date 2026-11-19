@@ -91,18 +91,33 @@ export async function completeOwnerTurno({ negocioId, turnoId, body, idempotency
   return data
 }
 
-export function getCompleteOwnerTurnoErrorMessage(error) {
+export async function regularizeOwnerTurno({ negocioId, turnoId, body, idempotencyKey }) {
+  const { data } = await apiClient.post(`/api/owner/negocios/${negocioId}/turnos/${turnoId}/regularizacion-financiera`, body, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
+}
+
+function getOwnerTurnoFinancialErrorMessage(error, verb) {
   const status = error.response?.status
   const body = error.response?.data
   const message = typeof body === 'string' ? body : body?.mensaje || body?.message
   if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
-  if (status === 403) return message || 'No tenés permiso para completar este turno.'
+  if (status === 403) return message || `No tenés permiso para ${verb} este turno.`
   if (status === 404) return message || 'El turno ya no está disponible. Actualizá el listado.'
   if (status === 409) return message || 'El turno cambió o esta operación ya fue procesada. Actualizamos el listado.'
   if (status === 400 || status === 422) return message || 'Revisá los datos financieros ingresados.'
   if (!error.response) return 'No pudimos confirmar el resultado por un problema de conexión. Reintentá para consultar la misma operación.'
-  if (status >= 500) return message || 'No pudimos completar el turno por un problema del servidor.'
-  return message || 'No pudimos completar el turno. Intentá nuevamente.'
+  if (status >= 500) return message || `No pudimos ${verb} el turno por un problema del servidor.`
+  return message || `No pudimos ${verb} el turno. Intentá nuevamente.`
+}
+
+export function getCompleteOwnerTurnoErrorMessage(error) {
+  return getOwnerTurnoFinancialErrorMessage(error, 'completar')
+}
+
+export function getRegularizeOwnerTurnoErrorMessage(error) {
+  return getOwnerTurnoFinancialErrorMessage(error, 'regularizar')
 }
 
 export function getOwnerTurnosErrorMessage(error) {

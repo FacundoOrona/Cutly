@@ -4,7 +4,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
 import { getOwnerBusinessServicesErrorMessage } from '../api/ownerBusinessServicesApi.js'
-import { completeOwnerTurno, getCompleteOwnerTurnoErrorMessage, getOwnerTurnosErrorMessage, getUpdateOwnerTurnoErrorMessage, updateOwnerTurnoStatus } from '../api/ownerTurnosApi.js'
+import { completeOwnerTurno, getCompleteOwnerTurnoErrorMessage, getOwnerTurnosErrorMessage, getRegularizeOwnerTurnoErrorMessage, getUpdateOwnerTurnoErrorMessage, regularizeOwnerTurno, updateOwnerTurnoStatus } from '../api/ownerTurnosApi.js'
 import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 import { useOwnerBusinessEmployees } from '../hooks/useOwnerBusinessEmployees.js'
 import { useOwnerBusinessServices } from '../hooks/useOwnerBusinessServices.js'
@@ -152,6 +152,7 @@ export default function OwnerTurnosPage() {
   const [openActionsTurnoId, setOpenActionsTurnoId] = useState(null)
   const [selectedTurno, setSelectedTurno] = useState(null)
   const [financialTurno, setFinancialTurno] = useState(null)
+  const [regularizingTurno, setRegularizingTurno] = useState(false)
   const [financialError, setFinancialError] = useState('')
   const [financialSuccessDecision, setFinancialSuccessDecision] = useState('')
   const financialOperationRef = useRef(null)
@@ -208,7 +209,7 @@ export default function OwnerTurnosPage() {
   })
 
   const completeTurnoMutation = useMutation({
-    mutationFn: completeOwnerTurno,
+    mutationFn: ({ regularizing, ...operation }) => regularizing ? regularizeOwnerTurno(operation) : completeOwnerTurno(operation),
     onSuccess: (updatedTurno, variables) => {
       queryClient.setQueryData(ownerTurnoDetailQueryKey({ negocioId: variables.negocioId, turnoId: variables.turnoId }), updatedTurno)
       const prefix = ['ownerBusinesses', 'detail', String(variables.negocioId), 'turnos']
@@ -223,7 +224,14 @@ export default function OwnerTurnosPage() {
       financialOperationRef.current = null
       setFinancialError('')
     },
-    onError: (error) => setFinancialError(getCompleteOwnerTurnoErrorMessage(error)),
+    onError: (error, variables) => {
+      setFinancialError(variables.regularizing ? getRegularizeOwnerTurnoErrorMessage(error) : getCompleteOwnerTurnoErrorMessage(error))
+      if (error.response?.status === 409) {
+        const prefix = ['ownerBusinesses', 'detail', String(variables.negocioId), 'turnos']
+        queryClient.invalidateQueries({ queryKey: prefix })
+        queryClient.invalidateQueries({ queryKey: ownerTurnoDetailQueryKey({ negocioId: variables.negocioId, turnoId: variables.turnoId }) })
+      }
+    },
   })
   const individualBusinessId = activeBusiness ? String(activeBusiness.negocioId) : ''
   const dateIsValid = validDate(fecha)
@@ -233,6 +241,8 @@ export default function OwnerTurnosPage() {
     setServicioId('')
     setSelectedTurno(null)
     setFinancialTurno(null)
+    setRegularizingTurno(false)
+    setFinancialSuccessDecision('')
     setActionErrors({})
     setPendingActionKeys(new Set())
     pendingActionKeysRef.current = new Set()
@@ -330,13 +340,14 @@ export default function OwnerTurnosPage() {
     const actions = availableActions[turno.status] || []
     return <div className="owner-turno-row-actions">
       <button type="button" className="owners-secondary-button owner-turno-action owner-turno-detail-action" onClick={() => setSelectedTurno({ negocioId: activeBusinessId, turnoId: turno.turnoId })} aria-label={`Ver detalles del turno de ${turno.clienteNombre || 'cliente'} ${dateTime(turno.fechaHoraInicio)}`} title="Ver detalles"><Eye size={15} /></button>
+      {turno.status === 'COMPLETED' && !turno.regularizadoFinancieramente && <button type="button" className="owners-secondary-button owner-turno-action" onClick={() => { financialOperationRef.current = null; setRegularizingTurno(true); setFinancialError(''); setFinancialSuccessDecision(''); setFinancialTurno(turno) }} disabled={turnIsPending || completeTurnoMutation.isPending}>Regularizar</button>}
       {actions.length > 0 && <div className="owner-turno-actions-menu">
         <button ref={openActionsTurnoId === actionKey ? (node) => { if (node?.getClientRects().length) actionMenuTriggerRef.current = node } : null} type="button" className="owners-secondary-button owner-turno-action owner-turno-menu-trigger" aria-label={`Más acciones para el turno de ${turno.clienteNombre || 'cliente'}`} aria-haspopup="menu" aria-expanded={openActionsTurnoId === actionKey} onClick={() => setOpenActionsTurnoId((current) => current === actionKey ? null : actionKey)} disabled={turnIsPending}><Ellipsis size={16} /></button>
         {openActionsTurnoId === actionKey && <div ref={(node) => { if (node?.getClientRects().length) actionMenuPopoverRef.current = node }} className="owner-turno-actions-popover" role="menu" aria-label="Acciones del turno">
           {actions.map((action) => {
             const details = actionDetails[action]
             const Icon = details.icon
-            return <button key={action} type="button" role="menuitem" className={`owner-turno-menu-item ${details.className}`} onClick={() => { setOpenActionsTurnoId(null); if (action === 'completar') { financialOperationRef.current = null; setFinancialError(''); setFinancialTurno(turno) } else void runTurnoAction(turno, action) }} disabled={turnIsPending}><Icon size={14} />{details.label}</button>
+            return <button key={action} type="button" role="menuitem" className={`owner-turno-menu-item ${details.className}`} onClick={() => { setOpenActionsTurnoId(null); if (action === 'completar') { financialOperationRef.current = null; setRegularizingTurno(false); setFinancialError(''); setFinancialSuccessDecision(''); setFinancialTurno(turno) } else void runTurnoAction(turno, action) }} disabled={turnIsPending}><Icon size={14} />{details.label}</button>
           })}
         </div>}
       </div>}
@@ -411,17 +422,17 @@ export default function OwnerTurnosPage() {
       </section>
     )}
     {selectedTurno && <OwnerTurnoDetailDrawer negocioId={selectedTurno.negocioId} turnoId={selectedTurno.turnoId} onClose={closeTurnoDetail} />}
-    {financialTurno && <OwnerTurnoFinancialDrawer turno={financialTurno} error={financialError} isPending={completeTurnoMutation.isPending} successDecision={financialSuccessDecision} onCancel={() => { if (!completeTurnoMutation.isPending) { setFinancialTurno(null); setFinancialError(''); setFinancialSuccessDecision(''); financialOperationRef.current = null } }} onSubmit={(body) => {
+    {financialTurno && <OwnerTurnoFinancialDrawer turno={financialTurno} error={financialError} isPending={completeTurnoMutation.isPending} successDecision={financialSuccessDecision} regularizing={regularizingTurno} onCancel={() => { if (!completeTurnoMutation.isPending) { setFinancialTurno(null); setRegularizingTurno(false); setFinancialError(''); setFinancialSuccessDecision(''); financialOperationRef.current = null } }} onSubmit={(body) => {
       if (completeTurnoMutation.isPending) return
       if (financialOperationRef.current && !body) {
         const operation = financialOperationRef.current
-        void completeTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey }).catch(() => {})
+        void completeTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey, regularizing: regularizingTurno }).catch(() => {})
         return
       }
       if (financialOperationRef.current && body && JSON.stringify(financialOperationRef.current.body) !== JSON.stringify(body)) return
       if (!financialOperationRef.current) financialOperationRef.current = { idempotencyKey: crypto.randomUUID(), body }
       const operation = financialOperationRef.current
-      void completeTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey }).catch(() => {})
+      void completeTurnoMutation.mutateAsync({ negocioId: activeBusinessId, turnoId: financialTurno.turnoId, body: operation.body, idempotencyKey: operation.idempotencyKey, regularizing: regularizingTurno }).catch(() => {})
     }} />}
 
   </>
