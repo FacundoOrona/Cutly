@@ -10,6 +10,7 @@ import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,12 +30,14 @@ public class EmpleadoTurnoService {
     private final TurnoRepository turnoRepository;
     private final EmpleadoRepository empleadoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final NotificacionTurnoService notificacionTurnoService;
 
     public EmpleadoTurnoService(TurnoRepository turnoRepository, EmpleadoRepository empleadoRepository,
-                                UsuarioRepository usuarioRepository) {
+                                UsuarioRepository usuarioRepository, NotificacionTurnoService notificacionTurnoService) {
         this.turnoRepository = turnoRepository;
         this.empleadoRepository = empleadoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.notificacionTurnoService = notificacionTurnoService;
     }
 
     @Transactional(readOnly = true)
@@ -90,7 +93,9 @@ public class EmpleadoTurnoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede cambiar el estado del turno de " + turno.getStatus() + " a " + destino);
         }
+        TurnoStatus anterior = turno.getStatus();
         turno.setStatus(destino);
+        notificacionTurnoService.notificarCambioEstado(turno, anterior, destino, empleado.getUsuario());
         return aDto(turnoRepository.save(turno));
     }
 

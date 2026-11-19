@@ -108,7 +108,7 @@ public class ClienteTurnoService {
             turno.setServicio(servicio);
             turno.setObservaciones(request.observaciones());
             Turno turnoGuardado = turnoRepository.save(turno);
-            notificacionTurnoService.notificarNuevoTurnoAsignado(turnoGuardado);
+            notificacionTurnoService.notificarNuevoTurnoSolicitado(turnoGuardado);
             return aDto(turnoGuardado);
         }
         throw new ResponseStatusException(HttpStatus.CONFLICT, "No hay empleados disponibles para el horario solicitado");
@@ -154,7 +154,9 @@ public class ClienteTurnoService {
                 && turno.getStatus() != TurnoStatus.IN_PROGRESS) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El turno no puede cancelarse en su estado actual");
         }
+        TurnoStatus anterior = turno.getStatus();
         turno.setStatus(TurnoStatus.CANCELLED);
+        notificacionTurnoService.notificarCambioEstado(turno, anterior, TurnoStatus.CANCELLED, cliente);
         return aDto(turnoRepository.save(turno));
     }
 

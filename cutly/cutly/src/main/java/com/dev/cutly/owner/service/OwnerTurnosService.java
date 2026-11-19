@@ -349,6 +349,7 @@ public class OwnerTurnosService {
                     "No se puede cambiar el estado del turno de " + actual + " a " + destino);
         }
         turno.setStatus(destino);
+        notificacionTurnoService.notificarCambioEstado(turno, actual, destino, turno.getNegocio().getOwner());
         return aDto(turnoRepository.save(turno));
     }
 
