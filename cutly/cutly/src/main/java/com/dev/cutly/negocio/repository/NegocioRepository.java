@@ -2,9 +2,11 @@ package com.dev.cutly.negocio.repository;
 
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,4 +22,10 @@ public interface NegocioRepository extends JpaRepository <Negocio, Long> {
     Page<Negocio> findByStatusAndNombreContainingIgnoreCase(NegocioStatus status, String nombre, Pageable pageable);
 
     Optional<Negocio> findByNegocioIdAndStatus(Long negocioId, NegocioStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Negocio> findWithLockingByNegocioId(Long negocioId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Negocio> findWithLockingByNegocioIdAndOwner_UsuarioId(Long negocioId, Long ownerId);
 }

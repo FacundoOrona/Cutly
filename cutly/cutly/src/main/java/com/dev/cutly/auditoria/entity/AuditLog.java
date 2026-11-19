@@ -29,7 +29,7 @@ public class AuditLog {
     @Column(name = "entidad_id")
     private Long entidadId;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String descripcion;
 
     @Column(nullable = false)

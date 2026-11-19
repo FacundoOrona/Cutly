@@ -59,10 +59,37 @@ public class Suscripcion {
         this.precioContratado = precioValidado;
     }
 
+    /** Corrección explícita reservada al flujo administrativo de regularización. */
+    public void corregirPrecioContratadoAdministrativamente(BigDecimal precio) {
+        BigDecimal precioValidado = Objects.requireNonNull(precio, "El precio contratado es obligatorio");
+        if (precioValidado.signum() < 0) {
+            throw new IllegalArgumentException("El precio contratado no puede ser negativo");
+        }
+        if (precioValidado.precision() - precioValidado.scale() > 8 || precioValidado.scale() > 2) {
+            throw new IllegalArgumentException("El precio admite hasta 8 enteros y 2 decimales");
+        }
+        if (status == SuscripcionStatus.TRIAL && precioValidado.compareTo(BigDecimal.ZERO) != 0) {
+            throw new IllegalArgumentException("El precio contratado de una suscripción TRIAL debe ser cero");
+        }
+        this.precioContratado = precioValidado;
+    }
+
     @PrePersist
     private void validarAntesDeCrear() {
-        if (precioContratado == null) {
+        validarPrecioContratado(true);
+    }
+
+    @PreUpdate
+    private void validarAntesDeActualizar() {
+        validarPrecioContratado(false);
+    }
+
+    private void validarPrecioContratado(boolean obligatorio) {
+        if (precioContratado == null && obligatorio) {
             throw new IllegalStateException("Las nuevas suscripciones requieren un precio contratado");
+        }
+        if (precioContratado == null) {
+            return;
         }
         if (precioContratado.signum() < 0) {
             throw new IllegalStateException("El precio contratado no puede ser negativo");

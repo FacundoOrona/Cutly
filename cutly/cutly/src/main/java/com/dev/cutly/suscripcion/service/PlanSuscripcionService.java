@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class PlanSuscripcionService {
@@ -24,10 +26,34 @@ public class PlanSuscripcionService {
 
     @Transactional
     public PlanSuscripcion obtenerOCrearPlanPruebaGratuita() {
+        planSuscripcionRepository.inicializarVersionesNulas();
         List<PlanSuscripcion> planes = planSuscripcionRepository.findAll();
+
+        Map<String, List<PlanSuscripcion>> porNombreNormalizado = planes.stream()
+                .collect(Collectors.groupingBy(plan -> PlanSuscripcion.claveNombre(plan.getNombre())));
+        List<String> colisiones = porNombreNormalizado.entrySet().stream()
+                .filter(entry -> entry.getValue().size() > 1)
+                .map(entry -> entry.getKey() + " => " + entry.getValue().stream()
+                        .map(plan -> "id=" + plan.getPlanId() + ", nombre='" + plan.getNombre() + "'")
+                        .collect(Collectors.joining("; ")))
+                .toList();
+        if (!colisiones.isEmpty()) {
+            throw new IllegalStateException("Hay colisiones de nombres normalizados en planes: "
+                    + String.join(" | ", colisiones));
+        }
+        for (PlanSuscripcion plan : planes) {
+            String nombreNormalizado = PlanSuscripcion.normalizarNombrePresentacion(plan.getNombre());
+            String clave = PlanSuscripcion.claveNombre(nombreNormalizado);
+            if (nombreNormalizado.codePointCount(0, nombreNormalizado.length()) > 50
+                    || clave.codePointCount(0, clave.length()) > 100) {
+                throw new IllegalStateException("El plan id=" + plan.getPlanId()
+                        + " excede la longitud admitida después de normalizar su nombre");
+            }
+        }
+
         List<PlanSuscripcion> candidatosNombre = planes.stream()
-                .filter(plan -> plan.getNombre() != null
-                        && NOMBRE_PLAN_PRUEBA.equalsIgnoreCase(plan.getNombre().trim()))
+                .filter(plan -> PlanSuscripcion.claveNombre(plan.getNombre())
+                        .equals(PlanSuscripcion.claveNombre(NOMBRE_PLAN_PRUEBA)))
                 .toList();
         List<PlanSuscripcion> candidatosTipo = planes.stream()
                 .filter(plan -> plan.getTipo() == TipoPlanSuscripcion.TRIAL)
@@ -56,7 +82,7 @@ public class PlanSuscripcionService {
             }
             planTrial.validarPropiedadesTrial();
             planTrial.clasificarComoTrial();
-            planSuscripcionRepository.save(planTrial);
+            planTrial.normalizarNombrePreexistente();
         } else {
             if (!candidatosTipo.isEmpty()) {
                 throw new IllegalStateException("Existe un plan TRIAL contradictorio");
@@ -72,11 +98,15 @@ public class PlanSuscripcionService {
             if (plan.getTipo() == TipoPlanSuscripcion.TRIAL) {
                 throw new IllegalStateException("Solo puede existir un plan TRIAL");
             }
+            if (plan.getPrecioMensual() == null || plan.getPrecioMensual().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new IllegalStateException("El plan preexistente id=" + plan.getPlanId()
+                        + " tiene un precio incompatible con el tipo COMERCIAL");
+            }
             if (plan.getTipo() == null) {
                 plan.clasificarComoComercial();
-                planSuscripcionRepository.save(plan);
                 planesClasificados++;
             }
+            plan.normalizarNombrePreexistente();
         }
 
         if (planesClasificados > 0) {

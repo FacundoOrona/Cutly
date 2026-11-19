@@ -8,6 +8,7 @@ import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -36,8 +37,9 @@ public class AdminNegocioService {
                 .orElseThrow(() -> new NoSuchElementException("No se encontró el negocio con id " + id));
     }
 
+    @Transactional
     public AdminNegocioDto actualizarEstado(Long id, NegocioStatus status) {
-        Negocio negocio = negocioRepository.findById(id)
+        Negocio negocio = negocioRepository.findWithLockingByNegocioId(id)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró el negocio con id " + id));
         if (!transicionValida(negocio.getStatus(), status)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,

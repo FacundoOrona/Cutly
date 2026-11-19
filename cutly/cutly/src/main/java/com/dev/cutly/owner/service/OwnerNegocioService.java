@@ -7,10 +7,14 @@ import com.dev.cutly.owner.dto.negocio.ActualizarNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.CrearNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.OwnerNegocioDto;
 import com.dev.cutly.suscripcion.entity.PlanSuscripcion;
+import com.dev.cutly.suscripcion.entity.SnapshotSuscripcion;
 import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
+import com.dev.cutly.suscripcion.enums.TipoEventoSuscripcion;
 import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
+import com.dev.cutly.suscripcion.service.HistorialSuscripcionService;
 import com.dev.cutly.suscripcion.service.PlanSuscripcionService;
+import com.dev.cutly.suscripcion.service.RelojSuscripcion;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -30,17 +34,20 @@ public class OwnerNegocioService {
     private final UsuarioRepository usuarioRepository;
     private final SuscripcionRepository suscripcionRepository;
     private final PlanSuscripcionService planSuscripcionService;
+    private final HistorialSuscripcionService historialSuscripcionService;
 
     public OwnerNegocioService(
             NegocioRepository negocioRepository,
             UsuarioRepository usuarioRepository,
             SuscripcionRepository suscripcionRepository,
-            PlanSuscripcionService planSuscripcionService
+            PlanSuscripcionService planSuscripcionService,
+            HistorialSuscripcionService historialSuscripcionService
     ) {
         this.negocioRepository = negocioRepository;
         this.usuarioRepository = usuarioRepository;
         this.suscripcionRepository = suscripcionRepository;
         this.planSuscripcionService = planSuscripcionService;
+        this.historialSuscripcionService = historialSuscripcionService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -61,7 +68,7 @@ public class OwnerNegocioService {
         Negocio negocioGuardado = negocioRepository.save(negocio);
 
         if (esPrimerNegocio) {
-            LocalDate fechaInicio = LocalDate.now();
+            LocalDate fechaInicio = RelojSuscripcion.fechaActual();
             PlanSuscripcion planPrueba = planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
 
             Suscripcion suscripcion = new Suscripcion();
@@ -71,7 +78,19 @@ public class OwnerNegocioService {
             suscripcion.setPlan(planPrueba);
             suscripcion.asignarPrecioContratado(planPrueba.getPrecioMensual());
             suscripcion.setNegocio(negocioGuardado);
-            suscripcionRepository.save(suscripcion);
+            Suscripcion suscripcionGuardada = suscripcionRepository.save(suscripcion);
+            historialSuscripcionService.registrar(
+                    suscripcionGuardada,
+                    TipoEventoSuscripcion.TRIAL_CREATED,
+                    fechaInicio,
+                    null,
+                    SnapshotSuscripcion.capturar(suscripcionGuardada),
+                    null,
+                    RelojSuscripcion.IDENTIFICACION_SISTEMA,
+                    "Prueba gratuita concedida al primer negocio del OWNER",
+                    "Creación automática de TRIAL para el primer negocio del OWNER",
+                    null
+            );
         }
 
         return aDto(negocioGuardado);
@@ -90,13 +109,16 @@ public class OwnerNegocioService {
                         "No se encontró el negocio solicitado"));
     }
 
+    @Transactional
     public OwnerNegocioDto actualizarNegocio(
             Long id,
             ActualizarNegocioRequestDto request,
             String emailOwner
     ) {
         Usuario owner = obtenerOwnerAutenticado(emailOwner);
-        Negocio negocio = buscarNegocioPropio(id, owner.getUsuarioId());
+        Negocio negocio = negocioRepository.findWithLockingByNegocioIdAndOwner_UsuarioId(id, owner.getUsuarioId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el negocio solicitado"));
         if (request.nombre() != null) negocio.setNombre(request.nombre());
         if (request.descripcion() != null) negocio.setDescripcion(request.descripcion());
         if (request.telefono() != null) negocio.setTelefono(request.telefono());
@@ -104,9 +126,12 @@ public class OwnerNegocioService {
         return aDto(negocioRepository.save(negocio));
     }
 
+    @Transactional
     public OwnerNegocioDto actualizarEstado(Long id, NegocioStatus destino, String emailOwner) {
         Usuario owner = obtenerOwnerAutenticado(emailOwner);
-        Negocio negocio = buscarNegocioPropio(id, owner.getUsuarioId());
+        Negocio negocio = negocioRepository.findWithLockingByNegocioIdAndOwner_UsuarioId(id, owner.getUsuarioId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el negocio solicitado"));
         if (destino == NegocioStatus.ACTIVE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Los negocios solo pueden ser habilitados por SUPER_ADMIN");

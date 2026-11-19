@@ -2,7 +2,9 @@ package com.dev.cutly.suscripcion.entity;
 
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 import com.dev.cutly.suscripcion.enums.TipoEventoSuscripcion;
+import com.dev.cutly.suscripcion.service.RelojSuscripcion;
 import com.dev.cutly.usuario.entity.Usuario;
+import com.dev.cutly.usuario.enums.Rol;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,6 +24,7 @@ import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "historial_suscripciones")
@@ -39,6 +42,24 @@ public class HistorialSuscripcion {
     @JoinColumn(name = "suscripcion_id", nullable = false)
     private Suscripcion suscripcion;
 
+    @Column(name = "plan_id_anterior")
+    private Long planIdAnterior;
+
+    @Column(name = "nombre_plan_anterior", length = 50)
+    private String nombrePlanAnterior;
+
+    @Column(name = "plan_id_nuevo")
+    private Long planIdNuevo;
+
+    @Column(name = "nombre_plan_nuevo", length = 50)
+    private String nombrePlanNuevo;
+
+    @Column(name = "precio_contratado_anterior", precision = 10, scale = 2)
+    private BigDecimal precioContratadoAnterior;
+
+    @Column(name = "precio_contratado_nuevo", precision = 10, scale = 2)
+    private BigDecimal precioContratadoNuevo;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_evento", nullable = false, length = 30)
     private TipoEventoSuscripcion tipoEvento;
@@ -48,6 +69,12 @@ public class HistorialSuscripcion {
 
     @Column(name = "fecha_inicio_periodo")
     private LocalDate fechaInicioPeriodo;
+
+    @Column(name = "fecha_inicio_anterior")
+    private LocalDate fechaInicioAnterior;
+
+    @Column(name = "fecha_inicio_nueva")
+    private LocalDate fechaInicioNueva;
 
     @Column(name = "fecha_vencimiento_anterior")
     private LocalDate fechaVencimientoAnterior;
@@ -77,27 +104,69 @@ public class HistorialSuscripcion {
             Suscripcion suscripcion,
             TipoEventoSuscripcion tipoEvento,
             LocalDate fechaInicioPeriodo,
-            LocalDate fechaVencimientoAnterior,
-            LocalDate fechaVencimientoNueva,
-            SuscripcionStatus estadoAnterior,
-            SuscripcionStatus estadoNuevo,
+            SnapshotSuscripcion anterior,
+            SnapshotSuscripcion nuevo,
             Usuario administradorResponsable,
             String identificacionSistema,
-            String observacion
+            String observacion,
+            LocalDateTime fechaEvento
     ) {
+        validarActor(administradorResponsable, identificacionSistema);
+        if (suscripcion == null || tipoEvento == null || fechaEvento == null) {
+            throw new IllegalArgumentException("Suscripción, evento y fecha del evento son obligatorios");
+        }
         HistorialSuscripcion historial = new HistorialSuscripcion();
         historial.suscripcion = suscripcion;
         historial.tipoEvento = tipoEvento;
-        historial.fechaEvento = LocalDateTime.now();
+        historial.fechaEvento = fechaEvento;
         historial.fechaInicioPeriodo = fechaInicioPeriodo;
-        historial.fechaVencimientoAnterior = fechaVencimientoAnterior;
-        historial.fechaVencimientoNueva = fechaVencimientoNueva;
-        historial.estadoAnterior = estadoAnterior;
-        historial.estadoNuevo = estadoNuevo;
+        historial.aplicarSnapshotAnterior(anterior);
+        historial.aplicarSnapshotNuevo(nuevo);
         historial.administradorResponsable = administradorResponsable;
         historial.identificacionSistema = identificacionSistema;
         historial.observacion = observacion;
         return historial;
+    }
+
+    private void aplicarSnapshotAnterior(SnapshotSuscripcion snapshot) {
+        if (snapshot == null) return;
+        planIdAnterior = snapshot.planId();
+        nombrePlanAnterior = snapshot.nombrePlan();
+        precioContratadoAnterior = snapshot.precioContratado();
+        fechaInicioAnterior = snapshot.fechaInicio();
+        fechaVencimientoAnterior = snapshot.fechaVencimiento();
+        estadoAnterior = snapshot.estado();
+    }
+
+    private void aplicarSnapshotNuevo(SnapshotSuscripcion snapshot) {
+        if (snapshot == null) return;
+        planIdNuevo = snapshot.planId();
+        nombrePlanNuevo = snapshot.nombrePlan();
+        precioContratadoNuevo = snapshot.precioContratado();
+        fechaInicioNueva = snapshot.fechaInicio();
+        fechaVencimientoNueva = snapshot.fechaVencimiento();
+        estadoNuevo = snapshot.estado();
+    }
+
+    private static void validarActor(Usuario administrador, String sistema) {
+        boolean administradorPresente = administrador != null;
+        boolean sistemaPresente = sistema != null;
+        if (administradorPresente == sistemaPresente
+                || (administradorPresente && (administrador.getUsuarioId() == null
+                || administrador.getRol() != Rol.SUPER_ADMIN))
+                || (sistemaPresente && !RelojSuscripcion.IDENTIFICACION_SISTEMA.equals(sistema))) {
+            throw new IllegalArgumentException(
+                    "El evento debe tener exactamente un administrador o el actor SISTEMA"
+            );
+        }
+    }
+
+    @PrePersist
+    private void validarAntesDeCrear() {
+        validarActor(administradorResponsable, identificacionSistema);
+        if (suscripcion == null || tipoEvento == null || fechaEvento == null) {
+            throw new IllegalStateException("El evento de historial está incompleto");
+        }
     }
 
     @PreUpdate

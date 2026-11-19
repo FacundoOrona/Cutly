@@ -4,24 +4,63 @@ import com.dev.cutly.suscripcion.service.PlanSuscripcionService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class PlanSuscripcionInitializer implements ApplicationRunner {
 
-    private final PlanSuscripcionService planSuscripcionService;
+    private static final Logger logger = LoggerFactory.getLogger(PlanSuscripcionInitializer.class);
 
-    public PlanSuscripcionInitializer(PlanSuscripcionService planSuscripcionService) {
+    private final PlanSuscripcionService planSuscripcionService;
+    private final PlanSuscripcionReadiness readiness;
+    private final PlanSuscripcionSchemaVerifier schemaVerifier;
+
+    public PlanSuscripcionInitializer(
+            PlanSuscripcionService planSuscripcionService,
+            PlanSuscripcionReadiness readiness,
+            PlanSuscripcionSchemaVerifier schemaVerifier
+    ) {
         this.planSuscripcionService = planSuscripcionService;
+        this.readiness = readiness;
+        this.schemaVerifier = schemaVerifier;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         try {
-            planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
-        } catch (DataIntegrityViolationException e) {
-            // Una instancia concurrente pudo insertar el plan tras nuestra consulta inicial.
-            planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
+            try {
+                planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
+            } catch (DataIntegrityViolationException | ObjectOptimisticLockingFailureException e) {
+                // Otra instancia pudo insertar o clasificar los mismos planes durante el arranque.
+                planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
+            }
+        } catch (RuntimeException e) {
+            logger.error("No se completó la inicialización de planes; las escrituras administrativas quedan bloqueadas", e);
+            readiness.markBlocked(List.of(
+                    "La clasificación inicial de planes requiere revisión; consultar los logs de arranque"
+            ));
+            return;
+        }
+
+        try {
+            List<String> pendientes = schemaVerifier.verificar();
+            if (pendientes.isEmpty()) {
+                readiness.markReady();
+            } else {
+                readiness.markBlocked(pendientes);
+                logger.warn("Las escrituras administrativas de planes quedan bloqueadas: {}",
+                        String.join("; ", pendientes));
+            }
+        } catch (RuntimeException e) {
+            logger.error("No se pudo verificar el esquema de planes; las escrituras administrativas quedan bloqueadas", e);
+            readiness.markBlocked(List.of(
+                    "No se pudo verificar el esquema de planes; revisar la configuración y los logs de arranque"
+            ));
         }
     }
 }

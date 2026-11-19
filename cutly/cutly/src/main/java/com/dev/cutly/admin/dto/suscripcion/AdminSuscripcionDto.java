@@ -14,6 +14,7 @@ public record AdminSuscripcionDto(
         Long planId,
         String nombrePlan,
         Long negocioId,
-        String nombreNegocio
+        String nombreNegocio,
+        String version
 ) {
 }

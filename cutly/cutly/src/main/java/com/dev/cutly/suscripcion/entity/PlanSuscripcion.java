@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.Objects;
 
 @Entity
@@ -21,12 +23,21 @@ public class PlanSuscripcion {
     @Column(name = "plan_id")
     private Long planId;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String nombre;
+
+    @Column(
+            name = "nombre_normalizado",
+            columnDefinition = "VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+            length = 100,
+            nullable = true
+    )
+    private String nombreNormalizado;
 
     @Column(length = 500)
     private String descripcion;
 
+    /** Precio de una asignación comercial por un período de 30 días. */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precioMensual;
 
@@ -37,9 +48,13 @@ public class PlanSuscripcion {
     @Column(name = "tipo", nullable = true, length = 20)
     private TipoPlanSuscripcion tipo;
 
+    @Version
+    @Column(name = "version_plan", nullable = true)
+    private Long version;
+
     public static PlanSuscripcion crearPlanTrial() {
         PlanSuscripcion plan = new PlanSuscripcion();
-        plan.nombre = NOMBRE_PLAN_TRIAL;
+        plan.establecerNombre(NOMBRE_PLAN_TRIAL);
         plan.precioMensual = BigDecimal.ZERO;
         plan.activo = true;
         plan.tipo = TipoPlanSuscripcion.TRIAL;
@@ -66,7 +81,8 @@ public class PlanSuscripcion {
         if (tipo != null && tipo != TipoPlanSuscripcion.COMERCIAL) {
             throw new IllegalStateException("Un plan TRIAL no puede convertirse en COMERCIAL");
         }
-        if (nombre == null || nombre.isBlank() || nombre.length() > 50) {
+        String nombrePresentacion = normalizarNombrePresentacion(nombre);
+        if (nombrePresentacion.isBlank() || nombrePresentacion.codePointCount(0, nombrePresentacion.length()) > 50) {
             throw new IllegalStateException("Un plan preexistente tiene un nombre inválido");
         }
         if (esNombreReservadoTrial(nombre)) {
@@ -82,18 +98,21 @@ public class PlanSuscripcion {
         if (tipo == null) {
             throw new IllegalStateException("No se puede editar un plan sin tipo asignado");
         }
-        if (nombre == null || nombre.isBlank() || nombre.length() > 50) {
+        String nombrePresentacion = normalizarNombrePresentacion(nombre);
+        if (nombrePresentacion.isBlank() || nombrePresentacion.codePointCount(0, nombrePresentacion.length()) > 50) {
             throw new IllegalArgumentException("El nombre del plan debe contener entre 1 y 50 caracteres");
         }
-        if (esNombreReservadoTrial(nombre)) {
+        if (esNombreReservadoTrial(nombrePresentacion)) {
             throw new IllegalArgumentException("El nombre Prueba gratuita está reservado para el plan TRIAL");
         }
         if (descripcion != null && descripcion.length() > 500) {
             throw new IllegalArgumentException("La descripción del plan no puede superar los 500 caracteres");
         }
-        this.nombre = nombre;
+        BigDecimal precioValidado = Objects.requireNonNull(precioMensual, "El precio mensual es obligatorio");
+        validarPrecioComercial(precioValidado);
+        establecerNombre(nombrePresentacion);
         this.descripcion = descripcion;
-        this.precioMensual = Objects.requireNonNull(precioMensual, "El precio mensual es obligatorio");
+        this.precioMensual = precioValidado;
     }
 
     public void cambiarActivo(boolean activo) {
@@ -118,16 +137,52 @@ public class PlanSuscripcion {
     }
 
     public void validarEliminable() {
-        if (tipo == TipoPlanSuscripcion.TRIAL) {
-            throw new IllegalStateException("El plan TRIAL no puede eliminarse");
-        }
-        if (tipo == null) {
-            throw new IllegalStateException("No se puede eliminar un plan sin tipo asignado");
-        }
+        throw new IllegalStateException("Los planes de suscripción no pueden eliminarse físicamente");
     }
 
     private boolean esNombreReservadoTrial(String nombrePlan) {
-        return nombrePlan != null && NOMBRE_PLAN_TRIAL.equalsIgnoreCase(nombrePlan.trim());
+        return nombrePlan != null && claveNombre(nombrePlan).equals(claveNombre(NOMBRE_PLAN_TRIAL));
+    }
+
+    public static String normalizarNombrePresentacion(String nombre) {
+        if (nombre == null) {
+            throw new IllegalArgumentException("El nombre del plan es obligatorio");
+        }
+        return Normalizer.normalize(nombre, Normalizer.Form.NFC)
+                .replaceAll("(?U)\\s+", " ")
+                .strip();
+    }
+
+    public static String claveNombre(String nombre) {
+        return Normalizer.normalize(
+                normalizarNombrePresentacion(nombre).toLowerCase(Locale.ROOT),
+                Normalizer.Form.NFC
+        );
+    }
+
+    public void normalizarNombrePreexistente() {
+        this.nombre = normalizarNombrePresentacion(nombre);
+        this.nombreNormalizado = claveNombre(nombre);
+    }
+
+    private void establecerNombre(String nombrePresentacion) {
+        this.nombre = nombrePresentacion;
+        this.nombreNormalizado = claveNombre(nombrePresentacion);
+    }
+
+    public void validarEditableComercial() {
+        if (tipo != TipoPlanSuscripcion.COMERCIAL) {
+            throw new IllegalStateException("Solo se pueden modificar planes COMERCIAL clasificados");
+        }
+    }
+
+    private void validarPrecioComercial(BigDecimal precio) {
+        if (precio.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("El precio mensual de un plan comercial debe ser mayor que cero");
+        }
+        if (precio.precision() - precio.scale() > 8 || precio.scale() > 2) {
+            throw new IllegalArgumentException("El precio admite hasta 8 enteros y 2 decimales");
+        }
     }
 
     @PrePersist
@@ -136,17 +191,26 @@ public class PlanSuscripcion {
         if (tipo == null) {
             throw new IllegalStateException("Todo plan debe tener un tipo asignado antes de guardarse");
         }
+        if (nombreNormalizado == null || !nombreNormalizado.equals(claveNombre(nombre))) {
+            throw new IllegalStateException("El nombre normalizado del plan no coincide con su nombre");
+        }
         if (tipo == TipoPlanSuscripcion.TRIAL) {
             validarPropiedadesTrial();
-        } else if (esNombreReservadoTrial(nombre)) {
-            throw new IllegalStateException("El nombre Prueba gratuita está reservado para el plan TRIAL");
+        } else {
+            if (esNombreReservadoTrial(nombre)) {
+                throw new IllegalStateException("El nombre Prueba gratuita está reservado para el plan TRIAL");
+            }
+            if (precioMensual == null || precioMensual.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalStateException("El precio mensual de un plan comercial debe ser mayor que cero");
+            }
+            if (precioMensual.precision() - precioMensual.scale() > 8 || precioMensual.scale() > 2) {
+                throw new IllegalStateException("El precio admite hasta 8 enteros y 2 decimales");
+            }
         }
     }
 
     @PreRemove
-    private void impedirEliminacionTrial() {
-        if (tipo == TipoPlanSuscripcion.TRIAL) {
-            throw new IllegalStateException("El plan TRIAL no puede eliminarse");
-        }
+    private void impedirEliminacionFisica() {
+        validarEliminable();
     }
 }
