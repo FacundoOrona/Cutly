@@ -6,7 +6,7 @@
 .client-navigation-link{display:flex;min-height:44px;align-items:center;gap:11px;padding:0 11px;border-radius:10px;color:#5b6857;font-size:12px;font-weight:600;transition:background .18s,color .18s}
 .client-navigation-link:hover{background:#f4f6f2;color:#3e6140}
 .client-navigation-link-active{background:#edf3eb;color:#3e6140}
-.client-navigation-link:focus-visible,.client-logout-button:focus-visible,.client-topbar-logout:focus-visible{outline:3px solid #91b18a;outline-offset:2px}
+.client-navigation-link:focus-visible,.client-logout-button:focus-visible,.client-topbar-logout:focus-visible,.client-topbar-notifications:focus-visible{outline:3px solid #91b18a;outline-offset:2px}
 .client-sidebar-account{display:flex;min-width:0;align-items:center;gap:10px;margin-top:auto;padding:14px 3px 3px;border-top:1px solid #e9ede7}
 .client-avatar{display:grid;width:34px;height:34px;flex:none;place-items:center;border-radius:50%;background:#e7efe4;color:#436444;font-size:13px;font-weight:700}
 .client-display-name{min-width:0;flex:1;overflow:hidden;color:#384337;font-size:11px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
@@ -16,6 +16,7 @@
 .client-topbar{display:flex;min-height:76px;align-items:center;gap:14px;border-bottom:1px solid #e6eae3;color:#626e5e;font-size:12px;font-weight:600}
 .client-mobile-brand{display:none}
 .client-topbar-logout{display:flex;min-height:38px;align-items:center;gap:8px;margin-left:auto;padding:0 10px;border:0;border-radius:8px;background:transparent;color:#566151;font-size:11px;font-weight:600;cursor:pointer}
+.client-topbar-notifications{position:relative;display:grid;width:38px;height:38px;flex:none;place-items:center;border-radius:9px;color:#557452}.client-topbar-notifications:hover{background:#f0f3ee}.client-topbar-notifications>span{position:absolute;top:0;right:-2px;display:grid;min-width:16px;height:16px;place-items:center;padding:0 4px;border:2px solid #f5f7f4;border-radius:99px;background:#6b8b65;color:#fff;font-size:8px;font-weight:750;line-height:1}
 .client-content{width:min(100%,900px);flex:1;margin:0 auto;padding:58px 0 64px}
 .client-bottom-navigation{display:none}
 @media(max-width:760px){

@@ -74,6 +74,44 @@ export async function fetchClientBusinesses({ nombre, page = 0, size = 20, sort 
   return data
 }
 
+export async function fetchClientTopBusinesses() {
+  const { data } = await apiClient.get('/api/cliente/negocios/top')
+  if (!Array.isArray(data)) throw new Error('El servidor devolvió una respuesta de ranking que no pudimos interpretar.')
+  return data
+}
+
+export async function fetchClientNotifications(page = 0, size = 20) {
+  const { data } = await apiClient.get('/api/cliente/notificaciones', { params: { page, size } })
+  return data
+}
+
+export async function fetchClientUnreadNotificationCount() {
+  const { data } = await apiClient.get('/api/cliente/notificaciones/no-leidas/contador')
+  return data
+}
+
+export async function markClientNotificationAsRead(notificationId) {
+  const { data } = await apiClient.patch(`/api/cliente/notificaciones/${notificationId}/leer`)
+  return data
+}
+
+export async function markAllClientNotificationsAsRead() {
+  const { data } = await apiClient.patch('/api/cliente/notificaciones/leer-todas')
+  return data
+}
+
+export function getClientNotificationErrorMessage(error) {
+  const status = error.response?.status
+  const message = typeof error.response?.data === 'string'
+    ? error.response.data
+    : error.response?.data?.mensaje || error.response?.data?.message
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return message || 'No tenés permisos para consultar tus notificaciones.'
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return 'No pudimos cargar las notificaciones en este momento.'
+  return message || 'No pudimos completar la operación. Intentá nuevamente.'
+}
+
 export async function fetchClientBusiness(id) {
   const { data } = await apiClient.get(`/api/cliente/negocios/${id}`)
   if (!data || typeof data !== 'object' || data.negocioId === undefined) {
@@ -132,7 +170,7 @@ export function getClientAppointmentErrorMessage(error) {
   if (status === 409 && backendMessage) return backendMessage
   if (status === 400) return backendMessage || 'La solicitud de reserva no es válida.'
   if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
-  if (status === 403) return 'No tenés permisos para realizar esta reserva.'
+  if (status === 403) return backendMessage || 'No tenés permisos para realizar esta reserva.'
   if (status === 404) return backendMessage || 'El negocio, servicio o empleado ya no está disponible.'
   if (status === 409) return 'Ese horario ya no está disponible. Consultá los horarios nuevamente.'
   if (status >= 500) return 'No pudimos completar la reserva en este momento.'
@@ -142,6 +180,7 @@ export function getClientAppointmentErrorMessage(error) {
 
 export function getClientBusinessErrorMessage(error) {
   if (error.response?.status === 404) return 'Este negocio no existe o ya no está disponible.'
+  if (error.response?.status === 403) return error.response?.data?.mensaje || 'No es posible consultar este negocio en este momento.'
   return getClientBusinessesErrorMessage(error)
 }
 
@@ -149,7 +188,7 @@ export function getClientBusinessServicesErrorMessage(error) {
   const status = error.response?.status
   if (status === 404) return 'El negocio ya no está disponible.'
   if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
-  if (status === 403) return 'No tenés permisos para consultar los servicios.'
+  if (status === 403) return error.response?.data?.mensaje || 'No es posible consultar los servicios de este negocio en este momento.'
   if (status >= 500) return 'No pudimos cargar los servicios en este momento.'
   if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
   return error.message || 'No pudimos cargar los servicios. Intentá nuevamente.'
@@ -159,7 +198,7 @@ export function getClientBusinessEmployeesErrorMessage(error) {
   const status = error.response?.status
   if (status === 404) return 'El negocio ya no está disponible.'
   if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
-  if (status === 403) return 'No tenés permisos para consultar el equipo.'
+  if (status === 403) return error.response?.data?.mensaje || 'No es posible consultar el equipo de este negocio en este momento.'
   if (status >= 500) return 'No pudimos cargar el equipo en este momento.'
   if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
   return error.message || 'No pudimos cargar el equipo. Intentá nuevamente.'

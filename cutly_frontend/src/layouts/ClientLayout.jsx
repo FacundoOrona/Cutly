@@ -1,7 +1,8 @@
-import { CalendarDays, Compass, Home, LogOut, UserRound } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { CalendarDays, Compass, Home, LogOut, UserRound, Bell } from 'lucide-react'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
+import { useClientUnreadNotificationCount } from '../features/client/hooks/useClientNotifications.js'
 import './ClientLayout.css'
 
 const navigation = [
@@ -32,6 +33,8 @@ function ClientNavigation({ onNavigate }) {
 
 export default function ClientLayout() {
   const { user, signOut } = useAuth()
+  const unreadQuery = useClientUnreadNotificationCount()
+  const unreadCount = unreadQuery.data?.cantidad
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email || 'Cliente'
 
   async function handleSignOut() {
@@ -61,6 +64,9 @@ export default function ClientLayout() {
         <header className="client-topbar">
           <div className="client-mobile-brand"><BrandMark to="/client" /></div>
           <span className="client-topbar-greeting">Hola, {user?.nombre || 'bienvenido'}.</span>
+          <Link className="client-topbar-notifications" to="/client/notificaciones" aria-label={unreadCount > 0 ? `Notificaciones, ${unreadCount} sin leer` : 'Notificaciones'} title="Notificaciones">
+            <Bell size={17} aria-hidden="true" />{unreadCount > 0 && <span>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+          </Link>
           <button type="button" className="client-topbar-logout" onClick={handleSignOut}>
             <LogOut size={16} aria-hidden="true" /> Cerrar sesión
           </button>

@@ -26,7 +26,7 @@ function validateProfile(values, emailConfirmation, originalEmail) {
     const value = values[key].trim()
     const label = key === 'nombre' ? 'El nombre' : 'El apellido'
     if (!value) errors[key] = `${label} es obligatorio.`
-    else if (value.length < 2 || value.length > 20) errors[key] = `${label} debe tener entre 2 y 20 caracteres.`
+    else if (value.length > 20) errors[key] = `${label} no puede superar los 20 caracteres.`
   }
   const dni = values.dni.trim()
   if (!dni) errors.dni = 'El DNI es obligatorio.'
