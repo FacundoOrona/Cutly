@@ -4,6 +4,8 @@ import com.dev.cutly.auth.config.SuperAdminInitializer;
 import com.dev.cutly.cliente.dto.cliente.CrearTurnoRequestDto;
 import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
+import com.dev.cutly.notificacion.entity.Notificacion;
+import com.dev.cutly.notificacion.repository.NotificacionRepository;
 import com.dev.cutly.negocio.entity.HorarioNegocio;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.DiaSemana;
@@ -14,6 +16,12 @@ import com.dev.cutly.servicio.entity.EmpleadoServicio;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
+import com.dev.cutly.suscripcion.entity.PlanSuscripcion;
+import com.dev.cutly.suscripcion.entity.Suscripcion;
+import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
+import com.dev.cutly.suscripcion.enums.TipoPlanSuscripcion;
+import com.dev.cutly.suscripcion.repository.PlanSuscripcionRepository;
+import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
@@ -109,6 +117,15 @@ class ClienteTurnoConcurrencyIntegrationTests {
     private TurnoRepository turnoRepository;
 
     @Autowired
+    private PlanSuscripcionRepository planSuscripcionRepository;
+
+    @Autowired
+    private SuscripcionRepository suscripcionRepository;
+
+    @Autowired
+    private NotificacionRepository notificacionRepository;
+
+    @Autowired
     private PlatformTransactionManager transactionManager;
 
     @Autowired
@@ -145,6 +162,19 @@ class ClienteTurnoConcurrencyIntegrationTests {
             negocio.setStatus(NegocioStatus.ACTIVE);
             negocio.setOwner(owner);
             negocioRepository.save(negocio);
+
+            PlanSuscripcion planTrial = planSuscripcionRepository.findAll().stream()
+                    .filter(plan -> plan.getTipo() == TipoPlanSuscripcion.TRIAL)
+                    .findFirst()
+                    .orElseGet(() -> planSuscripcionRepository.save(PlanSuscripcion.crearPlanTrial()));
+            Suscripcion suscripcion = new Suscripcion();
+            suscripcion.setNegocio(negocio);
+            suscripcion.setPlan(planTrial);
+            suscripcion.setStatus(SuscripcionStatus.TRIAL);
+            suscripcion.setFechaInicio(LocalDate.now());
+            suscripcion.setFechaVencimiento(LocalDate.now().plusDays(13));
+            suscripcion.asignarPrecioContratado(planTrial.getPrecioMensual());
+            suscripcionRepository.save(suscripcion);
 
             Empleado empleado = new Empleado();
             empleado.setUsuario(empleadoUsuario);
@@ -199,6 +229,14 @@ class ClienteTurnoConcurrencyIntegrationTests {
                     .filter(turno -> turno.getNegocio().getNegocioId().equals(fixture.negocioId()))
                     .toList();
             turnoRepository.deleteAll(turnos);
+            List<Notificacion> notificaciones = notificacionRepository.findAll().stream()
+                    .filter(notificacion -> List.of(fixture.clienteUnoUsuarioId(), fixture.clienteDosUsuarioId(),
+                                    fixture.empleadoUsuarioId(), fixture.ownerUsuarioId())
+                            .contains(notificacion.getUsuario().getUsuarioId()))
+                    .toList();
+            notificacionRepository.deleteAll(notificaciones);
+            suscripcionRepository.findByNegocio_NegocioId(fixture.negocioId())
+                    .ifPresent(suscripcionRepository::delete);
             empleadoServicioRepository.deleteAll(empleadoServicioRepository
                     .findByEmpleado_EmpleadoIdAndServicio_ServicioId(fixture.empleadoId(), fixture.servicioId())
                     .stream().toList());

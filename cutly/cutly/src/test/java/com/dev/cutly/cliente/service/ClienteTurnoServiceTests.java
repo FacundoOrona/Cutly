@@ -19,6 +19,7 @@ import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -58,6 +59,7 @@ class ClienteTurnoServiceTests {
     @Mock private EmpleadoServiciorRepository empleadoServicioRepository;
     @Mock private HorarioNegocioRepository horarioRepository;
     @Mock private NotificacionTurnoService notificacionTurnoService;
+    @Mock private ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     private ClienteTurnoService service;
     private Usuario cliente;
@@ -71,7 +73,7 @@ class ClienteTurnoServiceTests {
     void setUp() {
         service = new ClienteTurnoService(turnoRepository, usuarioRepository, negocioRepository,
                 servicioRepository, empleadoRepository, empleadoServicioRepository,
-                new TurnoHorarioValidator(horarioRepository), notificacionTurnoService);
+                new TurnoHorarioValidator(horarioRepository), notificacionTurnoService, controlAccesoSuscripcion);
         cliente = usuario(CLIENTE_ID, Rol.CLIENT, "Carla", "Cliente");
         Usuario owner = usuario(10L, Rol.OWNER, "Olga", "Owner");
         negocio = new Negocio();
@@ -95,6 +97,7 @@ class ClienteTurnoServiceTests {
         lenient().when(usuarioRepository.findByEmail(EMAIL)).thenReturn(Optional.of(cliente));
         lenient().when(usuarioRepository.findWithLockingByUsuarioId(CLIENTE_ID)).thenReturn(Optional.of(cliente));
         lenient().when(negocioRepository.findByNegocioIdAndStatus(NEGOCIO_ID, NegocioStatus.ACTIVE)).thenReturn(Optional.of(negocio));
+        lenient().when(controlAccesoSuscripcion.clientePuedeReservar(NEGOCIO_ID)).thenReturn(true);
         lenient().when(servicioRepository.findByServicioIdAndNegocio_NegocioId(SERVICIO_ID, NEGOCIO_ID)).thenReturn(Optional.of(servicio));
         lenient().when(horarioRepository.findByNegocio_NegocioIdOrderByDiaSemanaAscHoraAperturaAsc(NEGOCIO_ID)).thenReturn(List.of(horario));
         lenient().when(turnoRepository.findTurnosClienteSolapados(eq(CLIENTE_ID), any(), any())).thenReturn(List.of());

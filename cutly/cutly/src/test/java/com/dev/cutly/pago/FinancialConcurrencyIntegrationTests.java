@@ -129,8 +129,8 @@ class FinancialConcurrencyIntegrationTests {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         Long deudaId = tx.execute(status -> crearDeuda());
         var request = new CrearAbonoRequestDto(new BigDecimal("600.00"), MetodoPago.EFECTIVO, null);
-        var outcomes = concurrentTwo(() -> ownerDeudasService.abonar(negocio.getNegocioId(), deudaId, request, email),
-                () -> ownerDeudasService.abonar(negocio.getNegocioId(), deudaId, request, email));
+        var outcomes = concurrentTwo(() -> ownerDeudasService.abonar(negocio.getNegocioId(), deudaId, request, "concurrent-abono-1", email),
+                () -> ownerDeudasService.abonar(negocio.getNegocioId(), deudaId, request, "concurrent-abono-2", email));
         assertEquals(1, java.util.Arrays.stream(outcomes).filter("OK"::equals).count());
         assertEquals(1, java.util.Arrays.stream(outcomes).filter("CONFLICT"::equals).count());
         assertEquals(new BigDecimal("600.00"), pagoRepository.sumarAbonos(deudaId));
@@ -145,7 +145,7 @@ class FinancialConcurrencyIntegrationTests {
                 new DecisionFinancieraRequestDto(DecisionFinanciera.CUENTA_CORRIENTE, new BigDecimal("1000.00"), BigDecimal.ZERO, null, null, null),
                 "stats-debt-" + turnoDeuda.getTurnoId(), email);
         DeudaCliente deuda = deudaRepository.findByNegocio_NegocioIdOrderByFechaOrigenDesc(negocio.getNegocioId()).get(0);
-        ownerDeudasService.abonar(negocio.getNegocioId(), deuda.getDeudaId(), new CrearAbonoRequestDto(new BigDecimal("250.00"), MetodoPago.DEBITO, null), email);
+        ownerDeudasService.abonar(negocio.getNegocioId(), deuda.getDeudaId(), new CrearAbonoRequestDto(new BigDecimal("250.00"), MetodoPago.DEBITO, null), "stats-abono-1", email);
         Turno turnoGratis = crearTurnoAdicional(TurnoStatus.CONFIRMED);
         ownerTurnosService.completarConDecision(negocio.getNegocioId(), turnoGratis.getTurnoId(),
                 new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "Promoción"),

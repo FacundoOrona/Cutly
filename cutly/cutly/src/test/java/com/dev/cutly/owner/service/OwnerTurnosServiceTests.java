@@ -197,7 +197,8 @@ class OwnerTurnosServiceTests {
         OwnerTurnoDto dto = service.obtenerTurno(NEGOCIO_ID, 40L, EMAIL_OWNER);
 
         assertTrue(dto.regularizadoFinancieramente());
-        assertEquals(new java.math.BigDecimal("17000"), dto.resumenFinanciero().monto());
+        assertEquals(new java.math.BigDecimal("18000"), dto.resumenFinanciero().monto());
+        assertEquals(new java.math.BigDecimal("17000"), dto.resumenFinanciero().totalAbonado());
         assertEquals(MetodoPago.TRANSFERENCIA_QR, dto.resumenFinanciero().metodoPago());
     }
 
@@ -252,7 +253,7 @@ class OwnerTurnosServiceTests {
         ResumenFinancieroTurnoDto resumen = service.listarTurnos(NEGOCIO_ID, null, null, null, EMAIL_OWNER)
                 .get(0).resumenFinanciero();
 
-        assertNull(resumen.monto());
+        assertEquals(java.math.BigDecimal.ZERO, resumen.monto());
         verifyNoInteractions(pagoRepository, deudaRepository);
     }
 

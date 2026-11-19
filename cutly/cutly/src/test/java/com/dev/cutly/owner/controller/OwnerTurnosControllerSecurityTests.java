@@ -3,6 +3,8 @@ package com.dev.cutly.owner.controller;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
 import com.dev.cutly.auth.security.JwtUtil;
 import com.dev.cutly.auth.security.SecurityConfig;
+import com.dev.cutly.empleado.service.EmpleadoAccesoService;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
@@ -11,6 +13,8 @@ import com.dev.cutly.turno.enums.TipoClienteTurno;
 import com.dev.cutly.turno.enums.TipoResponsableTurno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -36,6 +40,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 class OwnerTurnosControllerSecurityTests {
 
+    @BeforeEach
+    void permitirAccesoDeSuscripcionEnElSliceWeb() {
+        when(controlAccesoSuscripcion.tieneAcceso(any(), any(), any())).thenReturn(true);
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -50,6 +59,12 @@ class OwnerTurnosControllerSecurityTests {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private EmpleadoAccesoService empleadoAccesoService;
+
+    @MockitoBean
+    private ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     @Test
     void crearTurnoManualRequiereAutenticacion() throws Exception {

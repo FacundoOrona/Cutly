@@ -11,8 +11,8 @@ import com.dev.cutly.suscripcion.repository.PlanSuscripcionRepository;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -270,7 +270,7 @@ public class AdminPlanSuscripcionService {
     private String serializar(Object detalle) {
         try {
             return objectMapper.writeValueAsString(detalle);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("No se pudo serializar la auditoría del plan", e);
         }
     }

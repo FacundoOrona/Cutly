@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 public interface NegocioRepository extends JpaRepository <Negocio, Long> {
 
@@ -38,15 +39,20 @@ public interface NegocioRepository extends JpaRepository <Negocio, Long> {
     @Query(value = "select n from Negocio n where n.status = :status "
             + "and lower(n.nombre) like lower(concat('%', :nombre, '%')) "
             + "and exists (select s.suscripcionId from Suscripcion s where s.negocio.negocioId = n.negocioId "
-            + "and s.status not in (com.dev.cutly.suscripcion.enums.SuscripcionStatus.SUSPENDED, "
-            + "com.dev.cutly.suscripcion.enums.SuscripcionStatus.CANCELLED))",
+            + "and (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE "
+            + "or s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED "
+            + "or (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL "
+            + "and s.fechaVencimiento >= :hoy)))",
             countQuery = "select count(n) from Negocio n where n.status = :status "
                     + "and lower(n.nombre) like lower(concat('%', :nombre, '%')) "
                     + "and exists (select s.suscripcionId from Suscripcion s where s.negocio.negocioId = n.negocioId "
-                    + "and s.status not in (com.dev.cutly.suscripcion.enums.SuscripcionStatus.SUSPENDED, "
-                    + "com.dev.cutly.suscripcion.enums.SuscripcionStatus.CANCELLED))")
+                    + "and (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE "
+                    + "or s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED "
+                    + "or (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL "
+                    + "and s.fechaVencimiento >= :hoy)))")
     Page<Negocio> findDisponiblesParaClientes(@Param("status") NegocioStatus status,
                                               @Param("nombre") String nombre,
+                                              @Param("hoy") LocalDate hoy,
                                               Pageable pageable);
 
     Optional<Negocio> findByNegocioIdAndStatus(Long negocioId, NegocioStatus status);

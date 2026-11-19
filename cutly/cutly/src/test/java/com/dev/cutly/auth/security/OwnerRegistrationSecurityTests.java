@@ -4,6 +4,8 @@ import com.dev.cutly.admin.controller.AdminOwnerController;
 import com.dev.cutly.admin.dto.usuario.AdminUsuarioDto;
 import com.dev.cutly.admin.service.AdminUsuarioService;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
+import com.dev.cutly.empleado.service.EmpleadoAccesoService;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.auth.service.AuthService;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
@@ -44,6 +46,12 @@ class OwnerRegistrationSecurityTests {
 
     @MockitoBean
     private UserDetailsService userDetailsService;
+
+    @MockitoBean
+    private EmpleadoAccesoService empleadoAccesoService;
+
+    @MockitoBean
+    private ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     @Test
     void registroOwnerRequiereAutenticacion() throws Exception {

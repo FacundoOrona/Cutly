@@ -8,11 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
@@ -26,8 +28,17 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
             + "where n.status = com.dev.cutly.negocio.enums.NegocioStatus.ACTIVE "
             + "and t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta "
             + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "
+            + "and exists (select s.suscripcionId from com.dev.cutly.suscripcion.entity.Suscripcion s "
+            + "where s.negocio.negocioId = n.negocioId and ("
+            + "s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE "
+            + "or s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED "
+            + "or (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL "
+            + "and s.fechaVencimiento >= :hoy))) "
             + "group by n order by count(t) desc, n.negocioId asc")
-    List<Object[]> rankingNegociosClientes(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+    List<Object[]> rankingNegociosClientes(@Param("desde") LocalDateTime desde,
+                                           @Param("hasta") LocalDateTime hasta,
+                                           @Param("hoy") LocalDate hoy,
+                                           Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from Turno t where t.turnoId = :turnoId and t.negocio.negocioId = :negocioId")

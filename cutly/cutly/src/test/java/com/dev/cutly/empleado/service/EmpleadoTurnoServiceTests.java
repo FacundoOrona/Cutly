@@ -13,6 +13,7 @@ import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
+import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,13 +41,14 @@ class EmpleadoTurnoServiceTests {
     @Mock private TurnoRepository turnoRepository;
     @Mock private EmpleadoRepository empleadoRepository;
     @Mock private UsuarioRepository usuarioRepository;
+    @Mock private NotificacionTurnoService notificacionTurnoService;
 
     private EmpleadoTurnoService service;
     private Empleado empleado;
 
     @BeforeEach
     void setUp() {
-        service = new EmpleadoTurnoService(turnoRepository, empleadoRepository, usuarioRepository);
+        service = new EmpleadoTurnoService(turnoRepository, empleadoRepository, usuarioRepository, notificacionTurnoService);
         Usuario usuario = new Usuario();
         usuario.setUsuarioId(USUARIO_ID);
         usuario.setNombre("Empleada");

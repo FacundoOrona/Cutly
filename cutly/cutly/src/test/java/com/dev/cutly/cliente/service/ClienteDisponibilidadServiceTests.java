@@ -16,6 +16,7 @@ import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.usuario.entity.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,7 @@ class ClienteDisponibilidadServiceTests {
     @Mock private EmpleadoRepository empleadoRepository;
     @Mock private EmpleadoServiciorRepository empleadoServicioRepository;
     @Mock private TurnoRepository turnoRepository;
+    @Mock private ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     private ClienteDisponibilidadService service;
     private LocalDate lunes;
@@ -54,7 +56,7 @@ class ClienteDisponibilidadServiceTests {
     @BeforeEach
     void setUp() {
         service = new ClienteDisponibilidadService(negocioRepository, horarioRepository, servicioRepository,
-                empleadoRepository, empleadoServicioRepository, turnoRepository);
+                empleadoRepository, empleadoServicioRepository, turnoRepository, controlAccesoSuscripcion);
         lunes = LocalDate.now().with(DayOfWeek.MONDAY);
         if (!lunes.isAfter(LocalDate.now())) lunes = lunes.plusWeeks(1);
         Negocio negocio = new Negocio();
@@ -62,6 +64,7 @@ class ClienteDisponibilidadServiceTests {
         negocio.setStatus(NegocioStatus.ACTIVE);
         when(negocioRepository.findByNegocioIdAndStatus(NEGOCIO_ID, NegocioStatus.ACTIVE))
                 .thenReturn(Optional.of(negocio));
+        when(controlAccesoSuscripcion.clientePuedeConsultarNegocio(NEGOCIO_ID)).thenReturn(true);
         servicio = new Servicio();
         servicio.setServicioId(SERVICIO_ID);
         servicio.setDuracionMinutos(60);

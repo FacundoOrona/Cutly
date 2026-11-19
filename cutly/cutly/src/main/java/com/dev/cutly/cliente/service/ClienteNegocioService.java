@@ -15,13 +15,13 @@ import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.suscripcion.service.RelojSuscripcion;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -62,6 +62,7 @@ public class ClienteNegocioService {
                 .findDisponiblesParaClientes(
                         NegocioStatus.ACTIVE,
                         nombre == null ? "" : nombre.trim(),
+                        RelojSuscripcion.fechaActual(),
                         pageable
                 )
                 .map(this::aDto);
@@ -70,11 +71,9 @@ public class ClienteNegocioService {
     public List<ClienteNegocioDto> top10() {
         LocalDateTime hasta = RelojSuscripcion.fechaHoraActual();
         LocalDateTime desde = hasta.minusDays(30);
-        List<Object[]> ranking = turnoRepository.rankingNegociosClientes(desde, hasta);
-        List<Long> ids = ranking.stream().map(row -> ((Negocio) row[0]).getNegocioId()).toList();
-        Set<Long> consultables = controlAccesoSuscripcion.negociosConsultablesPorCliente(ids);
-        List<Negocio> elegibles = ranking.stream().map(row -> (Negocio) row[0])
-                .filter(n -> consultables.contains(n.getNegocioId())).limit(10).toList();
+        List<Object[]> ranking = turnoRepository.rankingNegociosClientes(
+                desde, hasta, RelojSuscripcion.fechaActual(), PageRequest.of(0, 10));
+        List<Negocio> elegibles = ranking.stream().map(row -> (Negocio) row[0]).toList();
         if (elegibles.isEmpty()) return List.of();
         Map<Long, DireccionNegocio> direcciones = direccionRepository
                 .findAllByNegocio_NegocioIdIn(elegibles.stream().map(Negocio::getNegocioId).toList())
