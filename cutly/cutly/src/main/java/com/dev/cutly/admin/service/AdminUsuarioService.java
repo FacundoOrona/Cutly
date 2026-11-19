@@ -1,6 +1,8 @@
 package com.dev.cutly.admin.service;
 
 import com.dev.cutly.admin.dto.usuario.AdminUsuarioDto;
+import com.dev.cutly.admin.dto.usuario.AdminOwnerDetalleDto;
+import com.dev.cutly.admin.service.AdminNegocioService;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
@@ -28,9 +30,11 @@ public class AdminUsuarioService {
     );
 
     private final UsuarioRepository usuarioRepository;
+    private final AdminNegocioService adminNegocioService;
 
-    public AdminUsuarioService(UsuarioRepository usuarioRepository) {
+    public AdminUsuarioService(UsuarioRepository usuarioRepository, AdminNegocioService adminNegocioService) {
         this.usuarioRepository = usuarioRepository;
+        this.adminNegocioService = adminNegocioService;
     }
 
     public Page<AdminUsuarioDto> listarUsuarios(
@@ -68,6 +72,20 @@ public class AdminUsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró el usuario con id " + id));
         return aDto(usuario);
+    }
+
+    public AdminUsuarioDto obtenerOwner(Long id) {
+        Usuario owner = usuarioRepository.findById(id)
+                .filter(usuario -> usuario.getRol() == Rol.OWNER)
+                .orElseThrow(() -> new NoSuchElementException("No se encontró el owner con id " + id));
+        return aDto(owner);
+    }
+
+    public AdminOwnerDetalleDto obtenerOwnerDetalle(Long id) {
+        AdminUsuarioDto owner = obtenerOwner(id);
+        var negocios = adminNegocioService.listarNegociosDeOwner(id);
+        return new AdminOwnerDetalleDto(owner.usuarioId(), owner.nombre(), owner.apellido(), owner.dni(),
+                owner.email(), owner.status(), negocios.size(), negocios);
     }
 
     public AdminUsuarioDto actualizarEstado(Long id, UsuarioStatus status, String emailActor) {

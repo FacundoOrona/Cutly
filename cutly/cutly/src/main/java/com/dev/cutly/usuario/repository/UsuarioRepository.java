@@ -33,4 +33,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
     long countByRol(Rol rol);
 
     long countByStatus(com.dev.cutly.usuario.enums.UsuarioStatus status);
+
+    long countByRolAndStatus(Rol rol, com.dev.cutly.usuario.enums.UsuarioStatus status);
 }

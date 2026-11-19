@@ -13,6 +13,10 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import com.dev.cutly.suscripcion.service.RelojSuscripcion;
 import java.util.NoSuchElementException;
 
 @Service
@@ -30,7 +34,11 @@ public class AdminNegocioService {
     }
 
     public List<AdminNegocioDto> listarNegocios() {
-        return negocioRepository.findAll().stream().map(this::aDto).toList();
+        return aDtos(negocioRepository.findAll());
+    }
+
+    public List<AdminNegocioDto> listarNegociosDeOwner(Long ownerId) {
+        return aDtos(negocioRepository.findByOwner_UsuarioId(ownerId));
     }
 
     public AdminNegocioDto obtenerNegocio(Long id) {
@@ -72,16 +80,42 @@ public class AdminNegocioService {
     }
 
     private AdminNegocioDto aDto(Negocio negocio) {
-        return new AdminNegocioDto(
-                negocio.getNegocioId(),
-                negocio.getNombre(),
-                negocio.getDescripcion(),
-                negocio.getTelefono(),
-                negocio.getEmail(),
-                negocio.getStatus(),
-                negocio.getOwner().getNombre(),
-                negocio.getOwner().getApellido(),
-                negocio.getOwner().getEmail()
-        );
+        return aDtos(List.of(negocio)).get(0);
+    }
+
+    private List<AdminNegocioDto> aDtos(List<Negocio> negocios) {
+        if (negocios.isEmpty()) return List.of();
+        Map<Long, Suscripcion> suscripciones = suscripcionRepository.findAllByNegocio_NegocioIdIn(
+                        negocios.stream().map(Negocio::getNegocioId).toList()).stream()
+                .collect(Collectors.toMap(s -> s.getNegocio().getNegocioId(), Function.identity()));
+        return negocios.stream().map(negocio -> {
+            Suscripcion suscripcion = suscripciones.get(negocio.getNegocioId());
+            Long restantes = null;
+            Long atraso = null;
+            if (suscripcion != null && (suscripcion.getStatus() == com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE
+                    || suscripcion.getStatus() == com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL
+                    || suscripcion.getStatus() == com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED)) {
+                long diferencia = java.time.temporal.ChronoUnit.DAYS.between(
+                        RelojSuscripcion.fechaActual(), suscripcion.getFechaVencimiento());
+                if (diferencia >= 0 && (suscripcion.getStatus() == com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE
+                        || suscripcion.getStatus() == com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL)) {
+                    restantes = diferencia;
+                } else if (diferencia < 0) {
+                    atraso = -diferencia;
+                }
+            }
+            return new AdminNegocioDto(
+                    negocio.getNegocioId(), negocio.getNombre(), negocio.getDescripcion(), negocio.getTelefono(),
+                    negocio.getEmail(), negocio.getStatus(), negocio.getOwner().getNombre(),
+                    negocio.getOwner().getApellido(), negocio.getOwner().getEmail(),
+                    suscripcion == null ? null : suscripcion.getSuscripcionId(),
+                    suscripcion == null ? null : suscripcion.getStatus(),
+                    suscripcion == null ? null : suscripcion.getPlan().getNombre(),
+                    suscripcion == null ? null : suscripcion.getPlan().getTipo(),
+                    suscripcion == null ? null : suscripcion.getPrecioContratado(),
+                    suscripcion == null ? null : suscripcion.getFechaInicio(),
+                    suscripcion == null ? null : suscripcion.getFechaVencimiento(),
+                    restantes, atraso, suscripcion != null && ControlAccesoSuscripcion.suscripcionHabilitada(suscripcion));
+        }).toList();
     }
 }

@@ -3,6 +3,7 @@ package com.dev.cutly.admin.controller;
 import com.dev.cutly.admin.dto.ErrorResponseDto;
 import com.dev.cutly.admin.dto.usuario.AdminUsuarioDto;
 import com.dev.cutly.admin.service.AdminUsuarioService;
+import com.dev.cutly.admin.dto.usuario.AdminOwnerDetalleDto;
 import com.dev.cutly.auth.dto.AuthResponse;
 import com.dev.cutly.auth.dto.RegistroOwnerRequest;
 import com.dev.cutly.auth.service.AuthService;
@@ -20,6 +21,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/admin/owners")
@@ -31,6 +34,19 @@ public class AdminOwnerController {
     public AdminOwnerController(AuthService authService, AdminUsuarioService adminUsuarioService) {
         this.authService = authService;
         this.adminUsuarioService = adminUsuarioService;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> obtenerOwner(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(adminUsuarioService.obtenerOwnerDetalle(id));
+        } catch (java.util.NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponseDto("No se encontró el owner con id " + id));
+        } catch (DataAccessException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponseDto("No se pudo consultar el owner"));
+        }
     }
 
     @PostMapping

@@ -25,6 +25,17 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
 
     long countByStatus(TurnoStatus status);
 
+    @Query("select t.status, count(t) from Turno t where t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta group by t.status")
+    List<Object[]> contarPorEstadoPeriodoGlobal(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("select function('date', t.fechaHoraInicio), count(t) from Turno t "
+            + "where t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta "
+            + "group by function('date', t.fechaHoraInicio) order by function('date', t.fechaHoraInicio)")
+    List<Object[]> evolucionDiariaGlobal(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    @Query("select count(distinct t.negocio.negocioId) from Turno t where t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta")
+    long contarNegociosConActividad(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
     @Query("select count(t) from Turno t where t.negocio.negocioId = :negocioId and t.status = com.dev.cutly.turno.enums.TurnoStatus.COMPLETED and not exists (select r.resultadoFinancieroId from com.dev.cutly.pago.entity.ResultadoFinancieroTurno r where r.turno = t) and (:desde is null or t.fechaHoraInicio >= :desde) and (:hasta is null or t.fechaHoraInicio < :hasta)")
     long contarCompletadosSinRegularizacion(@Param("negocioId") Long negocioId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 

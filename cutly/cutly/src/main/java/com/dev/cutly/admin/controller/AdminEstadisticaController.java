@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -112,6 +114,21 @@ public class AdminEstadisticaController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponseDto("Ocurrió un error inesperado al consultar las estadísticas de suscripciones"));
+        }
+    }
+
+    @GetMapping("/estadisticas/indicadores")
+    public ResponseEntity<?> obtenerIndicadoresGenerales(
+            @RequestParam LocalDate desde,
+            @RequestParam LocalDate hasta
+    ) {
+        try {
+            return ResponseEntity.ok(adminEstadisticaService.obtenerIndicadoresGenerales(desde, hasta));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage()));
+        } catch (DataAccessException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponseDto("No se pudieron consultar los indicadores generales"));
         }
     }
 }
