@@ -4,7 +4,9 @@ import com.dev.cutly.admin.dto.negocio.AdminNegocioDto;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.negocio.repository.NegocioRepository;
+import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -45,10 +47,14 @@ public class AdminNegocioService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede cambiar el estado del negocio de " + negocio.getStatus() + " a " + status);
         }
-        if (status == NegocioStatus.ACTIVE
-                && !suscripcionRepository.existsByNegocio_NegocioId(negocio.getNegocioId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "No se puede habilitar un negocio sin una suscripción asociada");
+        if (status == NegocioStatus.ACTIVE) {
+            Suscripcion suscripcion = suscripcionRepository.findByNegocio_NegocioId(negocio.getNegocioId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                            "No se puede habilitar un negocio sin una suscripción asociada"));
+            if (!ControlAccesoSuscripcion.suscripcionHabilitada(suscripcion)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No se puede habilitar un negocio sin una suscripción vigente");
+            }
         }
         if (negocio.getStatus() == status) {
             return aDto(negocio);

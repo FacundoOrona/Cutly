@@ -17,6 +17,7 @@ import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import com.dev.cutly.suscripcion.repository.PlanSuscripcionRepository;
 import com.dev.cutly.suscripcion.service.HistorialSuscripcionService;
 import com.dev.cutly.suscripcion.service.RelojSuscripcion;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -164,6 +165,8 @@ public class AdminSuscripcionService {
         SnapshotSuscripcion anterior = SnapshotSuscripcion.capturar(suscripcion);
         suscripcion.setStatus(status);
         Suscripcion guardada = suscripcionRepository.save(suscripcion);
+        actualizarEstadoNegocioPorSuscripcion(guardada, status == SuscripcionStatus.ACTIVE
+                || status == SuscripcionStatus.TRIAL);
         SnapshotSuscripcion nuevo = SnapshotSuscripcion.capturar(guardada);
         TipoEventoSuscripcion evento = eventoCambioEstado(anterior.estado(), status);
         String observacionFinal = observacionFinal(observacion, status);
@@ -323,6 +326,8 @@ public class AdminSuscripcionService {
         }
 
         Suscripcion guardada = suscripcionRepository.save(suscripcion);
+        actualizarEstadoNegocioPorSuscripcion(guardada, guardada.getStatus() == SuscripcionStatus.ACTIVE
+                || guardada.getStatus() == SuscripcionStatus.TRIAL);
         historialService.registrar(
                 guardada,
                 eventoRegularizacion(anterior.estado(), guardada.getStatus()),
@@ -347,6 +352,15 @@ public class AdminSuscripcionService {
                 .filter(usuario -> usuario.getRol() == Rol.SUPER_ADMIN)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "No se pudo validar al SUPER_ADMIN responsable"));
+    }
+
+    private void actualizarEstadoNegocioPorSuscripcion(Suscripcion suscripcion, boolean habilitada) {
+        Negocio negocio = suscripcion.getNegocio();
+        boolean vigente = habilitada && ControlAccesoSuscripcion.suscripcionHabilitada(suscripcion);
+        if (!vigente && negocio.getStatus() == NegocioStatus.ACTIVE) {
+            negocio.setStatus(NegocioStatus.INACTIVE);
+            negocioRepository.save(negocio);
+        }
     }
 
     private void validarPlanComercialActivo(PlanSuscripcion plan) {

@@ -6,6 +6,7 @@ import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import com.dev.cutly.usuario.entity.Usuario;
+import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
@@ -78,11 +79,17 @@ public class ControlAccesoSuscripcion {
                 && !suscripcion.getFechaVencimiento().isBefore(RelojSuscripcion.fechaActual());
     }
 
+    public static boolean suscripcionHabilitada(Suscripcion suscripcion) {
+        return suscripcion != null
+                && (suscripcion.getStatus() == SuscripcionStatus.ACTIVE
+                || suscripcion.getStatus() == SuscripcionStatus.TRIAL)
+                && !suscripcion.getFechaInicio().isAfter(RelojSuscripcion.fechaActual())
+                && !suscripcion.getFechaVencimiento().isBefore(RelojSuscripcion.fechaActual());
+    }
+
     private boolean ownerPuedeCrearNegocio(String email) {
         return usuarioRepository.findByEmail(email)
-                .map(owner -> negocioRepository.findByOwner_UsuarioId(owner.getUsuarioId()).stream()
-                        .map(n -> suscripcion(n.getNegocioId()))
-                        .allMatch(s -> s != null && ownerTieneAcceso(s, false)))
+                .map(owner -> owner.getRol() == Rol.OWNER)
                 .orElse(false);
     }
 
@@ -90,7 +97,7 @@ public class ControlAccesoSuscripcion {
         return usuarioRepository.findByEmail(email)
                 .map(owner -> negocioRepository.findByOwner_UsuarioId(owner.getUsuarioId()).stream()
                         .map(n -> suscripcion(n.getNegocioId()))
-                        .allMatch(s -> s != null && !estadoBloqueado(s)))
+                        .anyMatch(s -> s != null && !estadoBloqueado(s)))
                 .orElse(false);
     }
 
