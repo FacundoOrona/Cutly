@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class HistorialSuscripcionService {
@@ -73,5 +74,10 @@ public class HistorialSuscripcionService {
         auditLog.setUsuario(administrador);
         auditoriaRepository.save(auditLog);
         return historial;
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistorialSuscripcion> consultarPorSuscripcion(Long suscripcionId) {
+        return historialRepository.findBySuscripcion_SuscripcionIdOrderByFechaEventoAscHistorialSuscripcionIdAsc(suscripcionId);
     }
 }

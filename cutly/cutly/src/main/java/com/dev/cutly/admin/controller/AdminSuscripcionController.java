@@ -7,6 +7,10 @@ import com.dev.cutly.admin.dto.suscripcion.ObservacionCambioSuscripcionRequestDt
 import com.dev.cutly.admin.dto.suscripcion.RegularizarSuscripcionRequestDto;
 import com.dev.cutly.admin.service.AdminSuscripcionService;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,16 +52,32 @@ public class AdminSuscripcionController {
     }
 
     @GetMapping("/suscripciones")
-    public ResponseEntity<?> listarSuscripciones() {
+    public ResponseEntity<?> listarSuscripciones(
+            @RequestParam(required = false) SuscripcionStatus status,
+            @RequestParam(required = false) Long negocioId,
+            @RequestParam(required = false) Long planId,
+            @PageableDefault(size = 20, sort = "fechaInicio", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
         try {
-            List<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarSuscripciones();
+            Page<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarSuscripciones(status, negocioId, planId, pageable);
             return ResponseEntity.ok(suscripciones);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage()));
         } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponseDto("No se pudo consultar la lista de suscripciones"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponseDto("Ocurrió un error inesperado al listar las suscripciones"));
+        }
+    }
+
+    @GetMapping("/suscripciones/{id}/historial")
+    public ResponseEntity<?> obtenerHistorial(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(adminSuscripcionService.obtenerHistorial(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDto(e.getMessage()));
         }
     }
 
@@ -135,10 +156,12 @@ public class AdminSuscripcionController {
     }
 
     @GetMapping("/suscripciones/vencidas")
-    public ResponseEntity<?> listarVencidas() {
+    public ResponseEntity<?> listarVencidas(@PageableDefault(size = 20, sort = "fechaVencimiento", direction = Sort.Direction.ASC) Pageable pageable) {
         try {
-            List<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarVencidas();
+            Page<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarVencidas(pageable);
             return ResponseEntity.ok(suscripciones);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage()));
         } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponseDto("No se pudo consultar las suscripciones vencidas"));
@@ -149,10 +172,12 @@ public class AdminSuscripcionController {
     }
 
     @GetMapping("/suscripciones/proximas-a-vencer")
-    public ResponseEntity<?> listarProximasAVencer() {
+    public ResponseEntity<?> listarProximasAVencer(@PageableDefault(size = 20, sort = "fechaVencimiento", direction = Sort.Direction.ASC) Pageable pageable) {
         try {
-            List<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarProximasAVencer();
+            Page<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarProximasAVencer(pageable);
             return ResponseEntity.ok(suscripciones);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage()));
         } catch (DataAccessException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponseDto("No se pudo consultar las próximas suscripciones a vencer"));

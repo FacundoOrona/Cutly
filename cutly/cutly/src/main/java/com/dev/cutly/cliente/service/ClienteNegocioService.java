@@ -12,6 +12,7 @@ import com.dev.cutly.negocio.repository.DireccionRepository;
 import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.review.repository.ReviewRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -28,24 +29,27 @@ public class ClienteNegocioService {
     private final ServicioRepository servicioRepository;
     private final EmpleadoRepository empleadoRepository;
     private final ReviewRepository reviewRepository;
+    private final ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     public ClienteNegocioService(
             NegocioRepository negocioRepository,
             DireccionRepository direccionRepository,
             ServicioRepository servicioRepository,
             EmpleadoRepository empleadoRepository,
-            ReviewRepository reviewRepository
+            ReviewRepository reviewRepository,
+            ControlAccesoSuscripcion controlAccesoSuscripcion
     ) {
         this.negocioRepository = negocioRepository;
         this.direccionRepository = direccionRepository;
         this.servicioRepository = servicioRepository;
         this.empleadoRepository = empleadoRepository;
         this.reviewRepository = reviewRepository;
+        this.controlAccesoSuscripcion = controlAccesoSuscripcion;
     }
 
     public Page<ClienteNegocioDto> listar(String nombre, Pageable pageable) {
         return negocioRepository
-                .findByStatusAndNombreContainingIgnoreCase(
+                .findDisponiblesParaClientes(
                         NegocioStatus.ACTIVE,
                         nombre == null ? "" : nombre.trim(),
                         pageable
@@ -107,12 +111,17 @@ public class ClienteNegocioService {
     }
 
     private Negocio buscar(Long id) {
-        return negocioRepository
+        Negocio negocio = negocioRepository
                 .findByNegocioIdAndStatus(id, NegocioStatus.ACTIVE)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "No se encontró el negocio solicitado"
                 ));
+        if (!controlAccesoSuscripcion.clientePuedeConsultarNegocio(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No se encontró el negocio solicitado");
+        }
+        return negocio;
     }
 
     private ClienteNegocioDto aDto(Negocio n) {

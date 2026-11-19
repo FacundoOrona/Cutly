@@ -15,6 +15,7 @@ import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -43,12 +44,14 @@ public class ClienteTurnoService {
     private final EmpleadoServiciorRepository empleadoServicioRepository;
     private final TurnoHorarioValidator horarioValidator;
     private final NotificacionTurnoService notificacionTurnoService;
+    private final ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     public ClienteTurnoService(TurnoRepository turnoRepository, UsuarioRepository usuarioRepository,
                                NegocioRepository negocioRepository, ServicioRepository servicioRepository,
                                EmpleadoRepository empleadoRepository, EmpleadoServiciorRepository empleadoServicioRepository,
                                TurnoHorarioValidator horarioValidator,
-                               NotificacionTurnoService notificacionTurnoService) {
+                               NotificacionTurnoService notificacionTurnoService,
+                               ControlAccesoSuscripcion controlAccesoSuscripcion) {
         this.turnoRepository = turnoRepository;
         this.usuarioRepository = usuarioRepository;
         this.negocioRepository = negocioRepository;
@@ -57,6 +60,7 @@ public class ClienteTurnoService {
         this.empleadoServicioRepository = empleadoServicioRepository;
         this.horarioValidator = horarioValidator;
         this.notificacionTurnoService = notificacionTurnoService;
+        this.controlAccesoSuscripcion = controlAccesoSuscripcion;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -70,6 +74,10 @@ public class ClienteTurnoService {
         }
         Negocio negocio = negocioRepository.findByNegocioIdAndStatus(request.negocioId(), NegocioStatus.ACTIVE)
                 .orElseThrow(() -> noEncontrado("No se encontró el negocio activo solicitado"));
+        if (!controlAccesoSuscripcion.clientePuedeReservar(negocio.getNegocioId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "El negocio no admite reservas por el estado de su suscripción");
+        }
         Servicio servicio = servicioRepository.findByServicioIdAndNegocio_NegocioId(request.servicioId(), negocio.getNegocioId())
                 .filter(Servicio::isActivo)
                 .orElseThrow(() -> noEncontrado("No se encontró el servicio activo solicitado"));
@@ -125,17 +133,23 @@ public class ClienteTurnoService {
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         return turnoRepository.findAll(filtros, Sort.by(Sort.Order.desc("fechaHoraInicio"), Sort.Order.desc("turnoId")))
-                .stream().map(this::aDto).toList();
+                .stream()
+                .filter(turno -> controlAccesoSuscripcion.clientePuedeConsultarNegocio(
+                        turno.getNegocio().getNegocioId()))
+                .map(this::aDto).toList();
     }
 
     public ClienteTurnoDto obtener(Long turnoId, String emailCliente) {
         Usuario cliente = obtenerCliente(emailCliente);
-        return aDto(buscarPropio(turnoId, cliente.getUsuarioId()));
+        Turno turno = buscarPropio(turnoId, cliente.getUsuarioId());
+        validarAccesoNegocio(turno);
+        return aDto(turno);
     }
 
     public ClienteTurnoDto cancelar(Long turnoId, String emailCliente) {
         Usuario cliente = obtenerCliente(emailCliente);
         Turno turno = buscarPropio(turnoId, cliente.getUsuarioId());
+        validarAccesoNegocio(turno);
         if (turno.getStatus() != TurnoStatus.PENDING && turno.getStatus() != TurnoStatus.CONFIRMED
                 && turno.getStatus() != TurnoStatus.IN_PROGRESS) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "El turno no puede cancelarse en su estado actual");
@@ -178,6 +192,14 @@ public class ClienteTurnoService {
     private Turno buscarPropio(Long turnoId, Long clienteId) {
         return turnoRepository.findByTurnoIdAndCliente_UsuarioId(turnoId, clienteId)
                 .orElseThrow(() -> noEncontrado("No se encontró el turno solicitado"));
+    }
+
+    private void validarAccesoNegocio(Turno turno) {
+        if (!controlAccesoSuscripcion.clientePuedeConsultarNegocio(
+                turno.getNegocio().getNegocioId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No se encontró el turno solicitado");
+        }
     }
 
     private ResponseStatusException noEncontrado(String mensaje) { return new ResponseStatusException(HttpStatus.NOT_FOUND, mensaje); }

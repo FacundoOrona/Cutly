@@ -1,6 +1,7 @@
 package com.dev.cutly.auth.security;
 
 import com.dev.cutly.empleado.service.EmpleadoAccesoService;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.auth.repository.TokenInvalidoRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -24,15 +25,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
     private final TokenInvalidoRepository tokenInvalidoRepository;
     private final EmpleadoAccesoService empleadoAccesoService;
+    private final ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil,
                                    UserDetailsService userDetailsService,
                                    TokenInvalidoRepository tokenInvalidoRepository,
-                                   EmpleadoAccesoService empleadoAccesoService) {
+                                   EmpleadoAccesoService empleadoAccesoService,
+                                   ControlAccesoSuscripcion controlAccesoSuscripcion) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.tokenInvalidoRepository = tokenInvalidoRepository;
         this.empleadoAccesoService = empleadoAccesoService;
+        this.controlAccesoSuscripcion = controlAccesoSuscripcion;
     }
 
     @Override
@@ -79,6 +83,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 userDetails.getAuthorities()
                         );
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+
+            var autenticacion = SecurityContextHolder.getContext().getAuthentication();
+            if (autenticacion != null && autenticacion.isAuthenticated()) {
+                boolean permitido = autenticacion.getAuthorities().stream()
+                        .map(authority -> authority.getAuthority())
+                        .filter(role -> role.equals("ROLE_OWNER") || role.equals("ROLE_EMPLOYEE") || role.equals("ROLE_CLIENT"))
+                        .findFirst()
+                        .map(role -> controlAccesoSuscripcion.tieneAcceso(autenticacion.getName(), role, request))
+                        .orElse(true);
+                if (!permitido) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Acceso restringido por el estado de la suscripción");
+                    return;
+                }
             }
         } catch (JwtException | IllegalArgumentException | UsernameNotFoundException e) {
             SecurityContextHolder.clearContext();

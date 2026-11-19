@@ -5,6 +5,7 @@ import com.dev.cutly.cliente.dto.review.ClienteReviewDto;
 import com.dev.cutly.cliente.dto.review.CrearReviewRequestDto;
 import com.dev.cutly.review.entity.Review;
 import com.dev.cutly.review.repository.ReviewRepository;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
@@ -24,17 +25,22 @@ public class ClienteReviewService {
     private final ReviewRepository reviewRepository;
     private final TurnoRepository turnoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ControlAccesoSuscripcion controlAccesoSuscripcion;
 
-    public ClienteReviewService(ReviewRepository reviewRepository, TurnoRepository turnoRepository, UsuarioRepository usuarioRepository) {
+    public ClienteReviewService(ReviewRepository reviewRepository, TurnoRepository turnoRepository,
+                                UsuarioRepository usuarioRepository,
+                                ControlAccesoSuscripcion controlAccesoSuscripcion) {
         this.reviewRepository = reviewRepository;
         this.turnoRepository = turnoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.controlAccesoSuscripcion = controlAccesoSuscripcion;
     }
 
     public ClienteReviewDto crear(CrearReviewRequestDto request, String emailCliente) {
         Usuario cliente = obtenerCliente(emailCliente);
         Turno turno = turnoRepository.findByTurnoIdAndCliente_UsuarioId(request.turnoId(), cliente.getUsuarioId())
                 .orElseThrow(() -> noEncontrado("No se encontró el turno propio solicitado"));
+        validarAccesoNegocio(turno.getNegocio().getNegocioId());
         if (turno.getStatus() != TurnoStatus.COMPLETED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se puede reseñar un turno completado");
         }
@@ -55,24 +61,36 @@ public class ClienteReviewService {
     public List<ClienteReviewDto> listar(String emailCliente) {
         Usuario cliente = obtenerCliente(emailCliente);
         return reviewRepository.findByCliente_UsuarioIdOrderByReviewIdDesc(cliente.getUsuarioId())
-                .stream().map(this::aDto).toList();
+                .stream()
+                .filter(review -> controlAccesoSuscripcion.clientePuedeConsultarNegocio(
+                        review.getNegocio().getNegocioId()))
+                .map(this::aDto).toList();
     }
 
     public ClienteReviewDto actualizar(Long reviewId, ActualizarReviewRequestDto request, String emailCliente) {
         Review review = buscarPropia(reviewId, emailCliente);
+        validarAccesoNegocio(review.getNegocio().getNegocioId());
         if (request.puntuacion() != null) review.setPuntuacion(request.puntuacion());
         if (request.comentario() != null) review.setComentario(request.comentario());
         return aDto(reviewRepository.save(review));
     }
 
     public void eliminar(Long reviewId, String emailCliente) {
-        reviewRepository.delete(buscarPropia(reviewId, emailCliente));
+        Review review = buscarPropia(reviewId, emailCliente);
+        validarAccesoNegocio(review.getNegocio().getNegocioId());
+        reviewRepository.delete(review);
     }
 
     private Review buscarPropia(Long reviewId, String emailCliente) {
         Usuario cliente = obtenerCliente(emailCliente);
         return reviewRepository.findByReviewIdAndCliente_UsuarioId(reviewId, cliente.getUsuarioId())
                 .orElseThrow(() -> noEncontrado("No se encontró la reseña solicitada"));
+    }
+
+    private void validarAccesoNegocio(Long negocioId) {
+        if (!controlAccesoSuscripcion.clientePuedeConsultarNegocio(negocioId)) {
+            throw noEncontrado("No se encontró la reseña solicitada");
+        }
     }
 
     private Usuario obtenerCliente(String email) {

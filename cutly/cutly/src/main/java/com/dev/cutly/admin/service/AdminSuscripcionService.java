@@ -1,6 +1,7 @@
 package com.dev.cutly.admin.service;
 
 import com.dev.cutly.admin.dto.suscripcion.AdminSuscripcionDto;
+import com.dev.cutly.admin.dto.suscripcion.AdminHistorialSuscripcionDto;
 import com.dev.cutly.admin.dto.suscripcion.AsignarSuscripcionRequestDto;
 import com.dev.cutly.admin.dto.suscripcion.RegularizarSuscripcionRequestDto;
 import com.dev.cutly.negocio.entity.Negocio;
@@ -16,6 +17,11 @@ import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import com.dev.cutly.suscripcion.repository.PlanSuscripcionRepository;
 import com.dev.cutly.suscripcion.service.HistorialSuscripcionService;
 import com.dev.cutly.suscripcion.service.RelojSuscripcion;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -34,6 +40,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.ArrayList;
 
 @Service
 public class AdminSuscripcionService {
@@ -67,8 +74,19 @@ public class AdminSuscripcionService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminSuscripcionDto> listarSuscripciones() {
-        return suscripcionRepository.findAll().stream().map(this::aDto).toList();
+    public Page<AdminSuscripcionDto> listarSuscripciones(SuscripcionStatus status, Long negocioId, Long planId, Pageable pageable) {
+        if ((negocioId != null && negocioId < 1) || (planId != null && planId < 1)) {
+            throw new IllegalArgumentException("Los identificadores de negocio y plan deben ser mayores que cero");
+        }
+        Pageable ordenado = paginaValidada(pageable, "fechaInicio", Sort.Direction.DESC, "suscripcionId");
+        Specification<Suscripcion> filtros = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null) predicates.add(cb.equal(root.get("status"), status));
+            if (negocioId != null) predicates.add(cb.equal(root.get("negocio").get("negocioId"), negocioId));
+            if (planId != null) predicates.add(cb.equal(root.get("plan").get("planId"), planId));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return suscripcionRepository.findAll(filtros, ordenado).map(this::aDto);
     }
 
     @Transactional(readOnly = true)
@@ -79,18 +97,52 @@ public class AdminSuscripcionService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminSuscripcionDto> listarVencidas() {
-        return suscripcionRepository.findByStatusOrFechaVencimientoBefore(
-                        SuscripcionStatus.EXPIRED, RelojSuscripcion.fechaActual()
-                ).stream().map(this::aDto).toList();
+    public Page<AdminSuscripcionDto> listarVencidas(Pageable pageable) {
+        Pageable ordenado = paginaValidada(pageable, "fechaVencimiento", Sort.Direction.ASC, "suscripcionId");
+        LocalDate hoy = RelojSuscripcion.fechaActual();
+        Specification<Suscripcion> filtros = (root, query, cb) -> cb.or(
+                cb.equal(root.get("status"), SuscripcionStatus.EXPIRED),
+                cb.and(cb.equal(root.get("status"), SuscripcionStatus.ACTIVE),
+                        cb.lessThan(root.get("fechaVencimiento"), hoy)));
+        return suscripcionRepository.findAll(filtros, ordenado).map(this::aDto);
     }
 
     @Transactional(readOnly = true)
-    public List<AdminSuscripcionDto> listarProximasAVencer() {
+    public Page<AdminSuscripcionDto> listarProximasAVencer(Pageable pageable) {
+        Pageable ordenado = paginaValidada(pageable, "fechaVencimiento", Sort.Direction.ASC, "suscripcionId");
         LocalDate hoy = RelojSuscripcion.fechaActual();
-        return suscripcionRepository.findByFechaVencimientoBetweenAndStatusIn(
-                        hoy, hoy.plusDays(DIAS_PROXIMOS_A_VENCER), ESTADOS_ACTIVOS
-                ).stream().map(this::aDto).toList();
+        Specification<Suscripcion> filtros = (root, query, cb) -> cb.and(
+                root.get("status").in(ESTADOS_ACTIVOS),
+                cb.between(root.get("fechaVencimiento"), hoy, hoy.plusDays(DIAS_PROXIMOS_A_VENCER)));
+        return suscripcionRepository.findAll(filtros, ordenado).map(this::aDto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminHistorialSuscripcionDto> obtenerHistorial(Long id) {
+        if (!suscripcionRepository.existsById(id)) throw new NoSuchElementException("No se encontró la suscripción con id " + id);
+        return historialService.consultarPorSuscripcion(id)
+                .stream().map(h -> new AdminHistorialSuscripcionDto(h.getHistorialSuscripcionId(), h.getTipoEvento(),
+                        h.getEstadoAnterior(), h.getEstadoNuevo(), h.getPlanIdAnterior(), h.getNombrePlanAnterior(),
+                        h.getPlanIdNuevo(), h.getNombrePlanNuevo(), h.getPrecioContratadoAnterior(), h.getPrecioContratadoNuevo(),
+                        h.getFechaInicioPeriodo(), h.getFechaInicioAnterior(), h.getFechaInicioNueva(),
+                        h.getFechaVencimientoAnterior(), h.getFechaVencimientoNueva(),
+                        h.getAdministradorResponsable() == null ? null : h.getAdministradorResponsable().getUsuarioId(),
+                        h.getAdministradorResponsable() == null ? null : h.getAdministradorResponsable().getNombre() + " " + h.getAdministradorResponsable().getApellido(),
+                        h.getAdministradorResponsable() == null ? h.getIdentificacionSistema() : h.getAdministradorResponsable().getEmail(),
+                        h.getFechaEvento(), h.getObservacion())).toList();
+    }
+
+    private Pageable paginaValidada(Pageable pageable, String campoPredeterminado, Sort.Direction direccion, String desempate) {
+        if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1 || pageable.getPageSize() > 100)
+            throw new IllegalArgumentException("La página debe ser >= 0 y el tamaño debe estar entre 1 y 100");
+        Set<String> campos = Set.of("suscripcionId", "status", "fechaInicio", "fechaVencimiento", "precioContratado", "plan.planId", "negocio.negocioId");
+        for (Sort.Order order : pageable.getSort()) if (!campos.contains(order.getProperty())) throw new IllegalArgumentException("Campo de ordenamiento no permitido: " + order.getProperty());
+        Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : Sort.by(direccion, campoPredeterminado);
+        if (sort.getOrderFor("suscripcionId") == null) {
+            Sort.Order principal = sort.iterator().next();
+            sort = sort.and(Sort.by(principal.getDirection(), desempate));
+        }
+        return org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
     }
 
     @Transactional

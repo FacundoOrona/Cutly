@@ -9,5 +9,5 @@ public interface HistorialSuscripcionRepository extends Repository<HistorialSusc
 
     HistorialSuscripcion save(HistorialSuscripcion historialSuscripcion);
 
-    List<HistorialSuscripcion> findBySuscripcion_SuscripcionIdOrderByFechaEventoAsc(Long suscripcionId);
+    List<HistorialSuscripcion> findBySuscripcion_SuscripcionIdOrderByFechaEventoAscHistorialSuscripcionIdAsc(Long suscripcionId);
 }

@@ -4,6 +4,7 @@ import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> {
+public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long>, JpaSpecificationExecutor<Suscripcion> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Suscripcion> findWithLockingBySuscripcionId(Long suscripcionId);
@@ -20,6 +21,8 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
     Optional<Suscripcion> findWithLockingByNegocio_NegocioId(Long negocioId);
 
     boolean existsByNegocio_NegocioId(Long negocioId);
+
+    Optional<Suscripcion> findByNegocio_NegocioId(Long negocioId);
 
     long countByStatus(SuscripcionStatus status);
 

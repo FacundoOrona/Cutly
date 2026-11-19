@@ -10,6 +10,7 @@ import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
@@ -35,6 +36,7 @@ public class ClienteDisponibilidadService {
     private final EmpleadoRepository empleadoRepository;
     private final EmpleadoServiciorRepository empleadoServicioRepository;
     private final TurnoRepository turnoRepository;
+    private final ControlAccesoSuscripcion controlAccesoSuscripcion;
 
     public ClienteDisponibilidadService(
             NegocioRepository negocioRepository,
@@ -42,7 +44,8 @@ public class ClienteDisponibilidadService {
             ServicioRepository servicioRepository,
             EmpleadoRepository empleadoRepository,
             EmpleadoServiciorRepository empleadoServicioRepository,
-            TurnoRepository turnoRepository
+            TurnoRepository turnoRepository,
+            ControlAccesoSuscripcion controlAccesoSuscripcion
     ) {
         this.negocioRepository = negocioRepository;
         this.horarioRepository = horarioRepository;
@@ -50,6 +53,7 @@ public class ClienteDisponibilidadService {
         this.empleadoRepository = empleadoRepository;
         this.empleadoServicioRepository = empleadoServicioRepository;
         this.turnoRepository = turnoRepository;
+        this.controlAccesoSuscripcion = controlAccesoSuscripcion;
     }
 
     public List<ClienteDisponibilidadDto> listar(
@@ -140,6 +144,10 @@ public class ClienteDisponibilidadService {
         negocioRepository.findByNegocioIdAndStatus(negocioId, NegocioStatus.ACTIVE)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No se encontró el negocio activo solicitado"));
+        if (!controlAccesoSuscripcion.clientePuedeConsultarNegocio(negocioId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No se encontró el negocio activo solicitado");
+        }
     }
 
     private Servicio buscarServicio(Long negocioId, Long servicioId) {
