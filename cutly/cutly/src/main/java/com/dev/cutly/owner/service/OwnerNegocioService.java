@@ -6,11 +6,14 @@ import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.owner.dto.negocio.ActualizarNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.CrearNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.OwnerNegocioDto;
+import com.dev.cutly.owner.dto.suscripcion.OwnerSuscripcionDto;
+import com.dev.cutly.owner.dto.suscripcion.RenovarSuscripcionRequestDto;
 import com.dev.cutly.suscripcion.entity.PlanSuscripcion;
 import com.dev.cutly.suscripcion.entity.SnapshotSuscripcion;
 import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 import com.dev.cutly.suscripcion.enums.TipoEventoSuscripcion;
+import com.dev.cutly.suscripcion.enums.TipoPlanSuscripcion;
 import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import com.dev.cutly.suscripcion.service.HistorialSuscripcionService;
 import com.dev.cutly.suscripcion.service.PlanSuscripcionService;
@@ -149,6 +152,78 @@ public class OwnerNegocioService {
 
         negocio.setStatus(destino);
         return aDto(negocioRepository.save(negocio));
+    }
+
+    @Transactional
+    public OwnerSuscripcionDto renovarSuscripcion(
+            Long negocioId,
+            RenovarSuscripcionRequestDto request,
+            String emailOwner,
+            String ipAddress
+    ) {
+        Usuario owner = obtenerOwnerAutenticado(emailOwner);
+        Negocio negocio = negocioRepository.findWithLockingByNegocioIdAndOwner_UsuarioId(
+                        negocioId, owner.getUsuarioId()
+                )
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el negocio solicitado"));
+        Suscripcion suscripcion = suscripcionRepository.findWithLockingByNegocio_NegocioId(negocio.getNegocioId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El negocio no tiene una suscripción que pueda renovarse"));
+
+        if (suscripcion.getStatus() == SuscripcionStatus.SUSPENDED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "La suscripción suspendida requiere intervención administrativa");
+        }
+        if (suscripcion.getStatus() == SuscripcionStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "La suscripción cancelada no puede renovarse");
+        }
+        if (suscripcion.getPlan().getTipo() == TipoPlanSuscripcion.TRIAL) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "La prueba gratuita no puede renovarse mediante el flujo comercial");
+        }
+
+        LocalDate hoy = RelojSuscripcion.fechaActual();
+        LocalDate vencimientoAnterior = suscripcion.getFechaVencimiento();
+        SnapshotSuscripcion anterior = SnapshotSuscripcion.capturar(suscripcion);
+        boolean vencida = suscripcion.getStatus() == SuscripcionStatus.EXPIRED
+                || vencimientoAnterior.isBefore(hoy);
+        LocalDate inicioPeriodo;
+        if (vencida) {
+            inicioPeriodo = hoy;
+            suscripcion.setFechaInicio(hoy);
+            suscripcion.setFechaVencimiento(hoy.plusDays(29));
+        } else {
+            inicioPeriodo = vencimientoAnterior.plusDays(1);
+            suscripcion.setFechaVencimiento(vencimientoAnterior.plusDays(30));
+        }
+
+        suscripcion.setStatus(SuscripcionStatus.ACTIVE);
+        Suscripcion guardada = suscripcionRepository.save(suscripcion);
+        historialSuscripcionService.registrar(
+                guardada,
+                TipoEventoSuscripcion.RENEWED,
+                inicioPeriodo,
+                anterior,
+                SnapshotSuscripcion.capturar(guardada),
+                owner,
+                null,
+                observacionRenovacion(request),
+                "Renovación de suscripción solicitada por OWNER",
+                ipAddress
+        );
+        return new OwnerSuscripcionDto(
+                guardada.getSuscripcionId(), guardada.getStatus(), guardada.getFechaInicio(),
+                guardada.getFechaVencimiento(), guardada.getPrecioContratado(),
+                guardada.getPlan().getPlanId(), guardada.getPlan().getNombre()
+        );
+    }
+
+    private String observacionRenovacion(RenovarSuscripcionRequestDto request) {
+        return request == null || request.observacion() == null || request.observacion().isBlank()
+                ? "Renovación solicitada por OWNER"
+                : request.observacion().trim();
     }
 
     private Usuario obtenerOwnerAutenticado(String emailOwner) {

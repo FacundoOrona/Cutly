@@ -16,6 +16,9 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Suscripcion> findWithLockingBySuscripcionId(Long suscripcionId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Suscripcion> findWithLockingByNegocio_NegocioId(Long negocioId);
+
     boolean existsByNegocio_NegocioId(Long negocioId);
 
     long countByStatus(SuscripcionStatus status);

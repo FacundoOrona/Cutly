@@ -111,7 +111,7 @@ public class HistorialSuscripcion {
             String observacion,
             LocalDateTime fechaEvento
     ) {
-        validarActor(administradorResponsable, identificacionSistema);
+        validarActor(administradorResponsable, identificacionSistema, tipoEvento);
         if (suscripcion == null || tipoEvento == null || fechaEvento == null) {
             throw new IllegalArgumentException("Suscripción, evento y fecha del evento son obligatorios");
         }
@@ -148,22 +148,25 @@ public class HistorialSuscripcion {
         estadoNuevo = snapshot.estado();
     }
 
-    private static void validarActor(Usuario administrador, String sistema) {
+    private static void validarActor(Usuario administrador, String sistema, TipoEventoSuscripcion tipoEvento) {
         boolean administradorPresente = administrador != null;
         boolean sistemaPresente = sistema != null;
+        boolean rolValido = administradorPresente
+                && (administrador.getRol() == Rol.SUPER_ADMIN
+                || (administrador.getRol() == Rol.OWNER && tipoEvento == TipoEventoSuscripcion.RENEWED));
         if (administradorPresente == sistemaPresente
                 || (administradorPresente && (administrador.getUsuarioId() == null
-                || administrador.getRol() != Rol.SUPER_ADMIN))
+                || !rolValido))
                 || (sistemaPresente && !RelojSuscripcion.IDENTIFICACION_SISTEMA.equals(sistema))) {
             throw new IllegalArgumentException(
-                    "El evento debe tener exactamente un administrador o el actor SISTEMA"
+                    "El evento debe tener un actor autorizado o el actor SISTEMA"
             );
         }
     }
 
     @PrePersist
     private void validarAntesDeCrear() {
-        validarActor(administradorResponsable, identificacionSistema);
+        validarActor(administradorResponsable, identificacionSistema, tipoEvento);
         if (suscripcion == null || tipoEvento == null || fechaEvento == null) {
             throw new IllegalStateException("El evento de historial está incompleto");
         }
