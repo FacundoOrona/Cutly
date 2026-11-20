@@ -2,19 +2,11 @@ import { useState } from 'react'
 import { ArrowLeft, Building2, CheckCircle2, LoaderCircle, RefreshCw, X } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import BusinessStatusActions from '../components/BusinessStatusActions.jsx'
+import BusinessSubscriptionManagement from '../components/BusinessSubscriptionManagement.jsx'
 import { getBusinessErrorMessage, getUpdateBusinessStatusErrorMessage } from '../api/businessesApi.js'
 import { useBusiness, useUpdateBusinessStatus } from '../hooks/useBusinesses.js'
 
 const statusLabels = { ACTIVE: 'Activo', INACTIVE: 'Inactivo', SUSPENDED: 'Suspendido' }
-const subscriptionStatusLabels = { ACTIVE: 'Activa', TRIAL: 'Prueba', EXPIRED: 'Vencida', SUSPENDED: 'Suspendida', CANCELLED: 'Cancelada' }
-const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
-
-function formatDate(value) {
-  if (!value) return '—'
-  const [year, month, day] = value.split('-')
-  return `${day}/${month}/${year}`
-}
-
 export default function BusinessDetailPage() {
   const { id } = useParams()
   const location = useLocation()
@@ -52,14 +44,6 @@ export default function BusinessDetailPage() {
     ['Teléfono', business.telefono],
     ['Email', business.email],
     ['Estado', statusLabels[business.status] || business.status || 'Sin estado'],
-    ['Estado de suscripción', subscriptionStatusLabels[business.estadoSuscripcion] || business.estadoSuscripcion || 'Sin suscripción'],
-    ['Plan', business.nombrePlan],
-    ['Tipo de plan', business.tipoPlan],
-    ['Precio contratado', business.precioContratado === null || business.precioContratado === undefined ? '—' : money.format(Number(business.precioContratado))],
-    ['Inicio de suscripción', formatDate(business.fechaInicioSuscripcion)],
-    ['Vencimiento de suscripción', formatDate(business.fechaVencimientoSuscripcion)],
-    ['Plazo de suscripción', business.diasRestantes !== null && business.diasRestantes !== undefined ? `${business.diasRestantes} días restantes` : business.diasAtraso !== null && business.diasAtraso !== undefined ? `${business.diasAtraso} días de atraso` : '—'],
-    ['Acceso por suscripción', business.suscripcionHabilitada ? 'Habilitado' : 'No habilitado'],
   ] : []
 
   return (
@@ -77,11 +61,16 @@ export default function BusinessDetailPage() {
       ) : query.isError ? (
         <div className="user-detail-state user-detail-error" role="alert"><p>{getBusinessErrorMessage(query.error)}</p>{query.error.response?.status !== 404 && query.error.response?.status !== 400 && query.error.response?.status !== 401 && query.error.response?.status !== 403 && <button type="button" className="owners-secondary-button" onClick={() => query.refetch()}><RefreshCw size={15} /> Reintentar</button>}</div>
       ) : business ? (
-        <section className="user-detail-card" aria-label="Datos del negocio">
+        <>
+        <section className="user-detail-card" aria-label="Datos y estado del negocio">
           <div className="user-detail-card-heading"><span className="user-detail-icon"><Building2 size={18} /></span><div><h2>{business.nombre || 'Negocio'}</h2><p>{business.email || 'Sin email'}</p></div></div>
           <dl className="user-detail-grid">{fields.map(([label, value]) => <div className="user-detail-field" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
-          <div className="business-detail-actions"><span className="user-detail-field-label">Acciones de estado</span><BusinessStatusActions business={business} pending={statusMutation.isPending} onChangeStatus={handleStatusChange} /></div>
         </section>
+        <section className="user-detail-card business-status-card" aria-label="Estado del negocio">
+          <div className="business-detail-actions"><span className="user-detail-field-label">Estado del negocio: {statusLabels[business.status] || business.status || 'Sin estado'}</span><BusinessStatusActions business={business} pending={statusMutation.isPending} onChangeStatus={handleStatusChange} /></div>
+        </section>
+        <BusinessSubscriptionManagement business={business} />
+        </>
       ) : (
         <div className="user-detail-state"><p>No hay datos disponibles para este negocio.</p><button type="button" className="owners-secondary-button" onClick={backToList}>Volver al listado</button></div>
       )}

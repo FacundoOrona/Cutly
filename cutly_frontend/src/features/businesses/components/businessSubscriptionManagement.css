@@ -1,0 +1,42 @@
+.business-status-card{margin-top:14px;padding:0 16px}
+.business-status-card .business-detail-actions{margin:0;padding:14px 0;border:0}
+.business-subscription-card{margin-top:14px}
+.business-subscription-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:1px solid #edf0eb}
+.business-subscription-heading h2{font-family:'Manrope',sans-serif;font-size:17px;letter-spacing:-.3px}
+.business-subscription-heading p,.business-subscription-dialog-copy{margin-top:5px;color:#737a72;font-size:11px;line-height:1.55}
+.business-subscription-badge{flex:none;padding:6px 10px;border-radius:99px;background:#eef3eb;color:#486b45;font-size:10px;font-weight:700}
+.business-subscription-badge.status-cancelled,.business-subscription-badge.status-expired{background:#f7eeec;color:#945b51}
+.business-subscription-badge.status-suspended{background:#f7f2e8;color:#8b6b34}
+.business-subscription-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 24px;margin:0;padding:20px 0 2px}
+.business-subscription-field dt{margin-bottom:5px;color:#8b9188;font-size:9px;font-weight:700;letter-spacing:.75px;text-transform:uppercase}
+.business-subscription-field dd{margin:0;color:#303a30;font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.business-subscription-empty{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:17px;color:#697166;font-size:12px}
+.business-subscription-empty>span{display:inline-flex;align-items:center;gap:7px}
+.business-subscription-actions{margin-top:17px}
+.business-subscription-actions .user-detail-field-label{font-weight:700}
+.business-subscription-rule{margin-top:12px;color:#806338;font-size:10px;line-height:1.5}
+.business-subscription-history{margin-top:20px;padding-top:16px;border-top:1px solid #edf0eb}
+.business-subscription-history h3{margin:0 0 12px;color:#53604f;font-size:11px;font-weight:700}
+.business-subscription-history>p,.business-subscription-history-state{display:flex;align-items:center;gap:7px;color:#737a72;font-size:11px}
+.business-subscription-history ol{display:grid;gap:11px;margin:0;padding:0;list-style:none}
+.business-subscription-history li{display:flex;align-items:flex-start;gap:9px;color:#6b7568}
+.business-subscription-history li>svg{flex:none;margin-top:1px;color:#789270}
+.business-subscription-history li strong,.business-subscription-history li span{display:block;font-size:10px}
+.business-subscription-history li strong{color:#384438}
+.business-subscription-history li span{margin-top:3px;color:#81877e}
+.business-subscription-history li p{margin-top:5px;color:#5e685b;font-size:10px;line-height:1.45}
+.business-subscription-dialog-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow:auto;padding:20px;background:rgba(23,32,24,.48)}
+.business-subscription-dialog{display:grid;gap:15px;width:min(100%,520px);max-height:calc(100vh - 40px);overflow:auto;padding:22px;border:1px solid #e5eae2;border-radius:14px;background:#fff;box-shadow:0 20px 70px rgba(28,42,29,.22)}
+.business-subscription-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.business-subscription-dialog-heading h3{font-family:'Manrope',sans-serif;font-size:17px;letter-spacing:-.3px}
+.business-subscription-dialog-heading .icon-button{margin-left:auto}
+.business-subscription-dialog .owner-form-field{max-width:none}
+.business-subscription-dialog .owner-form-field input,.business-subscription-dialog .owner-form-field select,.business-subscription-dialog .owner-form-field textarea{width:100%;min-width:0;min-height:42px;padding:0 12px;border:1px solid #dce4d9;border-radius:9px;background:#fbfcfa;color:#2f3b30;font:400 12px 'DM Sans',sans-serif}
+.business-subscription-dialog .owner-form-field textarea{min-height:84px;padding:10px 12px;resize:vertical}
+.business-subscription-dialog .owner-form-field input:focus,.business-subscription-dialog .owner-form-field select:focus,.business-subscription-dialog .owner-form-field textarea:focus{outline:0;border-color:#72936c;box-shadow:0 0 0 3px rgba(91,132,84,.14)}
+.business-subscription-dialog .owner-form-field>small{color:#8a9287;font-size:9px;font-weight:400;line-height:1.45}
+.business-subscription-dialog-copy code{font-size:10px}
+.business-subscription-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.business-subscription-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+.business-subscription-dialog-actions button{margin:0}
+@media(max-width:600px){.business-subscription-grid{grid-template-columns:1fr;gap:13px}.business-subscription-empty{align-items:flex-start;flex-direction:column}.business-subscription-form-grid{grid-template-columns:1fr}.business-subscription-dialog{padding:17px}}

@@ -1,0 +1,38 @@
+.admin-plans-heading{align-items:flex-end}
+.admin-plans-heading .owner-create-button{margin-left:auto}
+.admin-plans-list{min-width:0;padding:20px;border:1px solid #e5eae2;border-radius:13px;background:#fff}
+.admin-plans-empty{min-height:180px}
+.admin-plans-empty .owners-secondary-button{margin-top:10px}
+.admin-plans-table-wrap{width:100%;overflow-x:auto}
+.admin-plans-table{width:100%;min-width:760px;border-collapse:collapse;text-align:left}
+.admin-plans-table th{padding:0 13px 12px;color:#858d82;font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.admin-plans-table td{padding:14px 13px;border-top:1px solid #edf0eb;color:#3f4a3e;font-size:11px;vertical-align:middle}
+.admin-plans-table td:first-child{min-width:210px}
+.admin-plans-table td:first-child strong,.admin-plans-table td:first-child span,.admin-plans-table td small{display:block}
+.admin-plans-table td:first-child strong{color:#2d382d;font-size:12px}
+.admin-plans-table td:first-child span{max-width:310px;margin-top:4px;color:#858c83;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.admin-plans-table td small{margin-top:5px;color:#81887e;font-size:9px}
+.admin-plan-state{display:inline-flex;padding:5px 8px;border-radius:99px;background:#f4efed;color:#855c53;font-size:9px;font-weight:700}
+.admin-plan-state.is-active{background:#edf4ea;color:#4c7049}
+.admin-plan-actions{display:flex;align-items:center;gap:7px}
+.admin-plan-actions .owners-secondary-button{min-height:30px;margin:0;padding:0 8px;font-size:9px}
+.admin-plan-protected-note{color:#858c83;font-size:9px}
+.admin-plan-form{display:grid;gap:15px;margin-top:18px}
+.admin-plan-form .owner-form-field{max-width:none}
+.admin-plan-form .owner-form-field input,.admin-plan-form .owner-form-field textarea{width:100%;min-width:0;min-height:42px;padding:0 12px;border:1px solid #dce4d9;border-radius:9px;background:#fbfcfa;color:#2f3b30;font:400 12px 'DM Sans',sans-serif}
+.admin-plan-form .owner-form-field textarea{min-height:92px;padding:10px 12px;resize:vertical}
+.admin-plan-form .owner-form-field input:focus,.admin-plan-form .owner-form-field textarea:focus{outline:0;border-color:#72936c;box-shadow:0 0 0 3px rgba(91,132,84,.14)}
+.admin-plan-form .owner-form-field>small{color:#858d82;font-size:9px;font-weight:400;line-height:1.45}
+.admin-plan-form-error{padding:10px 12px;border:1px solid #eed8d4;border-radius:8px;background:#fbf1ef;color:#8f5047;font-size:11px;line-height:1.5}
+.admin-plan-version-note{color:#778073;font-size:10px}
+.admin-plan-dialog-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow:auto;padding:20px;background:rgba(23,32,24,.48)}
+.admin-plan-dialog{width:min(100%,520px);max-height:calc(100vh - 40px);overflow:auto;padding:22px;border:1px solid #e5eae2;border-radius:14px;background:#fff;box-shadow:0 20px 70px rgba(28,42,29,.22)}
+.admin-plan-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.admin-plan-dialog-heading h2{font-family:'Manrope',sans-serif;font-size:17px;letter-spacing:-.3px}
+.admin-plan-dialog-heading p{margin-top:5px;color:#737a72;font-size:10px;line-height:1.5}
+.admin-plan-dialog-heading .icon-button{margin-left:auto}
+.admin-plan-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:3px}
+.admin-plan-dialog-actions button{margin:0}
+.admin-plan-protected{display:grid;gap:14px;margin-top:18px;color:#657060;font-size:12px;line-height:1.5}
+.admin-plan-protected .owners-secondary-button{justify-self:end}
+@media(max-width:720px){.admin-plans-list{padding:13px}.admin-plans-table{min-width:0}.admin-plans-table thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.admin-plans-table,.admin-plans-table tbody{display:block}.admin-plans-table tr{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 4px;border-top:1px solid #edf0eb}.admin-plans-table tr:first-child{border-top:0}.admin-plans-table td{display:block;min-width:0!important;padding:0;border:0}.admin-plans-table td:first-child{grid-column:1/-1}.admin-plans-table td::before{content:attr(data-label);display:block;margin-bottom:5px;color:#858d82;font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase}.admin-plans-table td:first-child::before{display:none}.admin-plan-actions{flex-wrap:wrap}.admin-plans-heading{align-items:flex-start;flex-direction:column}.admin-plans-heading .owner-create-button{margin:0}}

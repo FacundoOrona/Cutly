@@ -13,6 +13,7 @@ import UsersPage from '../features/users/pages/UsersPage.jsx'
 import UserDetailPage from '../features/users/pages/UserDetailPage.jsx'
 import BusinessesPage from '../features/businesses/pages/BusinessesPage.jsx'
 import BusinessDetailPage from '../features/businesses/pages/BusinessDetailPage.jsx'
+import AdminPlansPage from '../features/subscriptionPlans/pages/AdminPlansPage.jsx'
 import OwnerLayout from '../layouts/OwnerLayout.jsx'
 import OwnerBusinessesPage from '../features/owner/pages/OwnerBusinessesPage.jsx'
 import OwnerBusinessPage from '../features/owner/pages/OwnerBusinessPage.jsx'
@@ -66,6 +67,7 @@ export default function AppRoutes() {
                 <Route path="/admin/owners/:id" element={<OwnerDetailPage />} />
                 <Route path="/admin/businesses" element={<BusinessesPage />} />
                 <Route path="/admin/businesses/:id" element={<BusinessDetailPage />} />
+                <Route path="/admin/planes-suscripcion" element={<AdminPlansPage />} />
                 <Route path="/admin/users" element={<UsersPage />} />
                 <Route path="/admin/users/:id" element={<UserDetailPage />} />
               </Route>
