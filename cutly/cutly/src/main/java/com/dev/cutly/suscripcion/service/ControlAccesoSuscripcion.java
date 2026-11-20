@@ -35,6 +35,12 @@ public class ControlAccesoSuscripcion {
 
     public boolean tieneAcceso(String email, String rol, HttpServletRequest request) {
         String path = request.getRequestURI();
+        if ("ROLE_OWNER".equals(rol)
+                && HttpMethod.PATCH.matches(request.getMethod())
+                && (path.matches("/api/owner/notificaciones/\\d+/leer")
+                || "/api/owner/notificaciones/leer-todas".equals(path))) {
+            return true;
+        }
         if ("/api/owner/negocios".equals(path) && HttpMethod.POST.matches(request.getMethod())) {
             return ownerPuedeCrearNegocio(email);
         }
