@@ -42,7 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request,response);
@@ -50,7 +49,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7).trim();
-        if (token.isEmpty() || tokenInvalidoRepository.existsByToken(token)) {
+        if (token.isEmpty()) {
+            sendUnauthorized(response);
+            return;
+        }
+        if (tokenInvalidoRepository.existsByToken(token)) {
             sendUnauthorized(response);
             return;
         }

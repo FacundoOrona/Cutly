@@ -19,7 +19,6 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/owner/negocios/{negocioId}/estadisticas")
 public class OwnerEstadisticaController {
-
     private final OwnerEstadisicaService ownerEstadisicaService;
 
     public OwnerEstadisticaController(OwnerEstadisicaService ownerEstadisicaService) {

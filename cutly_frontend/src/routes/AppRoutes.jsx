@@ -22,6 +22,7 @@ import OwnerClientesPage from '../features/owner/pages/OwnerClientesPage.jsx'
 import OwnerDeudasPage from '../features/owner/pages/OwnerDeudasPage.jsx'
 import OwnerTransaccionesPage from '../features/owner/pages/OwnerTransaccionesPage.jsx'
 import OwnerEstadisticasPage from '../features/owner/pages/OwnerEstadisticasPage.jsx'
+import OwnerNotificationsPage from '../features/owner/pages/OwnerNotificationsPage.jsx'
 import EmployeeLayout from '../layouts/EmployeeLayout.jsx'
 import EmployeeHomePage from '../features/employee/pages/EmployeeHomePage.jsx'
 import EmployeeAgendaPage from '../features/employee/pages/EmployeeAgendaPage.jsx'
@@ -82,6 +83,7 @@ export default function AppRoutes() {
                 <Route path="/owner/cuentas-corrientes" element={<OwnerDeudasPage />} />
                 <Route path="/owner/transacciones" element={<OwnerTransaccionesPage />} />
                 <Route path="/owner/estadisticas" element={<OwnerEstadisticasPage />} />
+                <Route path="/owner/notificaciones" element={<OwnerNotificationsPage />} />
               </Route>
             </Route>
             <Route element={<RequireRole role="EMPLOYEE" />}>
