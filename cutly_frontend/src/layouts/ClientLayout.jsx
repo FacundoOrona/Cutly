@@ -9,6 +9,7 @@ const navigation = [
   { to: '/client', label: 'Inicio', icon: Home, end: true },
   { to: '/client/explorar', label: 'Explorar', icon: Compass },
   { to: '/client/turnos', label: 'Mis turnos', icon: CalendarDays },
+  { to: '/client/notificaciones', label: 'Notificaciones', icon: Bell },
   { to: '/client/cuenta', label: 'Cuenta', icon: UserRound },
 ]
 
