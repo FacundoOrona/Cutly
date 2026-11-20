@@ -15,16 +15,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-    private static final String DIAG = "[TEMP-EMP-NOTIF-401]";
-
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final TokenInvalidoRepository tokenInvalidoRepository;
@@ -48,8 +43,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        log.info("{} FILTER_IN method={} uri={}", DIAG, request.getMethod(), request.getRequestURI());
-        try {
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request,response);
@@ -58,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7).trim();
         if (token.isEmpty() || tokenInvalidoRepository.existsByToken(token)) {
-            sendUnauthorized(response, token.isEmpty() ? "empty_token" : "revoked_token");
+            sendUnauthorized(response);
             return;
         }
 
@@ -70,7 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()
                         || !jwtUtil.isTokenValid(token, userDetails)) {
-                    sendUnauthorized(response, "user_disabled_locked_or_invalid_token");
+                    sendUnauthorized(response);
                     return;
                 }
 
@@ -78,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         && userDetails.getAuthorities().stream()
                         .anyMatch(authority -> authority.getAuthority().equals("ROLE_EMPLOYEE"))
                         && !empleadoAccesoService.tienePerfilActivo(email)) {
-                    sendUnauthorized(response, "employee_profile_inactive");
+                    sendUnauthorized(response);
                     return;
                 }
 
@@ -106,22 +99,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (JwtException | IllegalArgumentException | UsernameNotFoundException e) {
             SecurityContextHolder.clearContext();
-            sendUnauthorized(response, "jwt_or_user_lookup_exception:" + e.getClass().getSimpleName());
+            sendUnauthorized(response);
             return;
         }
 
         filterChain.doFilter(request, response);
-        } finally {
-            var authentication = SecurityContextHolder.getContext().getAuthentication();
-            log.info("{} FILTER_OUT method={} uri={} status={} committed={} authenticated={} authorities={}",
-                    DIAG, request.getMethod(), request.getRequestURI(), response.getStatus(), response.isCommitted(),
-                    authentication != null && authentication.isAuthenticated(),
-                    authentication == null ? "[]" : authentication.getAuthorities());
-        }
     }
 
-    private void sendUnauthorized(HttpServletResponse response, String reason) throws IOException {
-        log.warn("{} FILTER_401 reason={}", DIAG, reason);
+    private void sendUnauthorized(HttpServletResponse response) throws IOException {
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT invalido, expirado o revocado");
     }
 }

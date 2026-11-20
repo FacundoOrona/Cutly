@@ -15,17 +15,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
-    private static final String DIAG = "[TEMP-EMP-NOTIF-401]";
-
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -48,18 +43,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, exception) -> {
-                                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-                                log.warn("{} ENTRY_POINT_401 method={} uri={} authenticated={} authorities={} exception={}",
-                                        DIAG, request.getMethod(), request.getRequestURI(),
-                                        authentication != null && authentication.isAuthenticated(),
-                                        authentication == null ? "[]" : authentication.getAuthorities(),
-                                        exception.getClass().getSimpleName());
+                        .authenticationEntryPoint((request, response, exception) ->
                                 response.sendError(
                                         HttpServletResponse.SC_UNAUTHORIZED,
                                         "Autenticación requerida"
-                                );
-                        })
+                                )
+                        )
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

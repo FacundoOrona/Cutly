@@ -13,14 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 @Transactional
 public class CentroNotificacionesService {
-    private static final Logger log = LoggerFactory.getLogger(CentroNotificacionesService.class);
-    private static final String DIAG = "[TEMP-EMP-NOTIF-401]";
     private final NotificacionRepository repo;
     private final UsuarioRepository usuarios;
     public CentroNotificacionesService(NotificacionRepository repo, UsuarioRepository usuarios) { this.repo = repo; this.usuarios = usuarios; }
@@ -46,7 +42,6 @@ public class CentroNotificacionesService {
     public int leerTodas(String email) { return repo.marcarTodasLeidas(usuarioOperativo(email).getUsuarioId(), LocalDateTime.now()); }
     private com.dev.cutly.usuario.entity.Usuario usuarioOperativo(String email) {
         var resultado = usuarios.findByEmail(email);
-        log.info("{} SERVICE_USER_LOOKUP found={}", DIAG, resultado.isPresent());
         var u = resultado.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         if (u.getRol() == Rol.SUPER_ADMIN) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         if (u.getRol() != Rol.CLIENT && u.getRol() != Rol.OWNER && u.getRol() != Rol.EMPLOYEE)

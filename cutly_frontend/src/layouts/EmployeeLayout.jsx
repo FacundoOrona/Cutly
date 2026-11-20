@@ -3,13 +3,13 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
-import { useEmployeeNotifications } from '../features/employee/hooks/useEmployeeNotifications.js'
+import { useEmployeeUnreadNotificationCount } from '../features/employee/hooks/useEmployeeNotifications.js'
 import './EmployeeLayout.css'
 
 export default function EmployeeLayout() {
   const { user, signOut } = useAuth()
-  const notificationsQuery = useEmployeeNotifications()
-  const unreadCount = (notificationsQuery.data ?? []).filter((notification) => notification.leida === false).length
+  const unreadCountQuery = useEmployeeUnreadNotificationCount()
+  const unreadCount = unreadCountQuery.data?.cantidad
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
 
