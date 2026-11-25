@@ -13,13 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 @Transactional
 public class CentroNotificacionesService {
-    private static final Logger log = LoggerFactory.getLogger(CentroNotificacionesService.class);
     private final NotificacionRepository repo;
     private final UsuarioRepository usuarios;
     public CentroNotificacionesService(NotificacionRepository repo, UsuarioRepository usuarios) { this.repo = repo; this.usuarios = usuarios; }
@@ -35,9 +32,7 @@ public class CentroNotificacionesService {
     }
     @Transactional(readOnly = true)
     public long contarNoLeidas(String email) {
-        log.info("AUTH_TRACE serviceEntered=CentroNotificacionesService.contarNoLeidas identity={} ", maskEmail(email));
         var usuario = usuarioOperativo(email);
-        log.info("AUTH_TRACE serviceUserFound=true identity={} role={}", maskEmail(email), usuario.getRol());
         return repo.countByUsuario_UsuarioIdAndLeidaFalse(usuario.getUsuarioId());
     }
     public NotificacionDto leer(String email, Long id) {
@@ -51,7 +46,6 @@ public class CentroNotificacionesService {
     private com.dev.cutly.usuario.entity.Usuario usuarioOperativo(String email) {
         var resultado = usuarios.findByEmail(email);
         if (resultado.isEmpty()) {
-            log.warn("AUTH_TRACE finalStatusProducer=CentroNotificacionesService.usuarioOperativo reason=user_not_found identity={} status=401", maskEmail(email));
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
         var u = resultado.get();
@@ -59,11 +53,6 @@ public class CentroNotificacionesService {
         if (u.getRol() != Rol.CLIENT && u.getRol() != Rol.OWNER && u.getRol() != Rol.EMPLOYEE)
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         return u;
-    }
-    private String maskEmail(String email) {
-        if (email == null || email.isBlank()) return "<absent>";
-        int at = email.indexOf('@');
-        return at <= 0 ? "***" : email.charAt(0) + "***" + email.substring(at);
     }
     private NotificacionDto dto(Notificacion n) { return new NotificacionDto(n.getNotificacionId(), n.getTipoEvento(), n.getTitulo(), n.getMensaje(), n.getNegocioId(), n.getRecursoTipo(), n.getRecursoId(), n.isLeida(), n.getFechaCreacion(), n.getFechaLectura()); }
 }
