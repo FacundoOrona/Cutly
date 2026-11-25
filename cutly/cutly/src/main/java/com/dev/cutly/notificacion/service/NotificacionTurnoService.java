@@ -36,6 +36,12 @@ public class NotificacionTurnoService {
                         + " para el servicio " + turno.getServicio().getNombre() + ".", "turno-asignado");
     }
 
+    public void notificarTurnoProximo(Turno turno) {
+        crear(turno, turno.getNegocio().getOwner(), "TURNO_PROXIMO", "Turno próximo",
+                "El turno de " + nombreCliente(turno) + " comienza a las " + fecha(turno)
+                        + " en " + turno.getNegocio().getNombre() + ".", "turno-proximo");
+    }
+
     public void notificarCambioEstado(Turno turno, TurnoStatus anterior, TurnoStatus nuevo, Usuario actor) {
         if (anterior == nuevo) return;
         String event = "TURNO_" + nuevo.name();

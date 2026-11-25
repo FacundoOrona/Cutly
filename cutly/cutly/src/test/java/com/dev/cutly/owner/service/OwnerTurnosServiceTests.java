@@ -121,6 +121,33 @@ class OwnerTurnosServiceTests {
     }
 
     @Test
+    void ownerPuedeIniciarManualmenteUnTurnoConfirmado() {
+        Turno confirmado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+        confirmado.setStatus(TurnoStatus.CONFIRMED);
+        when(turnoRepository.findByTurnoIdAndNegocio_NegocioId(40L, NEGOCIO_ID)).thenReturn(Optional.of(confirmado));
+        when(turnoRepository.save(confirmado)).thenReturn(confirmado);
+
+        OwnerTurnoDto dto = service.iniciar(NEGOCIO_ID, 40L, EMAIL_OWNER);
+
+        assertEquals(TurnoStatus.IN_PROGRESS, dto.status());
+        verify(turnoRepository).save(confirmado);
+        verify(notificacionTurnoService).notificarCambioEstado(confirmado, TurnoStatus.CONFIRMED,
+                TurnoStatus.IN_PROGRESS, negocio.getOwner());
+    }
+
+    @Test
+    void ownerNoPuedeIniciarTurnosCompletadosCanceladosNiAusentes() {
+        for (TurnoStatus estado : List.of(TurnoStatus.COMPLETED, TurnoStatus.CANCELLED, TurnoStatus.NO_SHOW)) {
+            Turno turno = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
+            turno.setStatus(estado);
+            when(turnoRepository.findByTurnoIdAndNegocio_NegocioId(40L, NEGOCIO_ID)).thenReturn(Optional.of(turno));
+
+            assertStatus(HttpStatus.CONFLICT, () -> service.iniciar(NEGOCIO_ID, 40L, EMAIL_OWNER));
+        }
+        verify(turnoRepository, never()).save(any());
+    }
+
+    @Test
     void listaTurnoCompletadoConResultadoFinancieroComoRegularizado() {
         Turno completado = turno(usuario(1L, "Cliente", "Online"), null, empleado(22L, "Eva", "Test"), null);
         completado.setStatus(TurnoStatus.COMPLETED);

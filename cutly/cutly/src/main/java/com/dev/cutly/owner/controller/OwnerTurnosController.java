@@ -103,6 +103,11 @@ public class OwnerTurnosController {
         return actualizarEstado(negocioId, turnoId, ownerTurnosService::cancelar);
     }
 
+    @PatchMapping("/{id}/en-curso")
+    public ResponseEntity<?> iniciar(@PathVariable Long negocioId, @PathVariable("id") Long turnoId) {
+        return actualizarEstado(negocioId, turnoId, ownerTurnosService::iniciar);
+    }
+
     @PostMapping("/{id}/completar")
     public ResponseEntity<?> completar(@PathVariable Long negocioId, @PathVariable("id") Long turnoId,
                                        @RequestHeader("Idempotency-Key") String key,

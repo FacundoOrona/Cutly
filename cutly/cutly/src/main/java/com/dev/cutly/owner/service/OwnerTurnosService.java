@@ -259,6 +259,10 @@ public class OwnerTurnosService {
         return cambiarEstado(negocioId, turnoId, TurnoStatus.CANCELLED, emailOwner);
     }
 
+    public OwnerTurnoDto iniciar(Long negocioId, Long turnoId, String emailOwner) {
+        return cambiarEstado(negocioId, turnoId, TurnoStatus.IN_PROGRESS, emailOwner);
+    }
+
     public OwnerTurnoDto completar(Long negocioId, Long turnoId, String emailOwner) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La finalización financiera requiere cuerpo e Idempotency-Key");
     }
@@ -361,6 +365,7 @@ public class OwnerTurnosService {
                     || actual == TurnoStatus.IN_PROGRESS;
             case COMPLETED -> actual == TurnoStatus.CONFIRMED || actual == TurnoStatus.IN_PROGRESS;
             case NO_SHOW -> actual == TurnoStatus.CONFIRMED;
+            case IN_PROGRESS -> actual == TurnoStatus.CONFIRMED;
             default -> false;
         };
     }

@@ -45,6 +45,19 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
     @Query("select t from Turno t where t.turnoId = :turnoId and t.negocio.negocioId = :negocioId")
     Optional<Turno> findWithLockingByTurnoIdAndNegocioId(@Param("turnoId") Long turnoId, @Param("negocioId") Long negocioId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from Turno t where t.turnoId = :turnoId")
+    Optional<Turno> findWithLockingByTurnoId(@Param("turnoId") Long turnoId);
+
+    @Query("select t.turnoId from Turno t where t.status in :estados and t.fechaHoraInicio > :ahora and t.fechaHoraInicio <= :limite")
+    List<Long> findIdsForReminder(@Param("estados") List<TurnoStatus> estados,
+                                  @Param("ahora") LocalDateTime ahora,
+                                  @Param("limite") LocalDateTime limite);
+
+    @Query("select t.turnoId from Turno t where t.status = :estado and t.fechaHoraFin <= :ahora")
+    List<Long> findIdsForAutoCompletion(@Param("estado") TurnoStatus estado,
+                                        @Param("ahora") LocalDateTime ahora);
+
     long countByStatus(TurnoStatus status);
 
     @Query("select t.status, count(t) from Turno t where t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta group by t.status")
@@ -104,10 +117,13 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
             @Param("hasta") LocalDateTime hasta
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Turno> findByTurnoIdAndNegocio_NegocioId(Long turnoId, Long negocioId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Turno> findByTurnoIdAndCliente_UsuarioId(Long turnoId, Long clienteId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Turno> findByTurnoIdAndEmpleado_EmpleadoId(Long turnoId, Long empleadoId);
 
     @Query("select t.status, count(t) from Turno t "

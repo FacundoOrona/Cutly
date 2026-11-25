@@ -83,7 +83,7 @@ export function getCreateOwnerClienteLocalErrorMessage(error) {
 }
 
 export async function updateOwnerTurnoStatus({ negocioId, turnoId, action }) {
-  const allowedActions = ['confirmar', 'rechazar', 'cancelar', 'completar', 'no-show']
+  const allowedActions = ['confirmar', 'rechazar', 'cancelar', 'completar', 'no-show', 'en-curso']
   if (!allowedActions.includes(action)) throw new Error('Acción de turno no válida.')
   const { data } = await apiClient.patch(`/api/owner/negocios/${negocioId}/turnos/${turnoId}/${action}`)
   return data

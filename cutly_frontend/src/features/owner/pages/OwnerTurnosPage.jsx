@@ -20,7 +20,7 @@ const statusLabels = {
 
 const availableActions = {
   PENDING: ['confirmar', 'rechazar', 'cancelar'],
-  CONFIRMED: ['cancelar', 'completar', 'no-show'],
+  CONFIRMED: ['en-curso', 'cancelar', 'completar', 'no-show'],
   IN_PROGRESS: ['cancelar', 'completar'],
 }
 
@@ -29,6 +29,7 @@ const actionDetails = {
   rechazar: { label: 'Rechazar', verb: 'rechazar', icon: X, className: 'owner-turno-action-danger', confirm: true },
   cancelar: { label: 'Cancelar', verb: 'cancelar', icon: Ban, className: 'owner-turno-action-danger', confirm: true },
   completar: { label: 'Completar', verb: 'completar', icon: Check, className: 'owner-turno-action-secondary' },
+  'en-curso': { label: 'Iniciar turno', verb: 'iniciar', icon: Check, className: 'owner-turno-action-primary' },
   'no-show': { label: 'Marcar ausencia', verb: 'marcar como ausencia', icon: UserRoundX, className: 'owner-turno-action-danger', confirm: true },
 }
 
@@ -254,6 +255,7 @@ export default function OwnerTurnosPage() {
   const turnosQuery = useOwnerTurnos({ negocioId: individualBusinessId, fecha, empleadoId, status }, {
     enabled: Boolean(individualBusinessId) && businessesQuery.isSuccess && dateIsValid,
     retry: false,
+    polling: true,
   })
   const turnos = useMemo(() => (Array.isArray(turnosQuery.data) ? [...turnosQuery.data] : [])
     .sort((a, b) => String(a.fechaHoraInicio).localeCompare(String(b.fechaHoraInicio))), [turnosQuery.data])

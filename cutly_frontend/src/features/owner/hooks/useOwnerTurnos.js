@@ -12,6 +12,11 @@ export function useOwnerTurnos(filters, options = {}) {
     queryFn: () => getOwnerTurnos(filters),
     enabled: Boolean(filters.negocioId) && (options.enabled ?? true),
     ...(options.retry !== undefined ? { retry: options.retry } : {}),
+    ...(options.polling ? {
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: true,
+    } : {}),
   })
 }
 
