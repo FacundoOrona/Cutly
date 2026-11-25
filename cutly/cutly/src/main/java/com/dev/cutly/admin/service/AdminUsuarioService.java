@@ -86,11 +86,14 @@ public class AdminUsuarioService {
     }
 
     public AdminOwnerDetalleDto obtenerOwnerDetalle(Long id) {
-        AdminUsuarioDto owner = obtenerOwner(id);
+        Usuario ownerEntity = usuarioRepository.findById(id)
+                .filter(usuario -> usuario.getRol() == Rol.OWNER)
+                .orElseThrow(() -> new NoSuchElementException("No se encontró el owner con id " + id));
+        AdminUsuarioDto owner = aDto(ownerEntity);
         var negocios = adminNegocioService.listarNegociosDeOwner(id);
         return new AdminOwnerDetalleDto(owner.usuarioId(), owner.nombre(), owner.apellido(), owner.dni(),
                 owner.email(), owner.status(), negocios.size(), negocios,
-                adminSuscripcionService.consultarSuscripcionDeOwner(id));
+                adminSuscripcionService.consultarSuscripcionDeOwner(id), ownerEntity.isTrialSuscripcionUtilizado());
     }
 
     public AdminUsuarioDto actualizarEstado(Long id, UsuarioStatus status, String emailActor) {

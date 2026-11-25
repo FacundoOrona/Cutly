@@ -220,6 +220,10 @@ public class AdminSuscripcionService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "El OWNER ya tiene una suscripción; no se sobrescribirá");
         }
+        if (!owner.isTrialSuscripcionUtilizado()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El OWNER debe utilizar primero su prueba gratuita de 14 días antes de asignar un plan comercial");
+        }
 
         PlanSuscripcion plan = planRepository.findWithLockingByPlanId(request.planId())
                 .orElseThrow(() -> new NoSuchElementException(

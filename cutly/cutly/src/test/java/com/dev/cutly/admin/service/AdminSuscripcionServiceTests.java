@@ -50,6 +50,7 @@ class AdminSuscripcionServiceTests {
     @Test
     void asignaAlOwnerUnaSuscripcionPendingConElPrecioYCapacidadDelPlan() {
         Usuario owner = user(11L, Rol.OWNER, "owner@example.com");
+        owner.setTrialSuscripcionUtilizado(true);
         Usuario admin = user(12L, Rol.SUPER_ADMIN, "admin@example.com");
         PlanSuscripcion plan = plan();
         when(usuarioRepository.findWithLockingByUsuarioId(11L)).thenReturn(Optional.of(owner));
@@ -74,6 +75,38 @@ class AdminSuscripcionServiceTests {
                 && s.getStatus() == SuscripcionStatus.PENDING
                 && s.getFechaInicio().equals(RelojSuscripcion.fechaActual())
                 && s.getFechaVencimiento().equals(RelojSuscripcion.fechaActual().plusDays(30))));
+    }
+
+    @Test
+    void rechazaAsignacionComercialSiOwnerNuncaUtilizoTrial() {
+        Usuario owner = user(11L, Rol.OWNER, "owner@example.com");
+        Usuario admin = user(12L, Rol.SUPER_ADMIN, "admin@example.com");
+        when(usuarioRepository.findWithLockingByUsuarioId(11L)).thenReturn(Optional.of(owner));
+        when(usuarioRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(suscripcionRepository.existsByOwner_UsuarioId(11L)).thenReturn(false);
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.asignar(
+                11L, new AsignarSuscripcionRequestDto(4L, null), "admin@example.com", "127.0.0.1"));
+
+        verify(planRepository, never()).findWithLockingByPlanId(anyLong());
+        verify(suscripcionRepository, never()).save(any());
+        verifyNoInteractions(historialService);
+    }
+
+    @Test
+    void noCreaUnaSegundaSuscripcionAunqueOwnerYaHayaUsadoTrial() {
+        Usuario owner = user(11L, Rol.OWNER, "owner@example.com");
+        owner.setTrialSuscripcionUtilizado(true);
+        Usuario admin = user(12L, Rol.SUPER_ADMIN, "admin@example.com");
+        when(usuarioRepository.findWithLockingByUsuarioId(11L)).thenReturn(Optional.of(owner));
+        when(usuarioRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+        when(suscripcionRepository.existsByOwner_UsuarioId(11L)).thenReturn(true);
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> service.asignar(
+                11L, new AsignarSuscripcionRequestDto(4L, null), "admin@example.com", "127.0.0.1"));
+
+        verify(suscripcionRepository, never()).save(any());
+        verifyNoInteractions(historialService);
     }
 
     @Test

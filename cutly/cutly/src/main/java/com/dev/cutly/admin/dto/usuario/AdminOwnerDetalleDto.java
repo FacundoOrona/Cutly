@@ -15,5 +15,6 @@ public record AdminOwnerDetalleDto(
         UsuarioStatus status,
         long cantidadNegocios,
         List<AdminNegocioDto> negocios,
-        AdminSuscripcionDto suscripcion
+        AdminSuscripcionDto suscripcion,
+        boolean trialSuscripcionUtilizado
 ) { }
