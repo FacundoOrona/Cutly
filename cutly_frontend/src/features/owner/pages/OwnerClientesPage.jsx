@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, CheckCircle2, CircleAlert, LoaderCircle, RefreshCw, Search, UsersRound } from 'lucide-react'
+import { Building2, CircleAlert, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
 import { getOwnerClientesLocalesErrorMessage } from '../api/ownerTurnosApi.js'
 import OwnerClienteLocalForm from '../components/OwnerClienteLocalForm.jsx'
+import OwnerClienteLocalEditForm from '../components/OwnerClienteLocalEditForm.jsx'
 import { useOwnerBusinesses } from '../hooks/useOwnerBusinesses.js'
 import { useOwnerClientesLocalesPage } from '../hooks/useOwnerTurnos.js'
 import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
@@ -16,15 +17,15 @@ export default function OwnerClientesPage() {
   const [searchText, setSearchText] = useState('')
   const [debouncedText, setDebouncedText] = useState('')
   const [page, setPage] = useState(0)
-  const [createdClient, setCreatedClient] = useState(null)
-  const [createdClientMatchedPreviousSearch, setCreatedClientMatchedPreviousSearch] = useState(true)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editingClientId, setEditingClientId] = useState(null)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedText(searchText.trim()), 300)
     return () => window.clearTimeout(timer)
   }, [searchText])
 
-  useEffect(() => { setPage(0); setCreatedClient(null) }, [activeBusiness?.negocioId])
+  useEffect(() => { setPage(0); setShowCreateForm(false); setEditingClientId(null) }, [activeBusiness?.negocioId])
 
   const validBusinessId = String(activeBusiness?.negocioId || '')
   const searchReady = debouncedText.trim().length >= 2
@@ -36,14 +37,11 @@ export default function OwnerClientesPage() {
   const totalElements = result?.totalElements
   const totalPages = result?.totalPages
 
-  function handleClientCreated(client) {
-    const currentSearch = searchText.trim()
-    const fullName = [client.nombre, client.apellido].filter(Boolean).join(' ')
-    const matchesCurrentSearch = currentSearch && fullName.toLocaleLowerCase().includes(currentSearch.toLocaleLowerCase())
-    setCreatedClient(client)
-    setCreatedClientMatchedPreviousSearch(Boolean(matchesCurrentSearch))
-    setSearchText(fullName)
-    setDebouncedText(fullName)
+  function handleClientCreated() {
+    setShowCreateForm(false)
+    setEditingClientId(null)
+    setSearchText('')
+    setDebouncedText('')
     setPage(0)
   }
 
@@ -61,19 +59,17 @@ export default function OwnerClientesPage() {
       {validBusinessId ? <>
         <section className="owner-client-card">
           <div className="owner-client-card-heading"><span className="user-detail-icon"><Search size={17} /></span><div><h2>Buscar clientes</h2><p>La búsqueda considera nombre y apellido, con dos caracteres como mínimo.</p></div></div>
-          <label className="owner-form-field" htmlFor="owner-clients-search"><span>Nombre o apellido</span><input id="owner-clients-search" type="search" value={searchText} maxLength={100} onChange={(event) => { const value = event.target.value; setSearchText(value); setCreatedClient(null); if (value.trim().length < 2 || value.trim() !== searchText.trim()) setPage(0) }} placeholder="Escribí un nombre o apellido" /></label>
+          <div className="owner-clients-list-heading"><h2>Clientes locales</h2><button type="button" className="owner-create-button" onClick={() => { setShowCreateForm((shown) => !shown); setEditingClientId(null) }}>{showCreateForm ? <><X size={15} /> Cerrar registro</> : <><Plus size={15} /> Registrar nuevo cliente</>}</button></div>
+          {showCreateForm && <div className="owner-client-card owner-client-create-panel"><div className="owner-client-card-heading"><div><h2>Registrar cliente</h2><p>DNI y teléfono admiten únicamente números.</p></div><button type="button" className="owner-client-icon-button" aria-label="Cerrar formulario" onClick={() => setShowCreateForm(false)}><X size={17} /></button></div><OwnerClienteLocalForm key={validBusinessId} negocioId={validBusinessId} onCreated={handleClientCreated} /></div>}
+          <label className="owner-form-field" htmlFor="owner-clients-search"><span>Nombre o apellido</span><input id="owner-clients-search" type="search" value={searchText} maxLength={100} onChange={(event) => { const value = event.target.value; setSearchText(value); if (value.trim().length < 2 || value.trim() !== searchText.trim()) setPage(0) }} placeholder="Escribí un nombre o apellido" /></label>
+          {editingClientId !== null && clients.find((client) => client.clienteLocalId === editingClientId) && <div className="owner-client-edit-panel"><div className="owner-client-card-heading"><div><h2>Editar cliente</h2><p>Actualizá los datos de {clientLabel(clients.find((client) => client.clienteLocalId === editingClientId))}.</p></div><button type="button" className="owner-client-icon-button" aria-label="Cancelar edición" onClick={() => setEditingClientId(null)}><X size={17} /></button></div><OwnerClienteLocalEditForm key={editingClientId} negocioId={validBusinessId} cliente={clients.find((client) => client.clienteLocalId === editingClientId)} onSaved={() => setEditingClientId(null)} onCancel={() => setEditingClientId(null)} /></div>}
           <p className="owner-clients-limit-note">Mostramos 10 clientes por página. La búsqueda es opcional, considera nombre y apellido, y no admite DNI.</p>
           {clientsQuery.isError ? <div className="owner-clients-error" role="alert"><CircleAlert size={17} /><span>{getOwnerClientesLocalesErrorMessage(clientsQuery.error)}</span><button type="button" className="owners-secondary-button" onClick={() => void clientsQuery.refetch()} disabled={clientsQuery.isFetching}><RefreshCw size={14} /> Reintentar</button></div>
             : isWaitingForDebounce || clientsQuery.isFetching ? <p className="owner-clients-search-state" role="status"><LoaderCircle size={15} className="spin" /> Cargando clientes…</p>
                 : clients.length === 0 ? <p className="owner-clients-search-state">{effectiveQuery ? 'No se encontraron coincidencias.' : 'Todavía no hay clientes registrados en este negocio.'}</p>
-                  : <div className="owner-clients-table-wrap"><table className="owner-clients-table"><caption>{typeof totalElements === 'number' ? `${totalElements} clientes · Página ${page + 1}${typeof totalPages === 'number' ? ` de ${totalPages}` : ''}` : `Clientes · Página ${page + 1}`}</caption><thead><tr><th>Nombre</th><th>Apellido</th><th>DNI</th><th>Teléfono</th></tr></thead><tbody>{clients.map((client) => <tr key={client.clienteLocalId}><td data-label="Nombre">{client.nombre}</td><td data-label="Apellido">{client.apellido}</td><td data-label="DNI">{client.dniPresentado}</td><td data-label="Teléfono">{client.telefono}</td></tr>)}</tbody></table><nav className="owner-clients-pagination" aria-label="Paginación de clientes"><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0 || clientsQuery.isFetching}>Anterior</button><span>{typeof totalPages === 'number' ? `Página ${page + 1} de ${totalPages}` : `Página ${page + 1}`}</span><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => current + 1)} disabled={clientsQuery.isFetching || (typeof totalPages === 'number' ? page + 1 >= totalPages : clients.length < 10)}>Siguiente</button></nav></div>}
+                  : <div className="owner-clients-table-wrap"><table className="owner-clients-table"><caption>{typeof totalElements === 'number' ? `${totalElements} clientes · Página ${page + 1}${typeof totalPages === 'number' ? ` de ${totalPages}` : ''}` : `Clientes · Página ${page + 1}`}</caption><thead><tr><th>Nombre</th><th>Apellido</th><th>DNI</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>{clients.map((client) => <tr key={client.clienteLocalId}><td data-label="Nombre">{client.nombre}</td><td data-label="Apellido">{client.apellido}</td><td data-label="DNI">{client.dniPresentado}</td><td data-label="Teléfono">{client.telefono}</td><td data-label="Acciones"><button type="button" className="owner-client-icon-button" aria-label={`Editar a ${clientLabel(client)}`} onClick={() => { setShowCreateForm(false); setEditingClientId(client.clienteLocalId) }}><Pencil size={16} /></button></td></tr>)}</tbody></table><nav className="owner-clients-pagination" aria-label="Paginación de clientes"><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0 || clientsQuery.isFetching}>Anterior</button><span>{typeof totalPages === 'number' ? `Página ${page + 1} de ${totalPages}` : `Página ${page + 1}`}</span><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => current + 1)} disabled={clientsQuery.isFetching || (typeof totalPages === 'number' ? page + 1 >= totalPages : clients.length < 10)}>Siguiente</button></nav></div>}
         </section>
 
-        <section className="owner-client-card">
-          <div className="owner-client-card-heading"><span className="user-detail-icon"><UsersRound size={17} /></span><div><h2>Registrar cliente</h2><p>El DNI debe contener 7 u 8 dígitos; se permiten puntos, guiones y espacios.</p></div></div>
-          <OwnerClienteLocalForm key={validBusinessId} negocioId={validBusinessId} onCreated={handleClientCreated} />
-          {createdClient && <div className="owner-created-notice" role="status"><CheckCircle2 size={17} /><span>Se registró a {clientLabel(createdClient)} correctamente.{createdClientMatchedPreviousSearch ? ' Actualizamos la búsqueda para incluirlo.' : ' Actualizamos la búsqueda con su nombre.'}</span></div>}
-        </section>
       </> : null}
     </>}
   </>

@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -82,6 +83,24 @@ public class OwnerClienteLocalController {
             return respuestaError(exception);
         } catch (DataAccessException exception) {
             return errorInterno("No se pudo registrar el cliente local");
+        }
+    }
+
+    @PutMapping("/{clienteLocalId}")
+    public ResponseEntity<?> actualizar(
+            @PathVariable Long negocioId,
+            @PathVariable Long clienteLocalId,
+            @Valid @RequestBody CrearClienteLocalRequestDto request
+    ) {
+        try {
+            ClienteLocalDto cliente = ownerClienteLocalService.actualizar(
+                    negocioId, clienteLocalId, request, emailOwnerAutenticado()
+            );
+            return ResponseEntity.ok(cliente);
+        } catch (ResponseStatusException exception) {
+            return respuestaError(exception);
+        } catch (DataAccessException exception) {
+            return errorInterno("No se pudo actualizar el cliente local");
         }
     }
 

@@ -116,6 +116,31 @@ public class OwnerClienteLocalService {
         }
     }
 
+    public ClienteLocalDto actualizar(
+            Long negocioId, Long clienteLocalId, CrearClienteLocalRequestDto request, String emailOwner
+    ) {
+        ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
+        ClienteLocal cliente = clienteLocalRepository
+                .findByClienteLocalIdAndNegocio_NegocioId(clienteLocalId, negocioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el cliente local en este negocio"));
+        String dniNormalizado = DniLocalNormalizer.normalizar(request.dni());
+        boolean dniDuplicado = clienteLocalRepository.existsByNegocio_NegocioIdAndDniNormalizado(negocioId, dniNormalizado)
+                && !dniNormalizado.equals(cliente.getDniNormalizado());
+        if (dniDuplicado) throw dniDuplicado();
+        cliente.setNombre(request.nombre().strip());
+        cliente.setApellido(request.apellido().strip());
+        cliente.setDniPresentado(request.dni());
+        cliente.setDniNormalizado(dniNormalizado);
+        cliente.setTelefono(request.telefono().strip());
+        try {
+            return aDto(clienteLocalRepository.saveAndFlush(cliente));
+        } catch (DataIntegrityViolationException exception) {
+            if (esDniDuplicado(exception)) throw dniDuplicado();
+            throw exception;
+        }
+    }
+
     private String validarTextoBusqueda(String texto) {
         if (texto == null || texto.codePoints().filter(caracter -> !Character.isWhitespace(caracter)).count() < 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

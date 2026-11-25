@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createOwnerClienteLocal, createOwnerTurno, getOwnerClientesLocalesPage, getOwnerTurno, getOwnerTurnos, searchOwnerClientesLocales } from '../api/ownerTurnosApi.js'
+import { createOwnerClienteLocal, createOwnerTurno, getOwnerClientesLocalesPage, getOwnerTurno, getOwnerTurnos, searchOwnerClientesLocales, updateOwnerClienteLocal } from '../api/ownerTurnosApi.js'
 
 export const ownerTurnosQueryKey = ({ negocioId, fecha, empleadoId, status }) => [
   'ownerBusinesses', 'detail', String(negocioId), 'turnos',
@@ -75,5 +75,15 @@ export function useCreateOwnerClienteLocal() {
       const negocioId = String(variables.negocioId)
       queryClient.invalidateQueries({ queryKey: ownerClientesLocalesPrefix(negocioId) })
     },
+  })
+}
+
+export function useUpdateOwnerClienteLocal() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateOwnerClienteLocal,
+    onSuccess: (_cliente, variables) => queryClient.invalidateQueries({
+      queryKey: ownerClientesLocalesPrefix(String(variables.negocioId)),
+    }),
   })
 }

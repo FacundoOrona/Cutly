@@ -21,10 +21,11 @@ function validate(values) {
   const dni = values.dni.trim()
   if (!dni) errors.dni = 'El DNI es obligatorio.'
   else if (dni.length > 20) errors.dni = 'El DNI no puede superar los 20 caracteres.'
-  else if (!/^\s*(?:\d[\d.\-\s]*\d|\d)\s*$/.test(dni) || dni.replace(/[.\-\s]/g, '').length < 7 || dni.replace(/[.\-\s]/g, '').length > 8) errors.dni = 'El DNI debe contener 7 u 8 dígitos ASCII. Se permiten puntos, guiones y espacios.'
+  else if (!/^\d{7,8}$/.test(dni)) errors.dni = 'El DNI debe contener 7 u 8 dígitos.'
   const telefono = values.telefono.trim()
   if (!telefono) errors.telefono = 'El teléfono es obligatorio.'
   else if (telefono.length > 30) errors.telefono = 'El teléfono no puede superar los 30 caracteres.'
+  else if (!/^\d+$/.test(telefono)) errors.telefono = 'El teléfono debe contener únicamente números.'
   return errors
 }
 
@@ -36,7 +37,8 @@ export default function OwnerClienteLocalForm({ negocioId, onCreated }) {
 
   function changeField(event) {
     const { name, value } = event.target
-    setValues((current) => ({ ...current, [name]: value }))
+    const safeValue = ['dni', 'telefono'].includes(name) ? value.replace(/\D/g, '') : value
+    setValues((current) => ({ ...current, [name]: safeValue }))
     setFieldErrors((current) => ({ ...current, [name]: '' }))
     setSubmitError('')
   }
@@ -68,7 +70,7 @@ export default function OwnerClienteLocalForm({ negocioId, onCreated }) {
         const errorId = `${inputId}-error`
         return <label className="owner-form-field" htmlFor={inputId} key={name}>
           <span>{label} *</span>
-          <input id={inputId} name={name} value={values[name]} onChange={changeField} maxLength={maxLength} required autoComplete={name === 'telefono' ? 'tel' : name} aria-invalid={Boolean(fieldErrors[name])} aria-describedby={fieldErrors[name] ? errorId : undefined} />
+          <input id={inputId} name={name} type="text" inputMode={['dni', 'telefono'].includes(name) ? 'numeric' : undefined} value={values[name]} onChange={changeField} maxLength={maxLength} required autoComplete={name === 'telefono' ? 'tel' : name} aria-invalid={Boolean(fieldErrors[name])} aria-describedby={fieldErrors[name] ? errorId : undefined} />
           {fieldErrors[name] && <small id={errorId} className="owner-field-error">{fieldErrors[name]}</small>}
         </label>
       })}
