@@ -14,9 +14,12 @@ function dateKey(date) {
 
 function defaultPeriod() {
   const hasta = new Date()
-  const desde = new Date(hasta)
-  desde.setDate(desde.getDate() - 29)
-  return { desde: dateKey(desde), hasta: dateKey(hasta) }
+  const today = dateKey(hasta)
+  return { desde: today, hasta: today }
+}
+
+function displayDate(value) {
+  return value ? value.split('-').reverse().join('-') : ''
 }
 
 function number(value) {
@@ -91,8 +94,8 @@ export default function DashboardPage() {
     </header>
 
     <form className="admin-stats-period" onSubmit={applyPeriod}>
-      <label>Desde<input type="date" value={draft.desde} max={draft.hasta} onChange={(event) => updateDraft('desde', event.target.value)} required /></label>
-      <label>Hasta<input type="date" value={draft.hasta} min={draft.desde} onChange={(event) => updateDraft('hasta', event.target.value)} required /></label>
+      <label>Desde<span className="admin-stats-date-input"><input type="date" value={draft.desde} max={draft.hasta} onChange={(event) => updateDraft('desde', event.target.value)} required /><span aria-hidden="true">{displayDate(draft.desde)}</span></span></label>
+      <label>Hasta<span className="admin-stats-date-input"><input type="date" value={draft.hasta} min={draft.desde} onChange={(event) => updateDraft('hasta', event.target.value)} required /><span aria-hidden="true">{displayDate(draft.hasta)}</span></span></label>
       <button type="submit" disabled={!draft.desde || !draft.hasta || draft.desde > draft.hasta || query.isFetching}>
         <RefreshCw size={15} className={query.isFetching ? 'admin-stats-spinning' : ''} />
         {query.isFetching ? 'Actualizando…' : 'Aplicar período'}

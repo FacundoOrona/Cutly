@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { LoaderCircle, UserPlus, X } from 'lucide-react'
+import { Eye, EyeOff, LoaderCircle, UserPlus, X } from 'lucide-react'
 import { getCreateOwnerErrorMessage } from '../api/ownersApi.js'
 import { useCreateOwner } from '../hooks/useOwners.js'
 
-const initialValues = { nombre: '', apellido: '', email: '', dni: '', contrasena: '' }
+const initialValues = { nombre: '', apellido: '', email: '', dni: '', contrasena: '', confirmarContrasena: '' }
 
 function validate(values) {
   const errors = {}
@@ -23,18 +23,20 @@ export default function CreateOwnerForm({ onCancel, onCreated }) {
   const [values, setValues] = useState(initialValues)
   const [fieldErrors, setFieldErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
+  const [passwordVisibility, setPasswordVisibility] = useState({ contrasena: false, confirmarContrasena: false })
   const mutation = useCreateOwner()
 
   function changeField(event) {
     const { name, value } = event.target
     setValues((current) => ({ ...current, [name]: value }))
-    setFieldErrors((current) => ({ ...current, [name]: '' }))
+    setFieldErrors((current) => ({ ...current, [name]: '', ...(name === 'contrasena' || name === 'confirmarContrasena' ? { confirmarContrasena: '' } : {}) }))
     setSubmitError('')
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     const errors = validate(values)
+    if (values.contrasena !== values.confirmarContrasena) errors.confirmarContrasena = 'Las contraseñas no coinciden.'
     setFieldErrors(errors)
     setSubmitError('')
     if (Object.keys(errors).length) return
@@ -62,6 +64,20 @@ export default function CreateOwnerForm({ onCancel, onCreated }) {
     onCancel()
   }
 
+  function togglePasswordVisibility(name) {
+    setPasswordVisibility((current) => ({ ...current, [name]: !current[name] }))
+  }
+
+  function passwordField(name, label) {
+    const errorId = `${name}-error`
+    const visible = passwordVisibility[name]
+    return <label className="owner-form-field" htmlFor={`owner-${name}`}>
+      <span>{label}</span>
+      <span className="owner-password-input-wrap"><input id={`owner-${name}`} name={name} type={visible ? 'text' : 'password'} value={values[name]} onChange={changeField} autoComplete="new-password" aria-invalid={Boolean(fieldErrors[name])} aria-describedby={fieldErrors[name] ? errorId : undefined} required /><button type="button" className="owner-password-visibility" onClick={() => togglePasswordVisibility(name)} aria-label={visible ? `Ocultar ${label.toLowerCase()}` : `Mostrar ${label.toLowerCase()}`} aria-pressed={visible}><span aria-hidden="true">{visible ? <EyeOff size={17} /> : <Eye size={17} />}</span></button></span>
+      {fieldErrors[name] && <small id={errorId} className="owner-field-error">{fieldErrors[name]}</small>}
+    </label>
+  }
+
   function field(name, label, options = {}) {
     const errorId = `${name}-error`
     return (
@@ -82,7 +98,8 @@ export default function CreateOwnerForm({ onCancel, onCreated }) {
           {field('apellido', 'Apellido', { autoComplete: 'family-name', maxLength: 20 })}
           {field('email', 'Email', { type: 'email', autoComplete: 'email' })}
           {field('dni', 'DNI', { inputMode: 'numeric', maxLength: 8 })}
-          {field('contrasena', 'Contraseña', { type: 'password', autoComplete: 'new-password' })}
+          {passwordField('contrasena', 'Contraseña')}
+          {passwordField('confirmarContrasena', 'Confirmar contraseña')}
         </div>
         {submitError && <p className="owner-form-submit-error" role="alert">{submitError}</p>}
         <div className="owner-form-actions"><button type="button" className="owners-secondary-button" onClick={handleCancel} disabled={mutation.isPending}>Cancelar</button><button type="submit" className="owner-create-button" disabled={mutation.isPending}>{mutation.isPending ? <><LoaderCircle size={15} className="spin" /> Creando…</> : <><UserPlus size={15} /> Crear owner</>}</button></div>

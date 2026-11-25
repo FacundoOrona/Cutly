@@ -14,7 +14,7 @@ export default function OwnersTable({ owners, pendingOwnerId, onChangeStatus, ow
           <tr key={owner.usuarioId}>
             <td data-label="ID">{owner.usuarioId}</td><td data-label="Nombre"><Link className="business-detail-link" to={generatePath('/admin/owners/:id', { id: String(owner.usuarioId) })} state={{ ownersListState }} aria-label={`Ver detalle de ${owner.nombre} ${owner.apellido}`}>{owner.nombre}</Link></td><td data-label="Apellido">{owner.apellido}</td><td data-label="DNI">{owner.dni}</td><td data-label="Email" className="owner-email">{owner.email}</td>
             <td data-label="Estado"><span className={`owner-status owner-status-${String(owner.status).toLowerCase()}`}>{statusLabel(owner.status)}</span></td>
-            <td data-label="Acciones" className="owner-row-actions">
+            <td data-label="Acciones" className="owner-row-actions"><div className="owner-row-actions-buttons">
               {owner.status === 'ACTIVE' && <button type="button" className="owners-secondary-button owner-status-action" onClick={() => onChangeStatus(owner, 'deactivate')} disabled={pendingOwnerId === owner.usuarioId} aria-label={`Desactivar a ${owner.email}`}>
                 {pendingOwnerId === owner.usuarioId ? <LoaderCircle size={14} className="spin" /> : <PowerOff size={14} />} Desactivar
               </button>}
@@ -27,7 +27,7 @@ export default function OwnersTable({ owners, pendingOwnerId, onChangeStatus, ow
               {owner.status === 'BLOCKED' && <button type="button" className="owners-secondary-button owner-status-action" onClick={() => onChangeStatus(owner, 'unblock')} disabled={pendingOwnerId === owner.usuarioId} aria-label={`Desbloquear a ${owner.email}`}>
                 {pendingOwnerId === owner.usuarioId ? <LoaderCircle size={14} className="spin" /> : <Unlock size={14} />} Desbloquear
               </button>}
-            </td>
+            </div></td>
           </tr>
         ))}</tbody>
       </table>
