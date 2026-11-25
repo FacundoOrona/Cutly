@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Building2, CheckCircle2, LoaderCircle, Pencil, RefreshCw, X } from 'lucide-react'
+import { ArrowLeft, Building2, CheckCircle2, ChevronDown, LoaderCircle, Pencil, RefreshCw, X } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 import { getOwnerBusiness, getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
@@ -86,14 +86,24 @@ export default function OwnerBusinessPage() {
             <EditOwnerBusinessForm business={business} onCancel={() => setIsEditing(false)} onUpdated={(updatedBusiness) => { setBusiness(updatedBusiness); setIsEditing(false); setShowUpdatedNotice(true) }} />
           ) : (
             <div className="owner-business-detail-sections">
+              <AccordionPanel title="Datos del negocio">
               <section className="user-detail-card" aria-label="Datos del negocio">
                 <div className="user-detail-card-heading"><div className="user-detail-card-heading-copy"><span className="user-detail-icon"><Building2 size={18} /></span><div><h2>{business.nombre || 'Negocio'}</h2><p>{business.email || 'Sin email'}</p></div></div>{!isEditing && <button type="button" className="owner-create-button" onClick={() => { setShowUpdatedNotice(false); setIsEditing(true) }}><Pencil size={15} /> Editar negocio</button>}</div>
                 <dl className="user-detail-grid">{fields.map(([label, value]) => <div className="user-detail-field" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
               </section>
+              </AccordionPanel>
+              <AccordionPanel title="Dirección">
               <OwnerBusinessAddressSection negocioId={activeBusinessId} />
+              </AccordionPanel>
+              <AccordionPanel title="Horarios de atención">
               <OwnerBusinessHoursSection negocioId={activeBusinessId} />
+              </AccordionPanel>
+              <AccordionPanel title="Servicios">
               <OwnerBusinessServicesSection key={`services-${activeBusinessId}`} negocioId={activeBusinessId} />
+              </AccordionPanel>
+              <AccordionPanel title="Empleados">
               <OwnerBusinessEmployeesSection key={`employees-${activeBusinessId}`} negocioId={activeBusinessId} />
+              </AccordionPanel>
             </div>
           )}
         </>
@@ -102,4 +112,16 @@ export default function OwnerBusinessPage() {
       )}
     </>
   )
+}
+
+function AccordionPanel({ title, children }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const panelId = `owner-detail-${title.toLowerCase().replaceAll(' ', '-')}`
+
+  return <section className="owner-detail-accordion">
+    <button type="button" className="owner-detail-accordion-toggle" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setIsOpen((open) => !open)}>
+      <span>{title}</span><ChevronDown size={17} aria-hidden="true" />
+    </button>
+    <div id={panelId} className="owner-detail-accordion-content" hidden={!isOpen}>{children}</div>
+  </section>
 }
