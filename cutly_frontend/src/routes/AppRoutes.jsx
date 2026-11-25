@@ -24,6 +24,7 @@ import OwnerDeudasPage from '../features/owner/pages/OwnerDeudasPage.jsx'
 import OwnerTransaccionesPage from '../features/owner/pages/OwnerTransaccionesPage.jsx'
 import OwnerEstadisticasPage from '../features/owner/pages/OwnerEstadisticasPage.jsx'
 import OwnerNotificationsPage from '../features/owner/pages/OwnerNotificationsPage.jsx'
+import OwnerSecurityPage from '../features/owner/pages/OwnerSecurityPage.jsx'
 import EmployeeLayout from '../layouts/EmployeeLayout.jsx'
 import EmployeeHomePage from '../features/employee/pages/EmployeeHomePage.jsx'
 import EmployeeAgendaPage from '../features/employee/pages/EmployeeAgendaPage.jsx'
@@ -86,6 +87,7 @@ export default function AppRoutes() {
                 <Route path="/owner/transacciones" element={<OwnerTransaccionesPage />} />
                 <Route path="/owner/estadisticas" element={<OwnerEstadisticasPage />} />
                 <Route path="/owner/notificaciones" element={<OwnerNotificationsPage />} />
+                <Route path="/owner/seguridad" element={<OwnerSecurityPage />} />
               </Route>
             </Route>
             <Route element={<RequireRole role="EMPLOYEE" />}>
@@ -116,3 +118,5 @@ export default function AppRoutes() {
     </BrowserRouter>
   )
 }
+
+
