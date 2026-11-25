@@ -20,11 +20,6 @@ const paymentMethods = [
   ['DEBITO', 'Débito'],
   ['CREDITO', 'Crédito'],
   ['OTRO', 'Otro'],
-  ['CASH', 'Efectivo (histórico)'],
-  ['DEBIT_CARD', 'Tarjeta de débito (histórico)'],
-  ['CREDIT_CARD', 'Tarjeta de crédito (histórico)'],
-  ['TRANSFER', 'Transferencia (histórico)'],
-  ['MERCADO_PAGO', 'Mercado Pago (histórico)'],
 ]
 const paymentLabels = Object.fromEntries(paymentMethods)
 Object.assign(paymentLabels, {
