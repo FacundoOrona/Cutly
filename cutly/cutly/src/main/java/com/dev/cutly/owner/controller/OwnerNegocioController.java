@@ -4,8 +4,6 @@ import com.dev.cutly.owner.dto.negocio.ActualizarNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.CrearNegocioRequestDto;
 import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.dto.negocio.OwnerNegocioDto;
-import com.dev.cutly.owner.dto.suscripcion.OwnerSuscripcionDto;
-import com.dev.cutly.owner.dto.suscripcion.RenovarSuscripcionRequestDto;
 import com.dev.cutly.owner.service.OwnerNegocioService;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import jakarta.servlet.http.HttpServletRequest;
@@ -101,28 +99,6 @@ public class OwnerNegocioController {
     @PatchMapping("/{id}/desactivar")
     public ResponseEntity<?> desactivarNegocio(@PathVariable Long id) {
         return actualizarEstado(id, NegocioStatus.INACTIVE);
-    }
-
-    @PostMapping("/{id}/suscripcion/renovar")
-    public ResponseEntity<?> renovarSuscripcion(
-            @PathVariable Long id,
-            @Valid @RequestBody(required = false) RenovarSuscripcionRequestDto request,
-            HttpServletRequest httpRequest
-    ) {
-        try {
-            OwnerSuscripcionDto suscripcion = ownerNegocioService.renovarSuscripcion(
-                    id, request, emailOwnerAutenticado(), httpRequest.getRemoteAddr()
-            );
-            return ResponseEntity.ok(suscripcion);
-        } catch (ResponseStatusException e) {
-            return respuestaError(e);
-        } catch (PessimisticLockingFailureException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new OwnerErrorResponseDto("La suscripción está siendo modificada; reintente"));
-        } catch (DataAccessException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new OwnerErrorResponseDto("No se pudo renovar la suscripción"));
-        }
     }
 
     private ResponseEntity<?> actualizarEstado(Long id, NegocioStatus status) {

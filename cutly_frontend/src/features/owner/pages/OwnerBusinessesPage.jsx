@@ -1,55 +1,38 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ArrowRight, Building2, CheckCircle2, LoaderCircle, Plus, RefreshCw, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getOwnerBusinesses, getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
+import { getOwnerBusinessErrorMessage } from '../api/ownerBusinessesApi.js'
 import CreateOwnerBusinessForm from '../components/CreateOwnerBusinessForm.jsx'
-import { ownerBusinessesQueryKey } from '../hooks/useOwnerBusinesses.js'
-import { useQueryClient } from '@tanstack/react-query'
+import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
+import OwnerOnboardingPage from './OwnerOnboardingPage.jsx'
 
 const statusLabels = { ACTIVE: 'Activo', INACTIVE: 'Inactivo', SUSPENDED: 'Suspendido' }
 
 export default function OwnerBusinessesPage() {
-  const [businesses, setBusinesses] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createdBusiness, setCreatedBusiness] = useState(null)
-  const queryClient = useQueryClient()
+  const { businesses, businessesQuery, subscription, subscriptionQuery, isOnboarding, trialActivationPending } = useActiveOwnerBusiness()
+  if (isOnboarding || trialActivationPending) return <OwnerOnboardingPage />
+  const puedeCrear = subscription?.suscripcionId != null
+    && ['ACTIVE', 'TRIAL'].includes(subscription.status)
+    && subscription.capacidadDisponible > 0
 
-  const loadBusinesses = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await getOwnerBusinesses()
-      if (!Array.isArray(data)) throw new Error('La respuesta del servidor no contiene una lista de negocios.')
-      setBusinesses(data)
-      queryClient.setQueryData(ownerBusinessesQueryKey, data)
-    } catch (loadError) {
-      setError(loadError)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [queryClient])
-
-  useEffect(() => {
-    let active = true
-    Promise.resolve().then(async () => {
-      if (!active) return
-      await loadBusinesses()
-    })
-    return () => { active = false }
-  }, [loadBusinesses])
+  async function handleBusinessCreated(business) {
+    setCreatedBusiness(business)
+    setIsCreateOpen(false)
+    await businessesQuery.refetch()
+  }
 
   return (
     <>
       <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO OWNER</span>
-      <div className="owners-heading"><div><h1>Tus negocios</h1><p className="owners-description">Elegí un negocio para entrar a su espacio.</p></div><button type="button" className="owner-create-button" onClick={() => { setCreatedBusiness(null); setIsCreateOpen((open) => !open) }}><Plus size={15} /> Crear negocio</button></div>
+      <div className="owners-heading"><div><h1>Tus negocios</h1><p className="owners-description">Elegí un negocio para entrar a su espacio.</p></div><button type="button" className="owner-create-button" disabled={subscriptionQuery.isLoading || !puedeCrear} onClick={() => { setCreatedBusiness(null); setIsCreateOpen((open) => !open) }}><Plus size={15} /> Crear negocio</button></div>
       {createdBusiness && <div className="owner-created-notice" role="status"><CheckCircle2 size={17} /><span>Se creó «{createdBusiness.nombre}» correctamente.</span><Link className="owners-secondary-button" to={`/owner/negocios/${createdBusiness.negocioId}`}>Ir al negocio <ArrowRight size={14} /></Link><button type="button" className="icon-button" onClick={() => setCreatedBusiness(null)} aria-label="Cerrar confirmación"><X size={16} /></button></div>}
-      {isCreateOpen && <CreateOwnerBusinessForm onCancel={() => setIsCreateOpen(false)} onCreated={(business) => { setBusinesses((current) => [business, ...current]); setCreatedBusiness(business); setIsCreateOpen(false) }} />}
-      {isLoading ? (
+      {isCreateOpen && <CreateOwnerBusinessForm onCancel={() => setIsCreateOpen(false)} onCreated={handleBusinessCreated} />}
+      {businessesQuery.isLoading ? (
         <div className="owner-business-state" role="status"><LoaderCircle size={19} className="spin" /> Cargando negocios…</div>
-      ) : error ? (
-        <div className="owner-business-state user-detail-error" role="alert"><p>{getOwnerBusinessErrorMessage(error)}</p><button type="button" className="owners-secondary-button" onClick={loadBusinesses}><RefreshCw size={15} /> Reintentar</button></div>
+      ) : businessesQuery.isError ? (
+        <div className="owner-business-state user-detail-error" role="alert"><p>{getOwnerBusinessErrorMessage(businessesQuery.error)}</p><button type="button" className="owners-secondary-button" onClick={() => void businessesQuery.refetch()} disabled={businessesQuery.isFetching}><RefreshCw size={15} /> Reintentar</button></div>
       ) : businesses.length === 0 ? (
         <div className="owner-business-state"><Building2 size={22} /><p>Todavía no tenés negocios registrados.</p></div>
       ) : (

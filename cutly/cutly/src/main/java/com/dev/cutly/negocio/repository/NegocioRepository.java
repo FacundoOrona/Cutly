@@ -20,13 +20,15 @@ public interface NegocioRepository extends JpaRepository <Negocio, Long> {
     long countByStatus(NegocioStatus status);
 
     @Query("select count(n) from Negocio n where exists (select s.suscripcionId from Suscripcion s "
-            + "where s.negocio.negocioId = n.negocioId and s.status in "
+            + "where s.owner.usuarioId = n.owner.usuarioId and s.status in "
             + "(com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE, com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL) "
             + "and s.fechaInicio <= :hoy and s.fechaVencimiento >= :hoy)")
     long contarConSuscripcionHabilitada(@Param("hoy") java.time.LocalDate hoy);
 
     @EntityGraph(attributePaths = "owner")
     List<Negocio> findByOwner_UsuarioId(Long ownerId);
+
+    long countByOwner_UsuarioId(Long ownerId);
 
     @Override
     @EntityGraph(attributePaths = "owner")
@@ -38,14 +40,16 @@ public interface NegocioRepository extends JpaRepository <Negocio, Long> {
 
     @Query(value = "select n from Negocio n where n.status = :status "
             + "and lower(n.nombre) like lower(concat('%', :nombre, '%')) "
-            + "and exists (select s.suscripcionId from Suscripcion s where s.negocio.negocioId = n.negocioId "
+            + "and exists (select s.suscripcionId from Suscripcion s where s.owner.usuarioId = n.owner.usuarioId "
+            + "and s.fechaInicio <= :hoy "
             + "and (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE "
             + "or s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED "
             + "or (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL "
             + "and s.fechaVencimiento >= :hoy)))",
             countQuery = "select count(n) from Negocio n where n.status = :status "
                     + "and lower(n.nombre) like lower(concat('%', :nombre, '%')) "
-                    + "and exists (select s.suscripcionId from Suscripcion s where s.negocio.negocioId = n.negocioId "
+                    + "and exists (select s.suscripcionId from Suscripcion s where s.owner.usuarioId = n.owner.usuarioId "
+                    + "and s.fechaInicio <= :hoy "
                     + "and (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE "
                     + "or s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED "
                     + "or (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL "

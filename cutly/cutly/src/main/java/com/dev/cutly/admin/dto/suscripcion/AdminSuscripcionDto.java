@@ -13,8 +13,12 @@ public record AdminSuscripcionDto(
         BigDecimal precioContratado,
         Long planId,
         String nombrePlan,
-        Long negocioId,
-        String nombreNegocio,
+        Long ownerId,
+        String nombreOwner,
+        String emailOwner,
+        Integer maxNegocios,
+        long cantidadNegocios,
+        long capacidadDisponible,
         String version
 ) {
 }

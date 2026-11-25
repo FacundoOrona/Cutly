@@ -9,6 +9,7 @@ public record AdminPlanSuscripcionDto(
         String nombre,
         String descripcion,
         BigDecimal precioMensual,
+        Integer maxNegocios,
         TipoPlanSuscripcion tipo,
         boolean activo,
         Long version

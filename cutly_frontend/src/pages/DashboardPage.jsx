@@ -113,7 +113,7 @@ export default function DashboardPage() {
           <div className="admin-stats-grid">
             <Distribution title="Turnos por estado" values={indicators.turnosPorEstado} />
             <Distribution title="Suscripciones por estado" values={indicators.suscripcionesPorEstado} />
-            <Distribution title="Negocios por plan" values={indicators.suscripcionesPorPlan} />
+            <Distribution title="Owners por plan" values={indicators.suscripcionesPorPlan} />
             <DailyActivity values={indicators.turnosPorDia} />
           </div>
         </>}

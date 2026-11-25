@@ -79,7 +79,7 @@ public class AdminPlanSuscripcionService {
 
         Usuario actor = obtenerActor(emailActor);
         PlanSuscripcion plan = PlanSuscripcion.crearPlanComercial(
-                nombrePresentacion, request.descripcion(), request.precioMensual()
+                nombrePresentacion, request.descripcion(), request.precioMensual(), request.maxNegocios()
         );
         planRepository.save(plan);
         entityManager.flush();
@@ -110,11 +110,12 @@ public class AdminPlanSuscripcionService {
         Map<String, Object> anterior = snapshot(plan, true);
         if (Objects.equals(plan.getNombre(), nombrePresentacion)
                 && Objects.equals(plan.getDescripcion(), request.descripcion())
-                && mismoImporte(plan.getPrecioMensual(), request.precioMensual())) {
+                && mismoImporte(plan.getPrecioMensual(), request.precioMensual())
+                && Objects.equals(plan.getMaxNegocios(), request.maxNegocios())) {
             return aDto(plan);
         }
 
-        plan.actualizarDatosComerciales(nombrePresentacion, request.descripcion(), request.precioMensual());
+        plan.actualizarDatosComerciales(nombrePresentacion, request.descripcion(), request.precioMensual(), request.maxNegocios());
         planRepository.save(plan);
         entityManager.flush();
         Map<String, Object> nuevo = snapshot(plan, true);
@@ -227,6 +228,7 @@ public class AdminPlanSuscripcionService {
         if (completo) {
             snapshot.put("descripcion", plan.getDescripcion());
             snapshot.put("precioMensual", plan.getPrecioMensual());
+            snapshot.put("maxNegocios", plan.getMaxNegocios());
         }
         return snapshot;
     }
@@ -285,6 +287,7 @@ public class AdminPlanSuscripcionService {
                 plan.getNombre(),
                 plan.getDescripcion(),
                 plan.getPrecioMensual(),
+                plan.getMaxNegocios(),
                 plan.getTipo(),
                 plan.isActivo(),
                 plan.getVersion()

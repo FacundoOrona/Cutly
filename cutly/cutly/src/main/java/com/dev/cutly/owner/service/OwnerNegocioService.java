@@ -7,15 +7,14 @@ import com.dev.cutly.owner.dto.negocio.ActualizarNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.CrearNegocioRequestDto;
 import com.dev.cutly.owner.dto.negocio.OwnerNegocioDto;
 import com.dev.cutly.owner.dto.suscripcion.OwnerSuscripcionDto;
-import com.dev.cutly.owner.dto.suscripcion.RenovarSuscripcionRequestDto;
 import com.dev.cutly.suscripcion.entity.PlanSuscripcion;
 import com.dev.cutly.suscripcion.entity.SnapshotSuscripcion;
 import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
 import com.dev.cutly.suscripcion.enums.TipoEventoSuscripcion;
-import com.dev.cutly.suscripcion.enums.TipoPlanSuscripcion;
 import com.dev.cutly.suscripcion.repository.SuscripcionRepository;
 import com.dev.cutly.suscripcion.service.HistorialSuscripcionService;
+import com.dev.cutly.suscripcion.service.ControlAccesoSuscripcion;
 import com.dev.cutly.suscripcion.service.PlanSuscripcionService;
 import com.dev.cutly.suscripcion.service.RelojSuscripcion;
 import com.dev.cutly.usuario.entity.Usuario;
@@ -60,7 +59,26 @@ public class OwnerNegocioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "No se pudo identificar al owner autenticado"));
 
-        boolean esPrimerNegocio = negocioRepository.findByOwner_UsuarioId(owner.getUsuarioId()).isEmpty();
+        long cantidadNegocios = negocioRepository.countByOwner_UsuarioId(owner.getUsuarioId());
+        boolean esPrimerNegocio = cantidadNegocios == 0;
+        Suscripcion suscripcionExistente = suscripcionRepository
+                .findWithLockingByOwner_UsuarioId(owner.getUsuarioId()).orElse(null);
+        if (suscripcionExistente == null) {
+            if (!esPrimerNegocio || owner.isTrialSuscripcionUtilizado()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "El OWNER necesita una suscripción vigente para crear negocios");
+            }
+        } else {
+            Integer maxNegocios = suscripcionExistente.getPlan().getMaxNegocios();
+            if (!ControlAccesoSuscripcion.suscripcionHabilitada(suscripcionExistente)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "La suscripción del OWNER no permite crear negocios");
+            }
+            if (maxNegocios == null || cantidadNegocios >= maxNegocios) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Se alcanzó la cantidad máxima de negocios permitida por el plan");
+            }
+        }
         Negocio negocio = new Negocio();
         negocio.setNombre(request.nombre());
         negocio.setDescripcion(request.descripcion());
@@ -70,7 +88,7 @@ public class OwnerNegocioService {
         negocio.setOwner(owner);
         Negocio negocioGuardado = negocioRepository.save(negocio);
 
-        if (esPrimerNegocio) {
+        if (esPrimerNegocio && suscripcionExistente == null) {
             LocalDate fechaInicio = RelojSuscripcion.fechaActual();
             PlanSuscripcion planPrueba = planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
 
@@ -80,7 +98,9 @@ public class OwnerNegocioService {
             suscripcion.setFechaVencimiento(fechaInicio.plusDays(13));
             suscripcion.setPlan(planPrueba);
             suscripcion.asignarPrecioContratado(planPrueba.getPrecioMensual());
-            suscripcion.setNegocio(negocioGuardado);
+            suscripcion.setOwner(owner);
+            owner.setTrialSuscripcionUtilizado(true);
+            usuarioRepository.save(owner);
             Suscripcion suscripcionGuardada = suscripcionRepository.save(suscripcion);
             historialSuscripcionService.registrar(
                     suscripcionGuardada,
@@ -90,8 +110,8 @@ public class OwnerNegocioService {
                     SnapshotSuscripcion.capturar(suscripcionGuardada),
                     null,
                     RelojSuscripcion.IDENTIFICACION_SISTEMA,
-                    "Prueba gratuita concedida al primer negocio del OWNER",
-                    "Creación automática de TRIAL para el primer negocio del OWNER",
+                    "Prueba gratuita concedida una sola vez al OWNER al crear su primer negocio",
+                    "Creación automática de TRIAL para el OWNER",
                     null
             );
         }
@@ -102,6 +122,27 @@ public class OwnerNegocioService {
     public List<OwnerNegocioDto> listarNegocios(String emailOwner) {
         Usuario owner = obtenerOwnerAutenticado(emailOwner);
         return negocioRepository.findByOwner_UsuarioId(owner.getUsuarioId()).stream().map(this::aDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OwnerSuscripcionDto consultarSuscripcion(String emailOwner) {
+        Usuario owner = obtenerOwnerAutenticado(emailOwner);
+        long cantidad = negocioRepository.countByOwner_UsuarioId(owner.getUsuarioId());
+        Suscripcion suscripcion = suscripcionRepository.findByOwner_UsuarioId(owner.getUsuarioId()).orElse(null);
+        Integer maximo = suscripcion == null ? null : suscripcion.getPlan().getMaxNegocios();
+        return new OwnerSuscripcionDto(
+                suscripcion == null ? null : suscripcion.getSuscripcionId(),
+                suscripcion == null ? null : suscripcion.getStatus(),
+                suscripcion == null ? null : suscripcion.getFechaInicio(),
+                suscripcion == null ? null : suscripcion.getFechaVencimiento(),
+                suscripcion == null ? null : suscripcion.getPrecioContratado(),
+                suscripcion == null ? null : suscripcion.getPlan().getPlanId(),
+                suscripcion == null ? null : suscripcion.getPlan().getNombre(),
+                maximo,
+                cantidad,
+                maximo == null ? 0 : Math.max(0, maximo - cantidad),
+                owner.isTrialSuscripcionUtilizado()
+        );
     }
 
     public OwnerNegocioDto obtenerNegocio(Long id, String emailOwner) {
@@ -152,78 +193,6 @@ public class OwnerNegocioService {
 
         negocio.setStatus(destino);
         return aDto(negocioRepository.save(negocio));
-    }
-
-    @Transactional
-    public OwnerSuscripcionDto renovarSuscripcion(
-            Long negocioId,
-            RenovarSuscripcionRequestDto request,
-            String emailOwner,
-            String ipAddress
-    ) {
-        Usuario owner = obtenerOwnerAutenticado(emailOwner);
-        Negocio negocio = negocioRepository.findWithLockingByNegocioIdAndOwner_UsuarioId(
-                        negocioId, owner.getUsuarioId()
-                )
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "No se encontró el negocio solicitado"));
-        Suscripcion suscripcion = suscripcionRepository.findWithLockingByNegocio_NegocioId(negocio.getNegocioId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
-                        "El negocio no tiene una suscripción que pueda renovarse"));
-
-        if (suscripcion.getStatus() == SuscripcionStatus.SUSPENDED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "La suscripción suspendida requiere intervención administrativa");
-        }
-        if (suscripcion.getStatus() == SuscripcionStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "La suscripción cancelada no puede renovarse");
-        }
-        if (suscripcion.getPlan().getTipo() == TipoPlanSuscripcion.TRIAL) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "La prueba gratuita no puede renovarse mediante el flujo comercial");
-        }
-
-        LocalDate hoy = RelojSuscripcion.fechaActual();
-        LocalDate vencimientoAnterior = suscripcion.getFechaVencimiento();
-        SnapshotSuscripcion anterior = SnapshotSuscripcion.capturar(suscripcion);
-        boolean vencida = suscripcion.getStatus() == SuscripcionStatus.EXPIRED
-                || vencimientoAnterior.isBefore(hoy);
-        LocalDate inicioPeriodo;
-        if (vencida) {
-            inicioPeriodo = hoy;
-            suscripcion.setFechaInicio(hoy);
-            suscripcion.setFechaVencimiento(hoy.plusDays(29));
-        } else {
-            inicioPeriodo = vencimientoAnterior.plusDays(1);
-            suscripcion.setFechaVencimiento(vencimientoAnterior.plusDays(30));
-        }
-
-        suscripcion.setStatus(SuscripcionStatus.ACTIVE);
-        Suscripcion guardada = suscripcionRepository.save(suscripcion);
-        historialSuscripcionService.registrar(
-                guardada,
-                TipoEventoSuscripcion.RENEWED,
-                inicioPeriodo,
-                anterior,
-                SnapshotSuscripcion.capturar(guardada),
-                owner,
-                null,
-                observacionRenovacion(request),
-                "Renovación de suscripción solicitada por OWNER",
-                ipAddress
-        );
-        return new OwnerSuscripcionDto(
-                guardada.getSuscripcionId(), guardada.getStatus(), guardada.getFechaInicio(),
-                guardada.getFechaVencimiento(), guardada.getPrecioContratado(),
-                guardada.getPlan().getPlanId(), guardada.getPlan().getNombre()
-        );
-    }
-
-    private String observacionRenovacion(RenovarSuscripcionRequestDto request) {
-        return request == null || request.observacion() == null || request.observacion().isBlank()
-                ? "Renovación solicitada por OWNER"
-                : request.observacion().trim();
     }
 
     private Usuario obtenerOwnerAutenticado(String emailOwner) {

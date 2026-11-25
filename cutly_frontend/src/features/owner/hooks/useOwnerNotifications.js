@@ -13,8 +13,8 @@ export function useOwnerNotifications(page) {
   return useQuery({ queryKey: [...ownerNotificationsQueryKey, page], queryFn: () => getOwnerNotifications(page, 20) })
 }
 
-export function useOwnerUnreadNotificationCount() {
-  return useQuery({ queryKey: ownerUnreadNotificationCountQueryKey, queryFn: getOwnerUnreadNotificationCount })
+export function useOwnerUnreadNotificationCount(options = {}) {
+  return useQuery({ queryKey: ownerUnreadNotificationCountQueryKey, queryFn: getOwnerUnreadNotificationCount, enabled: options.enabled ?? true })
 }
 
 export function useMarkOwnerNotificationAsRead(page) {

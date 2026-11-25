@@ -18,6 +18,9 @@ public record ActualizarPlanSuscripcionRequestDto(
         @DecimalMin(value = "0.01", message = "El precio mensual debe ser mayor que cero")
         @Digits(integer = 8, fraction = 2, message = "El precio admite hasta 8 enteros y 2 decimales")
         BigDecimal precioMensual,
+        @NotNull(message = "La cantidad máxima de negocios es obligatoria")
+        @jakarta.validation.constraints.Positive(message = "La cantidad máxima de negocios debe ser mayor que cero")
+        Integer maxNegocios,
         @NotNull(message = "La versión esperada es obligatoria")
         @PositiveOrZero(message = "La versión no puede ser negativa")
         Long versionEsperada

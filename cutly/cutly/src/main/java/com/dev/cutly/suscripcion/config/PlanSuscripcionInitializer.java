@@ -17,15 +17,18 @@ public class PlanSuscripcionInitializer implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(PlanSuscripcionInitializer.class);
 
     private final PlanSuscripcionService planSuscripcionService;
+    private final PlanSuscripcionSchemaMigrator schemaMigrator;
     private final PlanSuscripcionReadiness readiness;
     private final PlanSuscripcionSchemaVerifier schemaVerifier;
 
     public PlanSuscripcionInitializer(
             PlanSuscripcionService planSuscripcionService,
+            PlanSuscripcionSchemaMigrator schemaMigrator,
             PlanSuscripcionReadiness readiness,
             PlanSuscripcionSchemaVerifier schemaVerifier
     ) {
         this.planSuscripcionService = planSuscripcionService;
+        this.schemaMigrator = schemaMigrator;
         this.readiness = readiness;
         this.schemaVerifier = schemaVerifier;
     }
@@ -33,6 +36,7 @@ public class PlanSuscripcionInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         try {
+            schemaMigrator.migrar();
             try {
                 planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
             } catch (DataIntegrityViolationException | ObjectOptimisticLockingFailureException e) {
@@ -40,9 +44,11 @@ public class PlanSuscripcionInitializer implements ApplicationRunner {
                 planSuscripcionService.obtenerOCrearPlanPruebaGratuita();
             }
         } catch (RuntimeException e) {
-            logger.error("No se completó la inicialización de planes; las escrituras administrativas quedan bloqueadas", e);
+            logger.error("No se completó la migración o inicialización de planes; las escrituras administrativas quedan bloqueadas", e);
             readiness.markBlocked(List.of(
-                    "La clasificación inicial de planes requiere revisión; consultar los logs de arranque"
+                    e.getMessage() == null
+                            ? "La migración de planes requiere revisión; consultar los logs de arranque"
+                            : e.getMessage()
             ));
             return;
         }

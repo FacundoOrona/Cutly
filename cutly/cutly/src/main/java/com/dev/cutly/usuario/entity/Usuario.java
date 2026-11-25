@@ -53,4 +53,7 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UsuarioStatus status;
+
+    @Column(name = "trial_suscripcion_utilizado", nullable = false)
+    private boolean trialSuscripcionUtilizado;
 }

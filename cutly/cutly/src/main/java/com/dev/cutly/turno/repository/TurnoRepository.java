@@ -29,11 +29,12 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
             + "and t.fechaHoraInicio >= :desde and t.fechaHoraInicio < :hasta "
             + "and t.status not in (com.dev.cutly.turno.enums.TurnoStatus.CANCELLED, com.dev.cutly.turno.enums.TurnoStatus.REJECTED) "
             + "and exists (select s.suscripcionId from com.dev.cutly.suscripcion.entity.Suscripcion s "
-            + "where s.negocio.negocioId = n.negocioId and ("
+            + "where s.owner.usuarioId = n.owner.usuarioId and ("
+            + "s.fechaInicio <= :hoy and ("
             + "s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.ACTIVE "
             + "or s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.EXPIRED "
             + "or (s.status = com.dev.cutly.suscripcion.enums.SuscripcionStatus.TRIAL "
-            + "and s.fechaVencimiento >= :hoy))) "
+            + "and s.fechaVencimiento >= :hoy)))) "
             + "group by n order by count(t) desc, n.negocioId asc")
     List<Object[]> rankingNegociosClientes(@Param("desde") LocalDateTime desde,
                                            @Param("hasta") LocalDateTime hasta,

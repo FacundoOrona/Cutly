@@ -49,11 +49,17 @@ public class HistorialSuscripcion {
     @Column(name = "nombre_plan_anterior", length = 50)
     private String nombrePlanAnterior;
 
+    @Column(name = "max_negocios_anterior")
+    private Integer maxNegociosAnterior;
+
     @Column(name = "plan_id_nuevo")
     private Long planIdNuevo;
 
     @Column(name = "nombre_plan_nuevo", length = 50)
     private String nombrePlanNuevo;
+
+    @Column(name = "max_negocios_nuevo")
+    private Integer maxNegociosNuevo;
 
     @Column(name = "precio_contratado_anterior", precision = 10, scale = 2)
     private BigDecimal precioContratadoAnterior;
@@ -133,6 +139,7 @@ public class HistorialSuscripcion {
         if (snapshot == null) return;
         planIdAnterior = snapshot.planId();
         nombrePlanAnterior = snapshot.nombrePlan();
+        maxNegociosAnterior = snapshot.maxNegocios();
         precioContratadoAnterior = snapshot.precioContratado();
         fechaInicioAnterior = snapshot.fechaInicio();
         fechaVencimientoAnterior = snapshot.fechaVencimiento();
@@ -143,6 +150,7 @@ public class HistorialSuscripcion {
         if (snapshot == null) return;
         planIdNuevo = snapshot.planId();
         nombrePlanNuevo = snapshot.nombrePlan();
+        maxNegociosNuevo = snapshot.maxNegocios();
         precioContratadoNuevo = snapshot.precioContratado();
         fechaInicioNueva = snapshot.fechaInicio();
         fechaVencimientoNueva = snapshot.fechaVencimiento();
@@ -152,9 +160,7 @@ public class HistorialSuscripcion {
     private static void validarActor(Usuario administrador, String sistema, TipoEventoSuscripcion tipoEvento) {
         boolean administradorPresente = administrador != null;
         boolean sistemaPresente = sistema != null;
-        boolean rolValido = administradorPresente
-                && (administrador.getRol() == Rol.SUPER_ADMIN
-                || (administrador.getRol() == Rol.OWNER && tipoEvento == TipoEventoSuscripcion.RENEWED));
+        boolean rolValido = administradorPresente && administrador.getRol() == Rol.SUPER_ADMIN;
         if (administradorPresente == sistemaPresente
                 || (administradorPresente && (administrador.getUsuarioId() == null
                 || !rolValido))

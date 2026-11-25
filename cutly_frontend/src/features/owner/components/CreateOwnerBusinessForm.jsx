@@ -44,7 +44,7 @@ export default function CreateOwnerBusinessForm({ onCancel, onCreated }) {
         email: values.email.trim() || null,
       })
       setValues(initialValues)
-      onCreated(createdBusiness)
+      await onCreated(createdBusiness)
     } catch (error) {
       setSubmitError(getCreateOwnerBusinessErrorMessage(error))
     }

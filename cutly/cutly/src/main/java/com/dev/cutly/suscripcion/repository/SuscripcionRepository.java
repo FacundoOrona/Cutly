@@ -20,14 +20,14 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long>,
     Optional<Suscripcion> findWithLockingBySuscripcionId(Long suscripcionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Suscripcion> findWithLockingByNegocio_NegocioId(Long negocioId);
+    Optional<Suscripcion> findWithLockingByOwner_UsuarioId(Long ownerId);
 
-    boolean existsByNegocio_NegocioId(Long negocioId);
+    boolean existsByOwner_UsuarioId(Long ownerId);
 
-    Optional<Suscripcion> findByNegocio_NegocioId(Long negocioId);
+    Optional<Suscripcion> findByOwner_UsuarioId(Long ownerId);
 
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "plan")
-    List<Suscripcion> findAllByNegocio_NegocioIdIn(Collection<Long> negocioIds);
+    List<Suscripcion> findAllByOwner_UsuarioIdIn(Collection<Long> ownerIds);
 
     long countByStatus(SuscripcionStatus status);
 

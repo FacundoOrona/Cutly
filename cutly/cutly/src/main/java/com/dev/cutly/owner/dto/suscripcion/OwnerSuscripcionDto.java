@@ -12,6 +12,10 @@ public record OwnerSuscripcionDto(
         LocalDate fechaVencimiento,
         BigDecimal precioContratado,
         Long planId,
-        String nombrePlan
+        String nombrePlan,
+        Integer maxNegocios,
+        long cantidadNegocios,
+        long capacidadDisponible,
+        boolean trialUtilizado
 ) {
 }

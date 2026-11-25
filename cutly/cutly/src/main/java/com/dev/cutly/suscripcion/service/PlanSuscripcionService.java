@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class PlanSuscripcionService {
@@ -26,31 +24,7 @@ public class PlanSuscripcionService {
 
     @Transactional
     public PlanSuscripcion obtenerOCrearPlanPruebaGratuita() {
-        planSuscripcionRepository.inicializarVersionesNulas();
         List<PlanSuscripcion> planes = planSuscripcionRepository.findAll();
-
-        Map<String, List<PlanSuscripcion>> porNombreNormalizado = planes.stream()
-                .collect(Collectors.groupingBy(plan -> PlanSuscripcion.claveNombre(plan.getNombre())));
-        List<String> colisiones = porNombreNormalizado.entrySet().stream()
-                .filter(entry -> entry.getValue().size() > 1)
-                .map(entry -> entry.getKey() + " => " + entry.getValue().stream()
-                        .map(plan -> "id=" + plan.getPlanId() + ", nombre='" + plan.getNombre() + "'")
-                        .collect(Collectors.joining("; ")))
-                .toList();
-        if (!colisiones.isEmpty()) {
-            throw new IllegalStateException("Hay colisiones de nombres normalizados en planes: "
-                    + String.join(" | ", colisiones));
-        }
-        for (PlanSuscripcion plan : planes) {
-            String nombreNormalizado = PlanSuscripcion.normalizarNombrePresentacion(plan.getNombre());
-            String clave = PlanSuscripcion.claveNombre(nombreNormalizado);
-            if (nombreNormalizado.codePointCount(0, nombreNormalizado.length()) > 50
-                    || clave.codePointCount(0, clave.length()) > 100) {
-                throw new IllegalStateException("El plan id=" + plan.getPlanId()
-                        + " excede la longitud admitida después de normalizar su nombre");
-            }
-        }
-
         List<PlanSuscripcion> candidatosNombre = planes.stream()
                 .filter(plan -> PlanSuscripcion.claveNombre(plan.getNombre())
                         .equals(PlanSuscripcion.claveNombre(NOMBRE_PLAN_PRUEBA)))
@@ -70,49 +44,27 @@ public class PlanSuscripcionService {
             );
         }
 
-        if (!candidatosNombre.isEmpty()) {
-            PlanSuscripcion planTrial = candidatosNombre.get(0);
-            if (!NOMBRE_PLAN_PRUEBA.equals(planTrial.getNombre())) {
-                throw new IllegalStateException(
-                        "Existe una variante ambigua del nombre reservado Prueba gratuita"
-                );
-            }
-            if (planTrial.getTipo() == TipoPlanSuscripcion.COMERCIAL) {
-                throw new IllegalStateException("El plan Prueba gratuita está clasificado como COMERCIAL");
-            }
-            planTrial.validarPropiedadesTrial();
-            planTrial.clasificarComoTrial();
-            planTrial.normalizarNombrePreexistente();
-        } else {
+        if (candidatosNombre.isEmpty()) {
             if (!candidatosTipo.isEmpty()) {
-                throw new IllegalStateException("Existe un plan TRIAL contradictorio");
+                throw new IllegalStateException("Existe un plan TRIAL contradictorio: plan_id="
+                        + candidatosTipo.get(0).getPlanId());
             }
             PlanSuscripcion planTrial = PlanSuscripcion.crearPlanTrial();
             planSuscripcionRepository.save(planTrial);
-            candidatosNombre = List.of(planTrial);
+            logger.info("Se creó el plan TRIAL porque no existía uno previamente");
+            return planTrial;
         }
 
-        int planesClasificados = 0;
-        for (PlanSuscripcion plan : planes) {
-            if (plan == (candidatosNombre.isEmpty() ? null : candidatosNombre.get(0))) continue;
-            if (plan.getTipo() == TipoPlanSuscripcion.TRIAL) {
-                throw new IllegalStateException("Solo puede existir un plan TRIAL");
-            }
-            if (plan.getPrecioMensual() == null || plan.getPrecioMensual().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-                throw new IllegalStateException("El plan preexistente id=" + plan.getPlanId()
-                        + " tiene un precio incompatible con el tipo COMERCIAL");
-            }
-            if (plan.getTipo() == null) {
-                plan.clasificarComoComercial();
-                planesClasificados++;
-            }
-            plan.normalizarNombrePreexistente();
+        PlanSuscripcion planTrial = candidatosNombre.get(0);
+        if (!NOMBRE_PLAN_PRUEBA.equals(planTrial.getNombre())) {
+            throw new IllegalStateException("El plan plan_id=" + planTrial.getPlanId()
+                    + " tiene una variante ambigua del nombre reservado Prueba gratuita");
         }
-
-        if (planesClasificados > 0) {
-            logger.info("Se clasificaron {} planes preexistentes como COMERCIAL", planesClasificados);
+        if (planTrial.getTipo() != TipoPlanSuscripcion.TRIAL) {
+            throw new IllegalStateException("El plan Prueba gratuita debe estar clasificado como TRIAL; plan_id="
+                    + planTrial.getPlanId());
         }
-
-        return candidatosNombre.get(0);
+        planTrial.validarPropiedadesTrial();
+        return planTrial;
     }
 }

@@ -1,6 +1,7 @@
 package com.dev.cutly.admin.dto.usuario;
 
 import com.dev.cutly.admin.dto.negocio.AdminNegocioDto;
+import com.dev.cutly.admin.dto.suscripcion.AdminSuscripcionDto;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
 
 import java.util.List;
@@ -13,5 +14,6 @@ public record AdminOwnerDetalleDto(
         String email,
         UsuarioStatus status,
         long cantidadNegocios,
-        List<AdminNegocioDto> negocios
+        List<AdminNegocioDto> negocios,
+        AdminSuscripcionDto suscripcion
 ) { }

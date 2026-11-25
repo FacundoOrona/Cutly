@@ -1,7 +1,7 @@
 package com.dev.cutly.suscripcion.entity;
 
-import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
+import com.dev.cutly.usuario.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -42,8 +42,8 @@ public class Suscripcion {
     private PlanSuscripcion plan;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "negocio_id", nullable = false, unique = true)
-    private Negocio negocio;
+    @JoinColumn(name = "owner_id", nullable = false, unique = true)
+    private Usuario owner;
 
     public void asignarPrecioContratado(BigDecimal precio) {
         if (precioContratado != null) {

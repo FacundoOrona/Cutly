@@ -109,6 +109,7 @@ public class AdminEstadisticaService {
     public AdminEstadisticasSuscripcionesDto obtenerEstadisticasSuscripciones() {
         return new AdminEstadisticasSuscripcionesDto(
                 suscripcionRepository.count(),
+                suscripcionRepository.countByStatus(SuscripcionStatus.PENDING),
                 suscripcionRepository.countByStatus(SuscripcionStatus.TRIAL),
                 suscripcionRepository.countByStatus(SuscripcionStatus.ACTIVE),
                 suscripcionRepository.countByStatus(SuscripcionStatus.EXPIRED),

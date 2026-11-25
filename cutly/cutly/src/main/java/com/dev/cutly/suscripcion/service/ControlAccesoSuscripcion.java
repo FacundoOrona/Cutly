@@ -1,6 +1,7 @@
 package com.dev.cutly.suscripcion.service;
 
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
+import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.suscripcion.entity.Suscripcion;
 import com.dev.cutly.suscripcion.enums.SuscripcionStatus;
@@ -11,13 +12,12 @@ import com.dev.cutly.usuario.repository.UsuarioRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+
 import java.util.Collection;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class ControlAccesoSuscripcion {
-
     private final UsuarioRepository usuarioRepository;
     private final NegocioRepository negocioRepository;
     private final EmpleadoRepository empleadoRepository;
@@ -38,66 +38,47 @@ public class ControlAccesoSuscripcion {
         if ("ROLE_OWNER".equals(rol)
                 && HttpMethod.PATCH.matches(request.getMethod())
                 && (path.matches("/api/owner/notificaciones/\\d+/leer")
-                || "/api/owner/notificaciones/leer-todas".equals(path))) {
-            return true;
-        }
-        if ("/api/owner/negocios".equals(path) && HttpMethod.POST.matches(request.getMethod())) {
-            return ownerPuedeCrearNegocio(email);
-        }
-        if ("/api/owner/negocios".equals(path) && HttpMethod.GET.matches(request.getMethod())) {
-            return ownerPuedeConsultarTodos(email);
-        }
-        if ("ROLE_OWNER".equals(rol) && path.startsWith("/api/owner/negocios/")) {
-            String[] partes = path.substring("/api/owner/negocios/".length()).split("/");
-            if (partes.length > 0 && partes[0].matches("\\d+")) {
-                long negocioId = Long.parseLong(partes[0]);
-                if (esRenovacion(path)) return true;
-                Suscripcion suscripcion = suscripcion(negocioId);
-                return suscripcion != null && ownerTieneAcceso(suscripcion, esLectura(request));
+                || "/api/owner/notificaciones/leer-todas".equals(path))) return true;
+        if ("ROLE_OWNER".equals(rol) && "/api/owner/suscripcion".equals(path)
+                && esLectura(request)) return true;
+        if ("ROLE_OWNER".equals(rol)) {
+            Usuario owner = usuarioRepository.findByEmail(email).orElse(null);
+            if (owner == null || owner.getRol() != Rol.OWNER) return false;
+            if ("/api/owner/negocios".equals(path) && HttpMethod.POST.matches(request.getMethod())) {
+                return ownerPuedeCrearNegocio(owner);
             }
-            return ownerPuedeConsultarTodos(email) && esLectura(request);
+            if ("/api/owner/negocios".equals(path) && HttpMethod.GET.matches(request.getMethod())) return true;
+            return ownerTieneAcceso(owner.getUsuarioId(), esLectura(request));
         }
-        if ("ROLE_OWNER".equals(rol) && path.startsWith("/api/owner/")) {
-            return ownerPuedeConsultarTodos(email) && esLectura(request);
-        }
+        Long ownerId = null;
         if ("ROLE_EMPLOYEE".equals(rol) && path.startsWith("/api/empleado/")) {
-            return empleadoRepository.findByUsuario_Email(email)
-                    .map(e -> suscripcion(e.getNegocio().getNegocioId()))
-                    .map(this::estadoVigente)
-                    .orElse(false);
-        }
-        if ("ROLE_CLIENT".equals(rol) && path.matches("/api/cliente/negocios/\\d+(/.*)?")) {
+            ownerId = empleadoRepository.findByUsuario_Email(email)
+                    .map(e -> e.getNegocio().getOwner().getUsuarioId()).orElse(null);
+        } else if ("ROLE_CLIENT".equals(rol) && path.matches("/api/cliente/negocios/\\d+(/.*)?")) {
             String[] partes = path.split("/");
-            Suscripcion suscripcion = suscripcion(Long.parseLong(partes[4]));
-            return suscripcion != null && !estadoBloqueado(suscripcion);
+            ownerId = negocioRepository.findById(Long.parseLong(partes[4]))
+                    .map(n -> n.getOwner().getUsuarioId()).orElse(null);
         }
-        return true;
+        if (ownerId == null) return true;
+        Suscripcion suscripcion = suscripcion(ownerId);
+        return suscripcion != null && (esLectura(request)
+                ? puedeConsultar(suscripcion) : suscripcionHabilitada(suscripcion));
     }
 
     public boolean clientePuedeReservar(Long negocioId) {
-        Suscripcion suscripcion = suscripcion(negocioId);
-        return suscripcion != null && estadoVigente(suscripcion);
+        return negocioRepository.findById(negocioId)
+                .map(n -> suscripcion(n.getOwner().getUsuarioId()))
+                .map(ControlAccesoSuscripcion::suscripcionHabilitada).orElse(false);
     }
 
     public boolean clientePuedeConsultarNegocio(Long negocioId) {
-        Suscripcion suscripcion = suscripcion(negocioId);
-        return clientePuedeConsultar(suscripcion);
+        return negocioRepository.findById(negocioId)
+                .map(n -> suscripcion(n.getOwner().getUsuarioId()))
+                .map(ControlAccesoSuscripcion::puedeConsultar).orElse(false);
     }
 
     public Set<Long> negociosConsultablesPorCliente(Collection<Long> negocioIds) {
-        if (negocioIds.isEmpty()) return Set.of();
-        return suscripcionRepository.findAllByNegocio_NegocioIdIn(negocioIds).stream()
-                .filter(this::clientePuedeConsultar)
-                .map(s -> s.getNegocio().getNegocioId())
-                .collect(Collectors.toSet());
-    }
-
-    private boolean clientePuedeConsultar(Suscripcion suscripcion) {
-        if (suscripcion == null || estadoBloqueado(suscripcion)) return false;
-        if (suscripcion.getStatus() == SuscripcionStatus.EXPIRED
-                || suscripcion.getStatus() == SuscripcionStatus.ACTIVE) return true;
-        return suscripcion.getStatus() == SuscripcionStatus.TRIAL
-                && !suscripcion.getFechaVencimiento().isBefore(RelojSuscripcion.fechaActual());
+        return negocioIds.stream().filter(this::clientePuedeConsultarNegocio).collect(java.util.stream.Collectors.toSet());
     }
 
     public static boolean suscripcionHabilitada(Suscripcion suscripcion) {
@@ -108,46 +89,34 @@ public class ControlAccesoSuscripcion {
                 && !suscripcion.getFechaVencimiento().isBefore(RelojSuscripcion.fechaActual());
     }
 
-    private boolean ownerPuedeCrearNegocio(String email) {
-        return usuarioRepository.findByEmail(email)
-                .map(owner -> owner.getRol() == Rol.OWNER)
-                .orElse(false);
+    private boolean ownerPuedeCrearNegocio(Usuario owner) {
+        Suscripcion suscripcion = suscripcion(owner.getUsuarioId());
+        if (suscripcion == null) return !owner.isTrialSuscripcionUtilizado();
+        Integer maxNegocios = suscripcion.getPlan().getMaxNegocios();
+        return suscripcionHabilitada(suscripcion) && maxNegocios != null
+                && negocioRepository.countByOwner_UsuarioId(owner.getUsuarioId()) < maxNegocios;
     }
 
-    private boolean ownerPuedeConsultarTodos(String email) {
-        return usuarioRepository.findByEmail(email)
-                .map(owner -> negocioRepository.findByOwner_UsuarioId(owner.getUsuarioId()).stream()
-                        .map(n -> suscripcion(n.getNegocioId()))
-                        .anyMatch(s -> s != null && !estadoBloqueado(s)))
-                .orElse(false);
+    private boolean ownerTieneAcceso(Long ownerId, boolean lectura) {
+        Suscripcion suscripcion = suscripcion(ownerId);
+        if (suscripcion == null) return false;
+        if (lectura) return puedeConsultar(suscripcion);
+        return suscripcionHabilitada(suscripcion);
     }
 
-    private boolean ownerTieneAcceso(Suscripcion suscripcion, boolean lectura) {
-        if (estadoBloqueado(suscripcion)) return false;
-        return lectura || estadoVigente(suscripcion);
+    private static boolean puedeConsultar(Suscripcion suscripcion) {
+        return suscripcion != null
+                && suscripcion.getStatus() != SuscripcionStatus.PENDING
+                && suscripcion.getStatus() != SuscripcionStatus.SUSPENDED
+                && suscripcion.getStatus() != SuscripcionStatus.CANCELLED
+                && !suscripcion.getFechaInicio().isAfter(RelojSuscripcion.fechaActual());
     }
 
-    private boolean estadoVigente(Suscripcion suscripcion) {
-        if (estadoBloqueado(suscripcion)) return false;
-        return (suscripcion.getStatus() == SuscripcionStatus.TRIAL
-                || suscripcion.getStatus() == SuscripcionStatus.ACTIVE)
-                && !suscripcion.getFechaVencimiento().isBefore(RelojSuscripcion.fechaActual());
-    }
-
-    private boolean estadoBloqueado(Suscripcion suscripcion) {
-        return suscripcion.getStatus() == SuscripcionStatus.SUSPENDED
-                || suscripcion.getStatus() == SuscripcionStatus.CANCELLED;
-    }
-
-    private Suscripcion suscripcion(Long negocioId) {
-        return suscripcionRepository.findByNegocio_NegocioId(negocioId).orElse(null);
+    private Suscripcion suscripcion(Long ownerId) {
+        return suscripcionRepository.findByOwner_UsuarioId(ownerId).orElse(null);
     }
 
     private boolean esLectura(HttpServletRequest request) {
         return HttpMethod.GET.matches(request.getMethod()) || HttpMethod.HEAD.matches(request.getMethod());
-    }
-
-    private boolean esRenovacion(String path) {
-        return path.matches("/api/owner/negocios/\\d+/suscripcion/renovar");
     }
 }

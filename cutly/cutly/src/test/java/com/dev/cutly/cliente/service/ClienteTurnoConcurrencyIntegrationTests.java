@@ -168,7 +168,7 @@ class ClienteTurnoConcurrencyIntegrationTests {
                     .findFirst()
                     .orElseGet(() -> planSuscripcionRepository.save(PlanSuscripcion.crearPlanTrial()));
             Suscripcion suscripcion = new Suscripcion();
-            suscripcion.setNegocio(negocio);
+            suscripcion.setOwner(owner);
             suscripcion.setPlan(planTrial);
             suscripcion.setStatus(SuscripcionStatus.TRIAL);
             suscripcion.setFechaInicio(LocalDate.now());
@@ -235,7 +235,7 @@ class ClienteTurnoConcurrencyIntegrationTests {
                             .contains(notificacion.getUsuario().getUsuarioId()))
                     .toList();
             notificacionRepository.deleteAll(notificaciones);
-            suscripcionRepository.findByNegocio_NegocioId(fixture.negocioId())
+            suscripcionRepository.findByOwner_UsuarioId(fixture.ownerUsuarioId())
                     .ifPresent(suscripcionRepository::delete);
             empleadoServicioRepository.deleteAll(empleadoServicioRepository
                     .findByEmpleado_EmpleadoIdAndServicio_ServicioId(fixture.empleadoId(), fixture.servicioId())

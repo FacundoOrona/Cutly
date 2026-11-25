@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogOut, Menu, ShieldCheck, Store, Tags, Users, X } from 'lucide-react'
+import { CreditCard, LogOut, Menu, ShieldCheck, Store, Tags, Users, X } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import BrandMark from '../components/BrandMark.jsx'
 import useAuth from '../auth/useAuth.js'
@@ -9,7 +9,7 @@ export default function AdminLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [logoutError, setLogoutError] = useState('')
   const location = useLocation()
-  const pageTitle = location.pathname === '/admin/owners' ? 'Owners' : location.pathname.startsWith('/admin/businesses/') ? 'Detalle de negocio' : location.pathname === '/admin/businesses' ? 'Negocios' : location.pathname.startsWith('/admin/users/') ? 'Detalle de usuario' : location.pathname === '/admin/users' ? 'Usuarios' : location.pathname === '/admin/planes-suscripcion' ? 'Planes comerciales' : 'Panel principal'
+  const pageTitle = location.pathname === '/admin/owners' ? 'Owners' : location.pathname.startsWith('/admin/businesses/') ? 'Detalle de negocio' : location.pathname === '/admin/businesses' ? 'Negocios' : location.pathname.startsWith('/admin/users/') ? 'Detalle de usuario' : location.pathname === '/admin/users' ? 'Usuarios' : location.pathname === '/admin/suscripciones' ? 'Suscripciones' : location.pathname === '/admin/planes-suscripcion' ? 'Planes comerciales' : 'Panel principal'
   const displayName = [user?.nombre, user?.apellido].filter(Boolean).join(' ') || user?.email
 
   async function handleSignOut() {
@@ -33,6 +33,7 @@ export default function AdminLayout() {
         <nav aria-label="Navegación principal">
           <NavLink end to="/dashboard" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><ShieldCheck size={17} /> Panel principal</NavLink>
           <NavLink to="/admin/owners" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Users size={17} /> Owners</NavLink>
+          <NavLink to="/admin/suscripciones" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><CreditCard size={17} /> Suscripciones</NavLink>
           <NavLink to="/admin/businesses" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Store size={17} /> Negocios</NavLink>
           <NavLink to="/admin/planes-suscripcion" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Tags size={17} /> Planes comerciales</NavLink>
           <NavLink to="/admin/users" onClick={closeMenu} className={({ isActive }) => `sidebar-item${isActive ? ' sidebar-item-active' : ''}`}><Users size={17} /> Usuarios</NavLink>

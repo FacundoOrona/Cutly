@@ -9,6 +9,7 @@ import java.time.LocalDate;
 public record SnapshotSuscripcion(
         Long planId,
         String nombrePlan,
+        Integer maxNegocios,
         BigDecimal precioContratado,
         LocalDate fechaInicio,
         LocalDate fechaVencimiento,
@@ -21,6 +22,7 @@ public record SnapshotSuscripcion(
         return new SnapshotSuscripcion(
                 suscripcion.getPlan() == null ? null : suscripcion.getPlan().getPlanId(),
                 suscripcion.getPlan() == null ? null : suscripcion.getPlan().getNombre(),
+                suscripcion.getPlan() == null ? null : suscripcion.getPlan().getMaxNegocios(),
                 suscripcion.getPrecioContratado(),
                 suscripcion.getFechaInicio(),
                 suscripcion.getFechaVencimiento(),

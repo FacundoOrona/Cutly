@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { ArrowLeft, Building2, CheckCircle2, LoaderCircle, RefreshCw, X } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import BusinessStatusActions from '../components/BusinessStatusActions.jsx'
-import BusinessSubscriptionManagement from '../components/BusinessSubscriptionManagement.jsx'
 import { getBusinessErrorMessage, getUpdateBusinessStatusErrorMessage } from '../api/businessesApi.js'
 import { useBusiness, useUpdateBusinessStatus } from '../hooks/useBusinesses.js'
 
@@ -69,7 +68,6 @@ export default function BusinessDetailPage() {
         <section className="user-detail-card business-status-card" aria-label="Estado del negocio">
           <div className="business-detail-actions"><span className="user-detail-field-label">Estado del negocio: {statusLabels[business.status] || business.status || 'Sin estado'}</span><BusinessStatusActions business={business} pending={statusMutation.isPending} onChangeStatus={handleStatusChange} /></div>
         </section>
-        <BusinessSubscriptionManagement business={business} />
         </>
       ) : (
         <div className="user-detail-state"><p>No hay datos disponibles para este negocio.</p><button type="button" className="owners-secondary-button" onClick={backToList}>Volver al listado</button></div>

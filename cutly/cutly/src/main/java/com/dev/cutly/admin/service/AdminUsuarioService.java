@@ -3,6 +3,7 @@ package com.dev.cutly.admin.service;
 import com.dev.cutly.admin.dto.usuario.AdminUsuarioDto;
 import com.dev.cutly.admin.dto.usuario.AdminOwnerDetalleDto;
 import com.dev.cutly.admin.service.AdminNegocioService;
+import com.dev.cutly.admin.service.AdminSuscripcionService;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.enums.UsuarioStatus;
@@ -31,10 +32,13 @@ public class AdminUsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final AdminNegocioService adminNegocioService;
+    private final AdminSuscripcionService adminSuscripcionService;
 
-    public AdminUsuarioService(UsuarioRepository usuarioRepository, AdminNegocioService adminNegocioService) {
+    public AdminUsuarioService(UsuarioRepository usuarioRepository, AdminNegocioService adminNegocioService,
+                               AdminSuscripcionService adminSuscripcionService) {
         this.usuarioRepository = usuarioRepository;
         this.adminNegocioService = adminNegocioService;
+        this.adminSuscripcionService = adminSuscripcionService;
     }
 
     public Page<AdminUsuarioDto> listarUsuarios(
@@ -85,7 +89,8 @@ public class AdminUsuarioService {
         AdminUsuarioDto owner = obtenerOwner(id);
         var negocios = adminNegocioService.listarNegociosDeOwner(id);
         return new AdminOwnerDetalleDto(owner.usuarioId(), owner.nombre(), owner.apellido(), owner.dni(),
-                owner.email(), owner.status(), negocios.size(), negocios);
+                owner.email(), owner.status(), negocios.size(), negocios,
+                adminSuscripcionService.consultarSuscripcionDeOwner(id));
     }
 
     public AdminUsuarioDto actualizarEstado(Long id, UsuarioStatus status, String emailActor) {

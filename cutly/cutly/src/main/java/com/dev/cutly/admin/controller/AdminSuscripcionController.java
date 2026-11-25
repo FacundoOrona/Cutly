@@ -54,12 +54,12 @@ public class AdminSuscripcionController {
     @GetMapping("/suscripciones")
     public ResponseEntity<?> listarSuscripciones(
             @RequestParam(required = false) SuscripcionStatus status,
-            @RequestParam(required = false) Long negocioId,
+            @RequestParam(required = false) Long ownerId,
             @RequestParam(required = false) Long planId,
             @PageableDefault(size = 20, sort = "fechaInicio", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         try {
-            Page<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarSuscripciones(status, negocioId, planId, pageable);
+            Page<AdminSuscripcionDto> suscripciones = adminSuscripcionService.listarSuscripciones(status, ownerId, planId, pageable);
             return ResponseEntity.ok(suscripciones);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage()));
@@ -94,15 +94,24 @@ public class AdminSuscripcionController {
         }
     }
 
-    @PostMapping("/negocios/{negocioId}/suscripcion")
+    @GetMapping("/owners/{ownerId}/suscripcion")
+    public ResponseEntity<?> obtenerSuscripcionDeOwner(@PathVariable Long ownerId) {
+        try {
+            return ResponseEntity.ok(adminSuscripcionService.obtenerSuscripcionDeOwner(ownerId));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponseDto(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/owners/{ownerId}/suscripcion")
     public ResponseEntity<?> asignarSuscripcion(
-            @PathVariable Long negocioId,
+            @PathVariable Long ownerId,
             @Valid @RequestBody AsignarSuscripcionRequestDto request,
             HttpServletRequest httpRequest
     ) {
         try {
             AdminSuscripcionDto asignada = adminSuscripcionService.asignar(
-                    negocioId, request, emailAdministrador(), httpRequest.getRemoteAddr()
+                    ownerId, request, emailAdministrador(), httpRequest.getRemoteAddr()
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(asignada);
         } catch (NoSuchElementException e) {
@@ -255,12 +264,12 @@ public class AdminSuscripcionController {
                     || causa instanceof LockTimeoutException
                     || causa instanceof LockAcquisitionException) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(new ErrorResponseDto("La suscripción o el negocio está siendo modificado; reintente"));
+                        .body(new ErrorResponseDto("La suscripción del OWNER está siendo modificada; reintente"));
             }
             if (traducirDuplicadoNegocio && causa instanceof SQLException sqlException
                     && (sqlException.getErrorCode() == 1062 || "23505".equals(sqlException.getSQLState()))) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(new ErrorResponseDto("El negocio ya tiene una suscripción asociada"));
+                        .body(new ErrorResponseDto("El OWNER ya tiene una suscripción asociada"));
             }
             causa = causa.getCause();
         }

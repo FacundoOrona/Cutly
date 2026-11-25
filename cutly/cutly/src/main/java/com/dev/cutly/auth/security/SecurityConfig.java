@@ -17,10 +17,13 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -44,10 +47,7 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(
-                                        HttpServletResponse.SC_UNAUTHORIZED,
-                                        "Autenticación requerida"
-                                )
+                                unauthorized(request, response)
                         )
                 )
                 .sessionManagement(session -> session
@@ -59,6 +59,13 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    private void unauthorized(jakarta.servlet.http.HttpServletRequest request, HttpServletResponse response) throws java.io.IOException {
+        if ("/api/owner/notificaciones/no-leidas/contador".equals(request.getRequestURI())) {
+            log.warn("AUTH_TRACE finalStatusProducer=SecurityConfig.authenticationEntryPoint method={} path={} status=401", request.getMethod(), request.getRequestURI());
+        }
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Autenticación requerida");
     }
 
     @Bean

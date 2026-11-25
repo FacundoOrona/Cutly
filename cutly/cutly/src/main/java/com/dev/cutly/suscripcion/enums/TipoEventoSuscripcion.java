@@ -4,6 +4,7 @@ public enum TipoEventoSuscripcion {
 
     TRIAL_CREATED,
     SUBSCRIPTION_ASSIGNED,
+    ACTIVATED,
     RENEWED,
     SUSPENDED,
     REACTIVATED,
