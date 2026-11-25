@@ -165,6 +165,10 @@ public class AdminSuscripcionService {
     ) {
         Suscripcion suscripcion = suscripcionRepository.findWithLockingBySuscripcionId(id)
                 .orElseThrow(() -> new NoSuchElementException("No se encontró la suscripción con id " + id));
+        if (suscripcion.getStatus() == SuscripcionStatus.TRIAL) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Las suscripciones TRIAL no admiten activación, suspensión ni cancelación; regularice a un plan COMERCIAL");
+        }
         LocalDate hoy = RelojSuscripcion.fechaActual();
         boolean activacion = status == SuscripcionStatus.ACTIVE;
         if (activacion && suscripcion.getPlan().getTipo() != TipoPlanSuscripcion.COMERCIAL) {
@@ -292,6 +296,11 @@ public class AdminSuscripcionService {
 
         boolean conversionPruebaAComercial = planActual.getTipo() == TipoPlanSuscripcion.TRIAL
                 && planNuevo.getTipo() == TipoPlanSuscripcion.COMERCIAL;
+        if (suscripcion.getStatus() == SuscripcionStatus.TRIAL
+                && planNuevo.getTipo() == TipoPlanSuscripcion.TRIAL) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Una suscripción TRIAL debe regularizarse a un plan COMERCIAL");
+        }
         SuscripcionStatus estadoNuevo = request.status() == null
                 ? (conversionPruebaAComercial ? SuscripcionStatus.SUSPENDED : suscripcion.getStatus())
                 : request.status();
