@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, LoaderCircle } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { getOwnerBusinessEmployeesErrorMessage } from '../api/ownerBusinessEmployeesApi.js'
 import { useCreateOwnerBusinessEmployee, useUpdateOwnerBusinessEmployee } from '../hooks/useOwnerBusinessEmployees.js'
 
@@ -12,8 +12,8 @@ const fields = [
 
 function getValues(employee) {
   return employee
-    ? { nombre: employee.nombre || '', apellido: employee.apellido || '', email: employee.email || '', dni: employee.dni || '', contrasena: '' }
-    : { nombre: '', apellido: '', email: '', dni: '', contrasena: '' }
+    ? { nombre: employee.nombre || '', apellido: employee.apellido || '', email: employee.email || '', dni: employee.dni || '', contrasena: '', confirmarContrasena: '' }
+    : { nombre: '', apellido: '', email: '', dni: '', contrasena: '', confirmarContrasena: '' }
 }
 
 function validate(values, editing) {
@@ -30,6 +30,8 @@ function validate(values, editing) {
   else if (!/^\d{7,8}$/.test(values.dni.trim())) errors.dni = 'El DNI debe contener 7 u 8 dígitos.'
   if (!editing && !values.contrasena) errors.contrasena = 'La contraseña es obligatoria.'
   else if (!editing && values.contrasena.length < 8) errors.contrasena = 'La contraseña debe contener al menos 8 caracteres.'
+  if (!editing && !values.confirmarContrasena) errors.confirmarContrasena = 'Confirmá la contraseña.'
+  else if (!editing && values.confirmarContrasena !== values.contrasena) errors.confirmarContrasena = 'Las contraseñas no coinciden.'
   return errors
 }
 
@@ -37,6 +39,7 @@ export default function OwnerBusinessEmployeeForm({ id, employee, onCancel, onSa
   const editing = Boolean(employee)
   const [values, setValues] = useState(() => getValues(employee))
   const [fieldErrors, setFieldErrors] = useState({})
+  const [visible, setVisible] = useState({})
   const [submitError, setSubmitError] = useState('')
   const createMutation = useCreateOwnerBusinessEmployee()
   const updateMutation = useUpdateOwnerBusinessEmployee()
@@ -67,12 +70,14 @@ export default function OwnerBusinessEmployeeForm({ id, employee, onCancel, onSa
         setValues(getValues(null))
         onSaved('Los datos del empleado se actualizaron correctamente.')
       } else {
-        const { contrasena, ...identity } = values
+        const { contrasena } = values
+        const identity = { nombre: values.nombre, apellido: values.apellido, email: values.email, dni: values.dni }
         await createMutation.mutateAsync({
           id,
           employee: { ...identity, nombre: identity.nombre.trim(), apellido: identity.apellido.trim(), email: identity.email.trim(), dni: identity.dni.trim(), contrasena },
         })
         setValues(getValues(null))
+        setVisible({})
         onSaved('El empleado se creó correctamente.')
       }
     } catch (error) {
@@ -80,7 +85,7 @@ export default function OwnerBusinessEmployeeForm({ id, employee, onCancel, onSa
     }
   }
 
-  const formFields = editing ? fields : [...fields, ['contrasena', 'Contraseña', 'password', undefined]]
+  const formFields = editing ? fields : [...fields, ['contrasena', 'Contraseña', 'password', undefined], ['confirmarContrasena', 'Confirmar contraseña', 'password', undefined]]
 
   return <form className="owner-form owner-employee-form" onSubmit={handleSubmit} noValidate>
     <div className="owner-form-grid">
@@ -88,7 +93,7 @@ export default function OwnerBusinessEmployeeForm({ id, employee, onCancel, onSa
         const errorId = `employee-${id}-${employee?.empleadoId || 'new'}-${name}-error`
         return <label className="owner-form-field" htmlFor={errorId.replace('-error', '')} key={name}>
           <span>{label}{editing || name !== 'contrasena' ? ' *' : ' *'}</span>
-          <input id={errorId.replace('-error', '')} name={name} type={type} value={values[name]} onChange={changeField} maxLength={maxLength} required autoComplete={name === 'contrasena' ? 'new-password' : undefined} inputMode={name === 'dni' ? 'numeric' : undefined} aria-invalid={Boolean(fieldErrors[name])} aria-describedby={fieldErrors[name] ? errorId : undefined} />
+          {type === 'password' ? <span className="owner-password-input-wrap"><input id={errorId.replace('-error', '')} name={name} type={visible[name] ? 'text' : 'password'} value={values[name]} onChange={changeField} required autoComplete="new-password" aria-invalid={Boolean(fieldErrors[name])} aria-describedby={fieldErrors[name] ? errorId : undefined} /><button type="button" className="owner-password-visibility" onClick={() => setVisible((current) => ({ ...current, [name]: !current[name] }))} aria-label={`${visible[name] ? 'Ocultar' : 'Mostrar'} ${label.toLowerCase()}`} aria-pressed={Boolean(visible[name])} disabled={mutation.isPending}>{visible[name] ? <EyeOff size={17} /> : <Eye size={17} />}</button></span> : <input id={errorId.replace('-error', '')} name={name} type={type} value={values[name]} onChange={changeField} maxLength={maxLength} required inputMode={name === 'dni' ? 'numeric' : undefined} aria-invalid={Boolean(fieldErrors[name])} aria-describedby={fieldErrors[name] ? errorId : undefined} />}
           {fieldErrors[name] && <small id={errorId} className="owner-field-error">{fieldErrors[name]}</small>}
         </label>
       })}
