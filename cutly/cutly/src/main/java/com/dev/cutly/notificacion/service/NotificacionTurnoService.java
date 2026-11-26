@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -36,7 +37,7 @@ public class NotificacionTurnoService {
                         + " para el servicio " + turno.getServicio().getNombre() + ".", "turno-asignado");
     }
 
-    /** Notifica al OWNER cuando un empleado completa un turno desde su módulo. */
+    /** Notifica al OWNER cuando un empleado registra un turno desde su módulo. */
     public void notificarTurnoCreadoPorEmpleado(Turno turno) {
         if (turno.getEmpleado() == null) return;
         String empleado = turno.getEmpleado().getUsuario().getNombre() + " "
@@ -55,15 +56,7 @@ public class NotificacionTurnoService {
     public void notificarCambioEstado(Turno turno, TurnoStatus anterior, TurnoStatus nuevo, Usuario actor) {
         if (anterior == nuevo) return;
         String event = "TURNO_" + nuevo.name();
-        if (nuevo == TurnoStatus.COMPLETED && turno.getEmpleado() != null && actor != null
-                && actor.getUsuarioId().equals(turno.getEmpleado().getUsuario().getUsuarioId())) {
-            String empleado = actor.getNombre() + " " + actor.getApellido();
-            crear(turno, turno.getNegocio().getOwner(), "TURNO_COMPLETADO_POR_EMPLEADO",
-                    "Turno completado por empleado",
-                    empleado + " completó el turno #" + turno.getTurnoId() + " de " + nombreCliente(turno) + " el " + fecha(turno)
-                            + " para el servicio " + turno.getServicio().getNombre() + ".",
-                    "completado-por-empleado");
-        }
+        notificarAccionEmpleado(turno, nuevo, actor);
         boolean actorEsCliente = actor != null && turno.getCliente() != null
                 && actor.getUsuarioId().equals(turno.getCliente().getUsuarioId());
         if (turno.getCliente() != null && !actorEsCliente) {
@@ -85,6 +78,53 @@ public class NotificacionTurnoService {
         }
     }
 
+    private void notificarAccionEmpleado(Turno turno, TurnoStatus nuevo, Usuario actor) {
+        if (actor == null || actor.getUsuarioId() == null || turno.getEmpleado() == null
+                || !Objects.equals(actor.getUsuarioId(), turno.getEmpleado().getUsuario().getUsuarioId())) return;
+
+        String tipo;
+        String titulo;
+        String accion;
+        String evento;
+        switch (nuevo) {
+            case IN_PROGRESS -> {
+                tipo = "TURNO_INICIADO_POR_EMPLEADO";
+                titulo = "Turno iniciado por empleado";
+                accion = "inició un turno";
+                evento = "iniciado-por-empleado";
+            }
+            case COMPLETED -> {
+                tipo = "TURNO_COMPLETADO_POR_EMPLEADO";
+                titulo = "Turno completado por empleado";
+                accion = "completó un turno";
+                evento = "completado-por-empleado";
+            }
+            case CANCELLED -> {
+                tipo = "TURNO_CANCELADO_POR_EMPLEADO";
+                titulo = "Turno cancelado por empleado";
+                accion = "canceló un turno";
+                evento = "cancelado-por-empleado";
+            }
+            case NO_SHOW -> {
+                tipo = "TURNO_AUSENCIA_MARCADA_POR_EMPLEADO";
+                titulo = "Ausencia marcada por empleado";
+                accion = "marcó la ausencia del cliente en un turno";
+                evento = "ausencia-marcada-por-empleado";
+            }
+            default -> { return; }
+        }
+
+        String mensaje = String.join("\n",
+                "Empleado: " + nombreCompleto(actor),
+                "Acción: " + accion,
+                "Turno: #" + turno.getTurnoId(),
+                "Cliente: " + nombreCliente(turno),
+                "Servicio: " + turno.getServicio().getNombre(),
+                "Fecha y hora: " + turno.getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy - HH:mm"))
+        );
+        crear(turno, turno.getNegocio().getOwner(), tipo, titulo, mensaje, evento);
+    }
+
     private void crear(Turno turno, Usuario destinatario, String tipo, String titulo, String mensaje, String evento) {
         if (destinatario == null) return;
         String key = "turno:" + turno.getTurnoId() + ":" + evento + ":usuario:" + destinatario.getUsuarioId();
@@ -100,5 +140,6 @@ public class NotificacionTurnoService {
         return turno.getCliente() != null ? turno.getCliente().getNombre() + " " + turno.getCliente().getApellido()
                 : turno.getClienteLocal().getNombre() + " " + turno.getClienteLocal().getApellido();
     }
+    private String nombreCompleto(Usuario usuario) { return usuario.getNombre() + " " + usuario.getApellido(); }
     private String fecha(Turno turno) { return turno.getFechaHoraInicio().format(FECHA_HORA_FORMATTER); }
 }

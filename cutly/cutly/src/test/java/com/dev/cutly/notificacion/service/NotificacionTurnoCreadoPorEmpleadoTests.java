@@ -79,6 +79,42 @@ class NotificacionTurnoCreadoPorEmpleadoTests {
         org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Eva Empleado"));
         org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("turno #50"));
         org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Ana Cliente"));
+        org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Servicio: Corte"));
+        org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Fecha y hora: 02/01/2030 - 10:00"));
+    }
+
+    @Test
+    void notificaAlOwnerLasOtrasAccionesDelEmpleadoConLosDatosDelTurno() {
+        Usuario owner = usuario(1L, "Olga", "Owner");
+        Usuario empleadoUsuario = usuario(2L, "Eva", "Empleado");
+        Negocio negocio = new Negocio(); negocio.setNegocioId(8L); negocio.setOwner(owner);
+        Empleado empleado = new Empleado(); empleado.setUsuario(empleadoUsuario);
+        ClienteLocal cliente = new ClienteLocal(); cliente.setNombre("Ana"); cliente.setApellido("Cliente");
+        Servicio servicio = new Servicio(); servicio.setNombre("Corte");
+        Turno turno = new Turno(); turno.setTurnoId(50L); turno.setNegocio(negocio); turno.setEmpleado(empleado);
+        turno.setClienteLocal(cliente); turno.setServicio(servicio);
+        turno.setFechaHoraInicio(LocalDateTime.of(2030, 1, 2, 10, 0));
+        TurnoStatus[] estados = {TurnoStatus.IN_PROGRESS, TurnoStatus.CANCELLED, TurnoStatus.NO_SHOW};
+
+        for (TurnoStatus estado : estados) {
+            service.notificarCambioEstado(turno, TurnoStatus.CONFIRMED, estado, empleadoUsuario);
+        }
+
+        ArgumentCaptor<Notificacion> captor = ArgumentCaptor.forClass(Notificacion.class);
+        verify(repository, times(3)).save(captor.capture());
+        assertEquals(java.util.List.of(
+                        "TURNO_INICIADO_POR_EMPLEADO",
+                        "TURNO_CANCELADO_POR_EMPLEADO",
+                        "TURNO_AUSENCIA_MARCADA_POR_EMPLEADO"),
+                captor.getAllValues().stream().map(Notificacion::getTipoEvento).toList());
+        for (Notificacion notificacion : captor.getAllValues()) {
+            assertEquals(owner, notificacion.getUsuario());
+            org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Empleado: Eva Empleado"));
+            org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Cliente: Ana Cliente"));
+            org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Servicio: Corte"));
+            org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Turno: #50"));
+            org.junit.jupiter.api.Assertions.assertTrue(notificacion.getMensaje().contains("Fecha y hora: 02/01/2030 - 10:00"));
+        }
     }
 
     @Test

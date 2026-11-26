@@ -19,6 +19,13 @@
 .owner-notification-title h2{min-width:0;color:#3b4938;font-size:12px;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
 .owner-notification-title>span{flex:none;padding:3px 7px;border-radius:99px;background:#eaf2e7;color:#55764e;font-size:8px;font-weight:750}
 .owner-notification-copy>p{color:#727e6e;overflow-wrap:anywhere;white-space:pre-wrap}
+.owner-notification-details{display:grid;gap:10px;min-width:0;padding-top:2px}
+.owner-notification-details .owner-notification-action{margin:0;color:#697563;font-size:12px;line-height:1.55}
+.owner-notification-details .owner-notification-action strong{color:#354631;font-weight:750}
+.owner-notification-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px;margin:0}
+.owner-notification-details dl>div{display:grid;gap:3px;min-width:0}
+.owner-notification-details dt{color:#92998e;font-size:9px;font-weight:650;letter-spacing:.02em}
+.owner-notification-details dd{margin:0;color:#455541;font-size:11px;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
 .owner-notification-copy time{color:#92998e;font-size:9px;font-variant-numeric:tabular-nums}
 .owner-notification-read{flex:none;align-self:center;white-space:nowrap}
 .owner-notifications-state{display:flex;align-items:flex-start;flex-direction:column;gap:9px;padding:18px;border:1px solid #e4eae1;border-radius:12px;background:#fff;color:#52634e;font-size:11px}
@@ -32,4 +39,5 @@
 .owner-notifications-spinner{animation:owner-notifications-spin .9s linear infinite}
 @keyframes owner-notifications-spin{to{transform:rotate(360deg)}}
 @media(max-width:600px){.owner-notifications-heading{align-items:flex-start;margin-bottom:20px}.owner-notifications-heading h1{font-size:32px;letter-spacing:-1.2px}.owner-notifications-actions{flex-direction:column;align-items:flex-end;gap:7px}.owner-notifications-actions .owner-notifications-button{max-width:180px;white-space:normal;text-align:center}.owner-notification-card{flex-wrap:wrap;gap:11px;padding:14px 12px}.owner-notification-copy{flex-basis:calc(100% - 23px)}.owner-notification-read{margin-left:19px}.owner-notifications-pagination{gap:7px}.owner-notifications-pagination .owner-notifications-button{padding:7px;font-size:9px}}
+@media(max-width:420px){.owner-notification-details dl{grid-template-columns:minmax(0,1fr);gap:8px}}
 @media(prefers-reduced-motion:reduce){.owner-notifications-spinner{animation:none}}

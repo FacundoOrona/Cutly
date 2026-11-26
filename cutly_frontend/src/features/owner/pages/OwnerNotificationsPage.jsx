@@ -16,6 +16,23 @@ function formatNotificationDate(value) {
   return new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
 
+const EMPLOYEE_TURN_EVENT_TYPES = new Set([
+  'TURNO_INICIADO_POR_EMPLEADO',
+  'TURNO_COMPLETADO_POR_EMPLEADO',
+  'TURNO_CANCELADO_POR_EMPLEADO',
+  'TURNO_AUSENCIA_MARCADA_POR_EMPLEADO',
+])
+
+function getEmployeeTurnDetails(notification) {
+  if (!EMPLOYEE_TURN_EVENT_TYPES.has(notification.tipoEvento)) return null
+  const values = Object.fromEntries(notification.mensaje.split('\n').map((line) => {
+    const separator = line.indexOf(': ')
+    return separator < 0 ? ['', ''] : [line.slice(0, separator), line.slice(separator + 2)]
+  }))
+  if (!values.Empleado || !values['Acción'] || !values.Turno || !values.Cliente || !values.Servicio || !values['Fecha y hora']) return null
+  return values
+}
+
 export default function OwnerNotificationsPage() {
   const [page, setPage] = useState(0)
   const notificationsQuery = useOwnerNotifications(page)
@@ -52,10 +69,20 @@ export default function OwnerNotificationsPage() {
               {notifications.map((notification) => {
                 const unread = notification.leida === false
                 const marking = markReadMutation.isPending && String(markReadMutation.variables) === String(notification.notificacionId)
+                const employeeTurnDetails = getEmployeeTurnDetails(notification)
                 return <li key={notification.notificacionId} className={`owner-notification-card${unread ? ' is-unread' : ''}`}>
                   <span className="owner-notification-indicator" aria-label={unread ? 'No leída' : 'Leída'} />
                   <div className="owner-notification-copy"><div className="owner-notification-title"><h2>{notification.titulo}</h2>{unread && <span>Nueva</span>}</div>
-                    <p>{notification.mensaje}</p><time>{formatNotificationDate(notification.fechaCreacion)}</time>
+                    {employeeTurnDetails ? <div className="owner-notification-details">
+                      <p className="owner-notification-action"><strong>{employeeTurnDetails.Empleado}</strong> {employeeTurnDetails['Acción']}.</p>
+                      <dl>
+                        <div><dt>Cliente</dt><dd>{employeeTurnDetails.Cliente}</dd></div>
+                        <div><dt>Servicio</dt><dd>{employeeTurnDetails.Servicio}</dd></div>
+                        <div><dt>Turno</dt><dd>{employeeTurnDetails.Turno}</dd></div>
+                        <div><dt>Fecha y hora</dt><dd>{employeeTurnDetails['Fecha y hora']}</dd></div>
+                      </dl>
+                    </div> : <p>{notification.mensaje}</p>}
+                    <time>{formatNotificationDate(notification.fechaCreacion)}</time>
                   </div>
                   {unread && <button type="button" className="owner-notifications-button owner-notification-read" disabled={isUpdating} aria-label={`Marcar como leída: ${notification.titulo}`} onClick={() => markReadMutation.mutate(notification.notificacionId)}>
                     {marking ? <RefreshCw size={14} className="owner-notifications-spinner" /> : <Check size={15} />}{marking ? 'Marcando…' : 'Marcar leída'}
