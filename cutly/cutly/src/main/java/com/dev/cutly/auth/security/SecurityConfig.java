@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -21,6 +22,16 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
+            JwtAuthenticationFilter jwtAuthFilter
+    ) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,

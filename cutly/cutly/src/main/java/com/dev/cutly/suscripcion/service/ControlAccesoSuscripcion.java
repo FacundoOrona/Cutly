@@ -12,11 +12,13 @@ import com.dev.cutly.usuario.repository.UsuarioRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.Set;
 
 @Service
+@Transactional(readOnly = true)
 public class ControlAccesoSuscripcion {
     private final UsuarioRepository usuarioRepository;
     private final NegocioRepository negocioRepository;
