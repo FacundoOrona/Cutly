@@ -21,6 +21,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,9 +30,11 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class EmpleadoTurnoServiceTests {
@@ -110,5 +114,77 @@ class EmpleadoTurnoServiceTests {
         assertEquals(TurnoStatus.COMPLETED, turno.getStatus());
         assertEquals(new BigDecimal("1250.00"), turno.getPrecio());
         verify(turnoRepository).save(turno);
+    }
+
+    @Test
+    void iniciarTurnoPropioConfirmadoLoPasaAEnCursoYNotifica() {
+        Turno turno = turno(TurnoStatus.CONFIRMED);
+        when(turnoRepository.findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.of(turno));
+        when(turnoRepository.save(turno)).thenReturn(turno);
+
+        EmpleadoTurnoDto result = service.iniciar(21L, EMAIL);
+
+        assertEquals(TurnoStatus.IN_PROGRESS, turno.getStatus());
+        assertEquals(TurnoStatus.IN_PROGRESS, result.status());
+        verify(turnoRepository).findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID);
+        verify(turnoRepository).save(turno);
+        verify(notificacionTurnoService).notificarCambioEstado(turno, TurnoStatus.CONFIRMED, TurnoStatus.IN_PROGRESS, empleado.getUsuario());
+    }
+
+    @Test
+    void iniciarTurnoYaEnCursoEsIdempotenteYNoNotificaDeNuevo() {
+        Turno turno = turno(TurnoStatus.IN_PROGRESS);
+        when(turnoRepository.findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.of(turno));
+
+        EmpleadoTurnoDto result = service.iniciar(21L, EMAIL);
+
+        assertEquals(TurnoStatus.IN_PROGRESS, result.status());
+        verify(turnoRepository, never()).save(any(Turno.class));
+        verify(notificacionTurnoService, never()).notificarCambioEstado(any(), any(), any(), any());
+    }
+
+    @Test
+    void iniciarTurnoPendienteDevuelveConflicto() {
+        Turno turno = turno(TurnoStatus.PENDING);
+        when(turnoRepository.findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.of(turno));
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class, () -> service.iniciar(21L, EMAIL));
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(turnoRepository, never()).save(any(Turno.class));
+        verify(notificacionTurnoService, never()).notificarCambioEstado(any(), any(), any(), any());
+    }
+
+    @Test
+    void iniciarTurnoDeOtroEmpleadoNoLoEncuentra() {
+        when(turnoRepository.findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.empty());
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class, () -> service.iniciar(21L, EMAIL));
+
+        assertEquals(HttpStatus.NOT_FOUND, error.getStatusCode());
+        verify(turnoRepository, never()).save(any(Turno.class));
+        verify(notificacionTurnoService, never()).notificarCambioEstado(any(), any(), any(), any());
+    }
+
+    private Turno turno(TurnoStatus status) {
+        Negocio negocio = new Negocio();
+        negocio.setNegocioId(2L);
+        negocio.setNombre("Negocio");
+        empleado.setNegocio(negocio);
+        ClienteLocal cliente = new ClienteLocal();
+        cliente.setClienteLocalId(31L);
+        cliente.setNombre("Cliente");
+        cliente.setApellido("Local");
+        Servicio servicio = new Servicio();
+        servicio.setServicioId(7L);
+        servicio.setNombre("Corte");
+        Turno turno = new Turno();
+        turno.setTurnoId(21L);
+        turno.setNegocio(negocio);
+        turno.setClienteLocal(cliente);
+        turno.setEmpleado(empleado);
+        turno.setServicio(servicio);
+        turno.setStatus(status);
+        return turno;
     }
 }

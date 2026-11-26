@@ -114,6 +114,11 @@ export async function completeEmployeeAppointment(turnoId) {
   return data
 }
 
+export async function startEmployeeAppointment(turnoId) {
+  const { data } = await apiClient.patch(`/api/empleado/turnos/${turnoId}/en-curso`)
+  return data
+}
+
 export async function markEmployeeAppointmentNoShow(turnoId) {
   const { data } = await apiClient.patch(`/api/empleado/turnos/${turnoId}/no-show`)
   return data
@@ -124,6 +129,7 @@ export async function updateEmployeeAppointmentStatus({ turnoId, action }) {
     confirmar: confirmEmployeeAppointment,
     cancelar: cancelEmployeeAppointment,
     completar: completeEmployeeAppointment,
+    iniciar: startEmployeeAppointment,
     'no-show': markEmployeeAppointmentNoShow,
   }
   const update = actions[action]

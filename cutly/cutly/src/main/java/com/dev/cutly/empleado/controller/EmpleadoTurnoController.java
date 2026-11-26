@@ -63,6 +63,11 @@ public class EmpleadoTurnoController {
         return actualizar(turnoId, service::completar, "No se pudo completar el turno");
     }
 
+    @PatchMapping("/{turnoId}/en-curso")
+    public ResponseEntity<?> iniciar(@PathVariable Long turnoId) {
+        return actualizar(turnoId, service::iniciar, "No se pudo iniciar el turno");
+    }
+
     @PatchMapping("/{turnoId}/no-show")
     public ResponseEntity<?> noShow(@PathVariable Long turnoId) {
         return actualizar(turnoId, service::noShow, "No se pudo registrar la ausencia del cliente");

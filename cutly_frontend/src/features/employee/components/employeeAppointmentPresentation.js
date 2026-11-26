@@ -1,6 +1,6 @@
 export const EMPLOYEE_APPOINTMENT_ACTIONS = {
   PENDING: ['confirmar', 'cancelar'],
-  CONFIRMED: ['cancelar', 'completar', 'no-show'],
+  CONFIRMED: ['iniciar', 'cancelar', 'completar', 'no-show'],
   IN_PROGRESS: ['cancelar', 'completar'],
 }
 

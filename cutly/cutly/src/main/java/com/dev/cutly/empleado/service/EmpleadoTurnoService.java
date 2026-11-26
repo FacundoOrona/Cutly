@@ -82,13 +82,22 @@ public class EmpleadoTurnoService {
         return cambiarEstado(turnoId, emailEmpleado, TurnoStatus.COMPLETED);
     }
 
+    public EmpleadoTurnoDto iniciar(Long turnoId, String emailEmpleado) {
+        return cambiarEstado(turnoId, emailEmpleado, TurnoStatus.IN_PROGRESS, true);
+    }
+
     public EmpleadoTurnoDto noShow(Long turnoId, String emailEmpleado) {
         return cambiarEstado(turnoId, emailEmpleado, TurnoStatus.NO_SHOW);
     }
 
     private EmpleadoTurnoDto cambiarEstado(Long turnoId, String emailEmpleado, TurnoStatus destino) {
+        return cambiarEstado(turnoId, emailEmpleado, destino, false);
+    }
+
+    private EmpleadoTurnoDto cambiarEstado(Long turnoId, String emailEmpleado, TurnoStatus destino, boolean idempotente) {
         Empleado empleado = obtenerEmpleadoActivo(emailEmpleado);
         Turno turno = buscarPropio(turnoId, empleado.getEmpleadoId());
+        if (idempotente && turno.getStatus() == destino) return aDto(turno);
         if (!transicionValida(turno.getStatus(), destino)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "No se puede cambiar el estado del turno de " + turno.getStatus() + " a " + destino);
@@ -107,6 +116,7 @@ public class EmpleadoTurnoService {
                     || actual == TurnoStatus.IN_PROGRESS;
             case COMPLETED -> actual == TurnoStatus.CONFIRMED || actual == TurnoStatus.IN_PROGRESS;
             case NO_SHOW -> actual == TurnoStatus.CONFIRMED;
+            case IN_PROGRESS -> actual == TurnoStatus.CONFIRMED;
             default -> false;
         };
     }

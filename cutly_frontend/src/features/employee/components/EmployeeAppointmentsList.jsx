@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Ban, Check, CheckCircle2, LoaderCircle, RefreshCw, UserRoundX, X } from 'lucide-react'
+import { Ban, Check, CheckCircle2, LoaderCircle, Play, RefreshCw, UserRoundX, X } from 'lucide-react'
 import { getEmployeeAppointmentActionErrorMessage } from '../api/employeeApi.js'
 import { useEmployeeAppointmentAction } from '../hooks/useEmployeeDashboard.js'
 import { EMPLOYEE_APPOINTMENT_ACTIONS, employeeClientName, employeeStatusLabel } from './employeeAppointmentPresentation.js'
 import '../pages/EmployeeHomePage.css'
 
 const ACTION_DETAILS = {
+  iniciar: { label: 'Iniciar', icon: Play, style: 'is-primary', success: 'Turno iniciado.' },
   confirmar: { label: 'Confirmar', icon: CheckCircle2, style: 'is-primary', success: 'Turno confirmado.' },
   cancelar: { label: 'Cancelar', icon: Ban, style: 'is-danger', success: 'Turno cancelado.' },
   completar: { label: 'Completar', icon: Check, style: 'is-secondary', success: 'Turno completado.' },
@@ -53,9 +54,21 @@ export default function EmployeeAppointmentsList({ turns, agenda = false }) {
   const [actionFeedback, setActionFeedback] = useState({})
   const [confirmation, setConfirmation] = useState(null)
   const pendingTurnIdsRef = useRef(new Set())
+  const successTimeoutsRef = useRef(new Map())
   const actionMutation = useEmployeeAppointmentAction()
   const confirmationTurnId = confirmation ? String(confirmation.turn.turnoId) : ''
   const confirmationIsProcessing = confirmationTurnId ? pendingTurnIds.has(confirmationTurnId) : false
+
+  function clearSuccessTimeout(turnId) {
+    const timeout = successTimeoutsRef.current.get(turnId)
+    if (timeout !== undefined) window.clearTimeout(timeout)
+    successTimeoutsRef.current.delete(turnId)
+  }
+
+  useEffect(() => () => {
+    successTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout))
+    successTimeoutsRef.current.clear()
+  }, [])
 
   useEffect(() => {
     if (!confirmation) return undefined
@@ -72,10 +85,25 @@ export default function EmployeeAppointmentsList({ turns, agenda = false }) {
     pendingTurnIdsRef.current.add(turnId)
     setPendingTurnIds(new Set(pendingTurnIdsRef.current))
     setPendingActions((current) => ({ ...current, [turnId]: action }))
+    clearSuccessTimeout(turnId)
     setActionFeedback((current) => { const next = { ...current }; delete next[turnId]; return next })
     try {
       await actionMutation.mutateAsync({ turnoId: turn.turnoId, action })
-      setActionFeedback((current) => ({ ...current, [turnId]: { type: 'success', message: ACTION_DETAILS[action].success } }))
+      const successFeedback = { type: 'success', message: ACTION_DETAILS[action].success }
+      setActionFeedback((current) => ({ ...current, [turnId]: successFeedback }))
+      if (action === 'iniciar') {
+        const timeout = window.setTimeout(() => {
+          if (successTimeoutsRef.current.get(turnId) !== timeout) return
+          successTimeoutsRef.current.delete(turnId)
+          setActionFeedback((current) => {
+            if (current[turnId] !== successFeedback) return current
+            const next = { ...current }
+            delete next[turnId]
+            return next
+          })
+        }, 3000)
+        successTimeoutsRef.current.set(turnId, timeout)
+      }
     } catch (error) {
       const status = error.response?.status
       setActionFeedback((current) => ({ ...current, [turnId]: { type: 'error', message: getEmployeeAppointmentActionErrorMessage(error), action, retryable: ![400, 401, 403, 404, 409].includes(status) } }))
@@ -92,12 +120,18 @@ export default function EmployeeAppointmentsList({ turns, agenda = false }) {
     else void performAction(turn, action)
   }
 
+  function dismissFeedback(turnId) {
+    const key = String(turnId)
+    clearSuccessTimeout(key)
+    setActionFeedback((current) => { const next = { ...current }; delete next[key]; return next })
+  }
+
   return <>
     <ul className={`employee-appointments-list${agenda ? ' employee-agenda-list' : ''}`}>{turns.map((turn) => {
       const turnId = String(turn.turnoId)
       const feedback = actionFeedback[turnId]
       return <AppointmentRow key={turn.turnoId} turn={turn} agenda={agenda} isProcessing={pendingTurnIds.has(turnId)} activeAction={pendingActions[turnId]} feedback={feedback} onAction={requestAction} onRetry={performAction}
-        onDismissFeedback={(id) => setActionFeedback((current) => { const next = { ...current }; delete next[String(id)]; return next })} />
+        onDismissFeedback={dismissFeedback} />
     })}</ul>
     {confirmation && <div className="employee-confirm-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !confirmationIsProcessing) setConfirmation(null) }}>
       <section className="employee-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="employee-confirm-title" aria-describedby="employee-confirm-description">

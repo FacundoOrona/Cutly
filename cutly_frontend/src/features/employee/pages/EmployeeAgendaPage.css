@@ -14,7 +14,7 @@
 .employee-agenda-filter select{min-height:39px;padding:0 30px 0 10px;border:1px solid #dfe6dc;border-radius:9px;background:#fff;color:#394837;font-size:11px;letter-spacing:normal}
 .employee-agenda-results{margin-top:23px}
 .employee-agenda-list{display:grid;gap:8px}
-.employee-appointment-row.employee-agenda-row,.employee-appointment-row.employee-agenda-row.has-actions{grid-template-columns:105px minmax(0,1fr) minmax(280px,330px) 110px;column-gap:14px;align-items:center}
+.employee-appointment-row.employee-agenda-row,.employee-appointment-row.employee-agenda-row.has-actions{grid-template-columns:105px minmax(0,1fr) minmax(280px,380px) 110px;column-gap:14px;align-items:center}
 .employee-agenda-row .employee-appointment-time{grid-column:1;grid-row:1}
 .employee-agenda-row .employee-appointment-details{grid-column:2;grid-row:1}
 .employee-agenda-row .employee-appointment-actions{grid-column:3;grid-row:1}
