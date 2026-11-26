@@ -2,6 +2,7 @@ package com.dev.cutly.owner.service;
 
 import com.dev.cutly.cliente.entity.ClienteLocal;
 import com.dev.cutly.cliente.repository.ClienteLocalRepository;
+import com.dev.cutly.cliente.service.ClienteLocalService;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
@@ -41,7 +42,8 @@ class OwnerClienteLocalServiceTests {
 
     @BeforeEach
     void setUp() {
-        service = new OwnerClienteLocalService(clienteLocalRepository, ownerNegocioService);
+        service = new OwnerClienteLocalService(clienteLocalRepository, ownerNegocioService,
+                new ClienteLocalService(clienteLocalRepository));
         negocio = new Negocio();
         negocio.setNegocioId(NEGOCIO_ID);
         lenient().when(ownerNegocioService.obtenerEntidadNegocioPropio(NEGOCIO_ID, EMAIL_OWNER))

@@ -2,6 +2,7 @@ package com.dev.cutly.owner.service;
 
 import com.dev.cutly.cliente.entity.ClienteLocal;
 import com.dev.cutly.cliente.repository.ClienteLocalRepository;
+import com.dev.cutly.cliente.service.ClienteLocalService;
 import com.dev.cutly.cliente.service.DniLocalNormalizer;
 import com.dev.cutly.negocio.entity.Negocio;
 import com.dev.cutly.owner.dto.cliente.ClienteLocalDto;
@@ -28,13 +29,16 @@ public class OwnerClienteLocalService {
 
     private final ClienteLocalRepository clienteLocalRepository;
     private final OwnerNegocioService ownerNegocioService;
+    private final ClienteLocalService clienteLocalService;
 
     public OwnerClienteLocalService(
             ClienteLocalRepository clienteLocalRepository,
-            OwnerNegocioService ownerNegocioService
+            OwnerNegocioService ownerNegocioService,
+            ClienteLocalService clienteLocalService
     ) {
         this.clienteLocalRepository = clienteLocalRepository;
         this.ownerNegocioService = ownerNegocioService;
+        this.clienteLocalService = clienteLocalService;
     }
 
     @Transactional(readOnly = true)
@@ -93,27 +97,8 @@ public class OwnerClienteLocalService {
             String emailOwner
     ) {
         Negocio negocio = ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
-        String dniNormalizado = DniLocalNormalizer.normalizar(request.dni());
-        if (clienteLocalRepository.existsByNegocio_NegocioIdAndDniNormalizado(negocioId, dniNormalizado)) {
-            throw dniDuplicado();
-        }
-
-        ClienteLocal cliente = new ClienteLocal();
-        cliente.setNegocio(negocio);
-        cliente.setNombre(request.nombre().strip());
-        cliente.setApellido(request.apellido().strip());
-        cliente.setDniPresentado(request.dni());
-        cliente.setDniNormalizado(dniNormalizado);
-        cliente.setTelefono(request.telefono().strip());
-
-        try {
-            return aDto(clienteLocalRepository.saveAndFlush(cliente));
-        } catch (DataIntegrityViolationException exception) {
-            if (esDniDuplicado(exception)) {
-                throw dniDuplicado();
-            }
-            throw exception;
-        }
+        return aDto(clienteLocalService.registrar(negocio, request.nombre(), request.apellido(),
+                request.dni(), request.telefono()));
     }
 
     public ClienteLocalDto actualizar(

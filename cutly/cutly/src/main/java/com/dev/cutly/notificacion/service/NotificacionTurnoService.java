@@ -36,6 +36,16 @@ public class NotificacionTurnoService {
                         + " para el servicio " + turno.getServicio().getNombre() + ".", "turno-asignado");
     }
 
+    /** Notifica al OWNER cuando un empleado completa un turno desde su módulo. */
+    public void notificarTurnoCreadoPorEmpleado(Turno turno) {
+        if (turno.getEmpleado() == null) return;
+        String empleado = turno.getEmpleado().getUsuario().getNombre() + " "
+                + turno.getEmpleado().getUsuario().getApellido();
+        crear(turno, turno.getNegocio().getOwner(), "TURNO_CREADO_POR_EMPLEADO", "Turno creado por empleado",
+                empleado + " registró un turno para " + nombreCliente(turno) + " el " + fecha(turno)
+                        + " para el servicio " + turno.getServicio().getNombre() + ".", "creado-por-empleado");
+    }
+
     public void notificarTurnoProximo(Turno turno) {
         crear(turno, turno.getNegocio().getOwner(), "TURNO_PROXIMO", "Turno próximo",
                 "El turno de " + nombreCliente(turno) + " comienza a las " + fecha(turno)
@@ -45,6 +55,15 @@ public class NotificacionTurnoService {
     public void notificarCambioEstado(Turno turno, TurnoStatus anterior, TurnoStatus nuevo, Usuario actor) {
         if (anterior == nuevo) return;
         String event = "TURNO_" + nuevo.name();
+        if (nuevo == TurnoStatus.COMPLETED && turno.getEmpleado() != null && actor != null
+                && actor.getUsuarioId().equals(turno.getEmpleado().getUsuario().getUsuarioId())) {
+            String empleado = actor.getNombre() + " " + actor.getApellido();
+            crear(turno, turno.getNegocio().getOwner(), "TURNO_COMPLETADO_POR_EMPLEADO",
+                    "Turno completado por empleado",
+                    empleado + " completó el turno #" + turno.getTurnoId() + " de " + nombreCliente(turno) + " el " + fecha(turno)
+                            + " para el servicio " + turno.getServicio().getNombre() + ".",
+                    "completado-por-empleado");
+        }
         boolean actorEsCliente = actor != null && turno.getCliente() != null
                 && actor.getUsuarioId().equals(turno.getCliente().getUsuarioId());
         if (turno.getCliente() != null && !actorEsCliente) {

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, RefreshCw, X } from 'lucide-react'
 import { useEmployeeAppointments } from '../hooks/useEmployeeDashboard.js'
 import EmployeeAppointmentsList from '../components/EmployeeAppointmentsList.jsx'
+import EmployeeAppointmentCreateForm from '../components/EmployeeAppointmentCreateForm.jsx'
 import { employeeStatusLabel } from '../components/employeeAppointmentPresentation.js'
 import './EmployeeHomePage.css'
 import './EmployeeAgendaPage.css'
@@ -33,6 +34,9 @@ export default function EmployeeAgendaPage() {
   const today = localDateKey(new Date())
   const [fecha, setFecha] = useState(today)
   const [status, setStatus] = useState('')
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreatingTurno, setIsCreatingTurno] = useState(false)
+  const [creationNotice, setCreationNotice] = useState('')
   const appointmentsQuery = useEmployeeAppointments(fecha, status)
   const turns = useMemo(() => [...(appointmentsQuery.data ?? [])].sort((a, b) => new Date(a.fechaHoraInicio) - new Date(b.fechaHoraInicio) || a.turnoId - b.turnoId), [appointmentsQuery.data])
   const label = dateLabel(fecha)
@@ -42,8 +46,16 @@ export default function EmployeeAgendaPage() {
   return <section className="employee-dashboard employee-agenda-page" aria-labelledby="employee-agenda-title">
     <header className="employee-dashboard-heading employee-agenda-heading">
       <div><span className="eyebrow">MI ESPACIO</span><h1 id="employee-agenda-title">Agenda</h1><p className="employee-date">{formattedDate}</p></div>
-      <span className="employee-heading-icon"><CalendarDays size={21} /></span>
+      <div className="employee-agenda-heading-actions">
+        <button type="button" className="employee-action-button is-primary employee-new-turno-button" aria-expanded={showCreateForm} aria-controls={showCreateForm ? 'employee-create-turno-panel' : undefined} onClick={() => { setShowCreateForm((current) => !current); setCreationNotice('') }} disabled={isCreatingTurno}>
+          {showCreateForm ? <X size={15} /> : <Plus size={16} />}{showCreateForm ? 'Cerrar' : 'Nuevo turno'}
+        </button>
+        <span className="employee-heading-icon"><CalendarDays size={21} /></span>
+      </div>
     </header>
+
+    {creationNotice && <p className="employee-turno-created-notice" role="status"><span>{creationNotice}</span><button type="button" aria-label="Cerrar mensaje de éxito" onClick={() => setCreationNotice('')}><X size={15} /></button></p>}
+    {showCreateForm && <EmployeeAppointmentCreateForm onCancel={() => setShowCreateForm(false)} onPendingChange={setIsCreatingTurno} onCreated={() => { setCreationNotice('Turno creado correctamente.'); setShowCreateForm(false) }} />}
 
     <section className="employee-agenda-controls" aria-label="Controles de agenda">
       <div className="employee-agenda-date-controls">

@@ -94,6 +94,61 @@ export async function getEmployeeAppointments(fecha, status) {
   return data
 }
 
+export async function searchEmployeeLocalClients(query) {
+  const { data } = await apiClient.get('/api/empleado/clientes-locales', { params: { q: query } })
+  return data
+}
+
+export async function getEmployeeServices() {
+  const { data } = await apiClient.get('/api/empleado/perfil/servicios')
+  return data
+}
+
+export async function getEmployeeAvailability(fecha) {
+  const { data } = await apiClient.get('/api/empleado/horarios/disponibilidad', { params: { fecha } })
+  return data
+}
+
+export async function createEmployeeAppointment(request) {
+  const hasExistingClient = request?.clienteLocalId != null
+  const hasNewClient = request?.clienteNuevo != null
+  if (hasExistingClient === hasNewClient) throw new Error('Seleccioná un único cliente.')
+
+  const payload = {
+    servicioId: Number(request.servicioId),
+    fechaHoraInicio: request.fechaHoraInicio,
+  }
+  if (hasExistingClient) payload.clienteLocalId = Number(request.clienteLocalId)
+  else {
+    payload.clienteNuevo = {
+      nombre: request.clienteNuevo.nombre,
+      apellido: request.clienteNuevo.apellido,
+      dni: request.clienteNuevo.dni,
+      telefono: request.clienteNuevo.telefono,
+    }
+  }
+
+  const { data } = await apiClient.post('/api/empleado/turnos', payload)
+  return data
+}
+
+export function getEmployeeAppointmentCreateErrorMessage(error) {
+  const status = error.response?.status
+  const body = error.response?.data
+  const message = body?.mensaje || body?.message
+  if (status === 400) return message || 'Revisá los datos ingresados.'
+  if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
+  if (status === 403) return message || 'No tenés permiso para crear este turno.'
+  if (status === 404) return message || 'No encontramos el servicio, cliente o disponibilidad solicitada.'
+  if (status === 409) {
+    if (/horario|disponib/i.test(message || '')) return 'Ese horario ya no está disponible. Actualizamos la disponibilidad; elegí otro horario.'
+    return message || 'Ese horario ya no está disponible. Elegí otro horario.'
+  }
+  if (!error.response) return 'No pudimos conectar con el servidor. Revisá tu conexión e intentá de nuevo.'
+  if (status >= 500) return 'No pudimos crear el turno por un problema del servidor. Intentá más tarde.'
+  return message || 'No pudimos crear el turno. Intentá nuevamente.'
+}
+
 export async function getEmployeeAppointmentHistory(fecha, status) {
   const { data } = await apiClient.get('/api/empleado/turnos/historial', { params: { fecha: fecha || undefined, status: status || undefined } })
   return data

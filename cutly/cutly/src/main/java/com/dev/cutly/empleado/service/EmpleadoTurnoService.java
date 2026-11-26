@@ -2,11 +2,20 @@ package com.dev.cutly.empleado.service;
 
 import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
+import com.dev.cutly.empleado.dto.turno.CrearEmpleadoTurnoRequestDto;
+import com.dev.cutly.cliente.entity.ClienteLocal;
+import com.dev.cutly.cliente.repository.ClienteLocalRepository;
+import com.dev.cutly.cliente.service.ClienteLocalService;
+import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.empleado.dto.turno.EmpleadoTurnoDto;
+import com.dev.cutly.servicio.entity.Servicio;
+import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
+import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.enums.TipoClienteTurno;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.turno.service.TurnoHorarioValidator;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -17,6 +26,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -31,13 +41,86 @@ public class EmpleadoTurnoService {
     private final EmpleadoRepository empleadoRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotificacionTurnoService notificacionTurnoService;
+    private final ServicioRepository servicioRepository;
+    private final EmpleadoServiciorRepository empleadoServicioRepository;
+    private final ClienteLocalRepository clienteLocalRepository;
+    private final ClienteLocalService clienteLocalService;
+    private final TurnoHorarioValidator horarioValidator;
 
     public EmpleadoTurnoService(TurnoRepository turnoRepository, EmpleadoRepository empleadoRepository,
-                                UsuarioRepository usuarioRepository, NotificacionTurnoService notificacionTurnoService) {
+                                UsuarioRepository usuarioRepository, NotificacionTurnoService notificacionTurnoService,
+                                ServicioRepository servicioRepository, EmpleadoServiciorRepository empleadoServicioRepository,
+                                ClienteLocalRepository clienteLocalRepository, ClienteLocalService clienteLocalService,
+                                TurnoHorarioValidator horarioValidator) {
         this.turnoRepository = turnoRepository;
         this.empleadoRepository = empleadoRepository;
         this.usuarioRepository = usuarioRepository;
         this.notificacionTurnoService = notificacionTurnoService;
+        this.servicioRepository = servicioRepository;
+        this.empleadoServicioRepository = empleadoServicioRepository;
+        this.clienteLocalRepository = clienteLocalRepository;
+        this.clienteLocalService = clienteLocalService;
+        this.horarioValidator = horarioValidator;
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public EmpleadoTurnoDto crear(CrearEmpleadoTurnoRequestDto request, String emailEmpleado) {
+        Empleado empleado = obtenerEmpleadoActivo(emailEmpleado);
+        var negocio = empleado.getNegocio();
+        Long negocioId = negocio.getNegocioId();
+        if (negocio.getStatus() != NegocioStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el negocio activo solicitado");
+        }
+        if (request == null || (request.clienteLocalId() != null) == (request.clienteNuevo() != null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Debe indicar exactamente un cliente local existente o nuevo");
+        }
+        Servicio servicio = servicioRepository.findByServicioIdAndNegocio_NegocioId(request.servicioId(), negocioId)
+                .filter(Servicio::isActivo)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el servicio activo solicitado"));
+        if (servicio.getDuracionMinutos() == null || servicio.getDuracionMinutos() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La duración del servicio debe ser positiva");
+        }
+        ClienteLocal cliente = request.clienteLocalId() == null ? null
+                : clienteLocalRepository.findByClienteLocalIdAndNegocio_NegocioId(request.clienteLocalId(), negocioId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "No se encontró el cliente local solicitado"));
+
+        Empleado bloqueado = empleadoRepository.findWithLockingByEmpleadoId(empleado.getEmpleadoId())
+                .filter(Empleado::isActivo)
+                .filter(e -> e.getNegocio().getNegocioId().equals(negocioId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El empleado ya no está disponible"));
+        if (empleadoServicioRepository.findByEmpleado_EmpleadoIdAndServicio_ServicioId(
+                bloqueado.getEmpleadoId(), servicio.getServicioId()).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El empleado no está asignado al servicio solicitado");
+        }
+        var inicio = request.fechaHoraInicio();
+        if (inicio == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "La fecha y hora de inicio son obligatorias");
+        var fin = inicio.plusMinutes(servicio.getDuracionMinutos());
+        horarioValidator.validar(negocioId, inicio, fin);
+        if (!turnoRepository.findTurnosSolapadosPorEmpleado(bloqueado.getEmpleadoId(), inicio, fin).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El horario solicitado ya no está disponible");
+        }
+        if (cliente == null) {
+            var nuevo = request.clienteNuevo();
+            cliente = clienteLocalService.registrar(negocio, nuevo.nombre(), nuevo.apellido(), nuevo.dni(), nuevo.telefono());
+        }
+        Turno turno = new Turno();
+        turno.setFechaHoraInicio(inicio);
+        turno.setFechaHoraFin(fin);
+        turno.setStatus(TurnoStatus.CONFIRMED);
+        turno.setPrecio(servicio.getPrecio());
+        turno.setClienteLocal(cliente);
+        turno.setNegocio(negocio);
+        turno.setEmpleado(bloqueado);
+        turno.setServicio(servicio);
+        Turno guardado = turnoRepository.save(turno);
+        notificacionTurnoService.notificarTurnoCreadoPorEmpleado(guardado);
+        return aDto(guardado);
     }
 
     @Transactional(readOnly = true)

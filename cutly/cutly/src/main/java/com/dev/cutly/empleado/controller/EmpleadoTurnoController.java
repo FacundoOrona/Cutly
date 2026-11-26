@@ -2,6 +2,7 @@ package com.dev.cutly.empleado.controller;
 
 import com.dev.cutly.empleado.dto.perfil.EmpleadoErrorResponseDto;
 import com.dev.cutly.empleado.dto.turno.EmpleadoTurnoDto;
+import com.dev.cutly.empleado.dto.turno.CrearEmpleadoTurnoRequestDto;
 import com.dev.cutly.empleado.service.EmpleadoTurnoService;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import org.springframework.dao.DataAccessException;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -23,6 +25,18 @@ public class EmpleadoTurnoController {
 
     public EmpleadoTurnoController(EmpleadoTurnoService service) {
         this.service = service;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> crear(@Valid @RequestBody CrearEmpleadoTurnoRequestDto request) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(service.crear(request, emailEmpleadoAutenticado()));
+        } catch (ResponseStatusException e) {
+            return error(e);
+        } catch (DataAccessException e) {
+            return errorInterno("No se pudo crear el turno");
+        }
     }
 
     @GetMapping
