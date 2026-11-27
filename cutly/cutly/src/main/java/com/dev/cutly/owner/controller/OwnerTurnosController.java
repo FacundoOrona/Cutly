@@ -4,6 +4,9 @@ import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
 import com.dev.cutly.owner.dto.turno.OwnerTurnoDto;
 import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
+import com.dev.cutly.owner.dto.turno.CorregirPrecioHistoricoRequestDto;
+import com.dev.cutly.owner.dto.turno.OwnerRemuneracionTurnoDto;
+import com.dev.cutly.owner.dto.turno.ResolverComisionRemuneracionRequestDto;
 import com.dev.cutly.owner.service.OwnerTurnosService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -13,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -124,6 +128,38 @@ public class OwnerTurnosController {
         try { return ResponseEntity.ok(ownerTurnosService.regularizarFinanzas(negocioId, turnoId, request, key, emailOwnerAutenticado())); }
         catch (ResponseStatusException e) { return respuestaError(e); }
         catch (DataAccessException e) { return errorInterno("No se pudo regularizar el turno"); }
+    }
+
+    @GetMapping("/{id}/remuneracion")
+    public ResponseEntity<?> obtenerRemuneracion(@PathVariable Long negocioId, @PathVariable("id") Long turnoId) {
+        try {
+            OwnerRemuneracionTurnoDto dto = ownerTurnosService.obtenerRemuneracion(
+                    negocioId, turnoId, emailOwnerAutenticado());
+            return ResponseEntity.ok(dto);
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return errorInterno("No se pudo consultar la remuneración del turno"); }
+    }
+
+    @PutMapping("/{id}/remuneracion/precio-historico")
+    public ResponseEntity<?> corregirPrecioHistorico(@PathVariable Long negocioId, @PathVariable("id") Long turnoId,
+            @Valid @RequestBody CorregirPrecioHistoricoRequestDto request) {
+        try {
+            OwnerRemuneracionTurnoDto dto = ownerTurnosService.corregirPrecioHistorico(
+                    negocioId, turnoId, request, emailOwnerAutenticado());
+            return ResponseEntity.ok(dto);
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return errorInterno("No se pudo corregir el precio histórico del turno"); }
+    }
+
+    @PutMapping("/{id}/remuneracion/comision")
+    public ResponseEntity<?> resolverComisionRemuneracion(@PathVariable Long negocioId,
+            @PathVariable("id") Long turnoId, @Valid @RequestBody ResolverComisionRemuneracionRequestDto request) {
+        try {
+            OwnerRemuneracionTurnoDto dto = ownerTurnosService.resolverComisionRemuneracion(
+                    negocioId, turnoId, request, emailOwnerAutenticado());
+            return ResponseEntity.ok(dto);
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return errorInterno("No se pudo resolver la comisión de la remuneración"); }
     }
 
     @PatchMapping("/{id}/no-show")

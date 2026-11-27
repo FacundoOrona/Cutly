@@ -126,6 +126,21 @@ public interface TurnoRepository extends JpaRepository<Turno, Long>, JpaSpecific
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Turno> findByTurnoIdAndEmpleado_EmpleadoId(Long turnoId, Long empleadoId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from Turno t where t.turnoId = :turnoId and t.empleado.empleadoId = :empleadoId")
+    Optional<Turno> findWithLockingByTurnoIdAndEmpleadoId(@Param("turnoId") Long turnoId,
+                                                           @Param("empleadoId") Long empleadoId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from Turno t where t.negocio.negocioId = :negocioId "
+            + "and t.empleado.empleadoId = :empleadoId and t.servicio.servicioId = :servicioId "
+            + "and t.status in (com.dev.cutly.turno.enums.TurnoStatus.CONFIRMED, "
+            + "com.dev.cutly.turno.enums.TurnoStatus.IN_PROGRESS, com.dev.cutly.turno.enums.TurnoStatus.COMPLETED) "
+            + "order by t.turnoId")
+    List<Turno> findActiveOrCompletedForEmpleadoServicioWithLocking(@Param("negocioId") Long negocioId,
+                                                                     @Param("empleadoId") Long empleadoId,
+                                                                     @Param("servicioId") Long servicioId);
+
     @Query("select t.status, count(t) from Turno t "
             + "where t.negocio.negocioId = :negocioId "
             + "and (:desde is null or t.fechaHoraInicio >= :desde) "

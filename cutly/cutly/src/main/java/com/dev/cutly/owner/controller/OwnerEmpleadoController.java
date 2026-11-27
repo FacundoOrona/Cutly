@@ -3,6 +3,8 @@ package com.dev.cutly.owner.controller;
 import com.dev.cutly.owner.dto.empleado.ActualizarEmpleadoRequestDto;
 import com.dev.cutly.owner.dto.empleado.CrearEmpleadoRequestDto;
 import com.dev.cutly.owner.dto.empleado.OwnerEmpleadoDto;
+import com.dev.cutly.owner.dto.empleado.ActualizarPorcentajeRemuneracionRequestDto;
+import com.dev.cutly.owner.dto.empleado.OwnerRemuneracionEmpleadoDto;
 import com.dev.cutly.owner.dto.OwnerErrorResponseDto;
 import com.dev.cutly.owner.service.OwnerEmpleadoService;
 import jakarta.validation.Valid;
@@ -13,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -115,6 +119,49 @@ public class OwnerEmpleadoController {
             @PathVariable("id") Long empleadoId
     ) {
         return actualizarEstado(negocioId, empleadoId, false);
+    }
+
+    @GetMapping("/{id}/remuneracion")
+    public ResponseEntity<?> obtenerRemuneracion(@PathVariable Long negocioId, @PathVariable("id") Long empleadoId) {
+        try {
+            return ResponseEntity.ok(ownerEmpleadoService.obtenerRemuneracion(negocioId, empleadoId, emailOwnerAutenticado()));
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new OwnerErrorResponseDto("No se pudo consultar la remuneración del empleado")); }
+    }
+
+    @PutMapping("/{id}/remuneracion/general")
+    public ResponseEntity<?> actualizarPorcentajeGeneral(@PathVariable Long negocioId, @PathVariable("id") Long empleadoId,
+            @Valid @RequestBody ActualizarPorcentajeRemuneracionRequestDto request) {
+        try {
+            OwnerRemuneracionEmpleadoDto dto = ownerEmpleadoService.actualizarPorcentajeGeneral(
+                    negocioId, empleadoId, request.porcentaje(), emailOwnerAutenticado());
+            return ResponseEntity.ok(dto);
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new OwnerErrorResponseDto("No se pudo actualizar la remuneración del empleado")); }
+    }
+
+    @PutMapping("/{id}/remuneracion/servicios/{servicioId}")
+    public ResponseEntity<?> actualizarExcepcion(@PathVariable Long negocioId, @PathVariable("id") Long empleadoId,
+            @PathVariable Long servicioId, @Valid @RequestBody ActualizarPorcentajeRemuneracionRequestDto request) {
+        try {
+            return ResponseEntity.ok(ownerEmpleadoService.actualizarExcepcion(
+                    negocioId, empleadoId, servicioId, request.porcentaje(), emailOwnerAutenticado()));
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new OwnerErrorResponseDto("No se pudo actualizar la comisión del servicio")); }
+    }
+
+    @DeleteMapping("/{id}/remuneracion/servicios/{servicioId}")
+    public ResponseEntity<?> eliminarExcepcion(@PathVariable Long negocioId, @PathVariable("id") Long empleadoId,
+            @PathVariable Long servicioId) {
+        try {
+            return ResponseEntity.ok(ownerEmpleadoService.eliminarExcepcion(
+                    negocioId, empleadoId, servicioId, emailOwnerAutenticado()));
+        } catch (ResponseStatusException e) { return respuestaError(e); }
+        catch (DataAccessException e) { return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new OwnerErrorResponseDto("No se pudo eliminar la comisión del servicio")); }
     }
 
     private ResponseEntity<?> actualizarEstado(Long negocioId, Long empleadoId, boolean activo) {

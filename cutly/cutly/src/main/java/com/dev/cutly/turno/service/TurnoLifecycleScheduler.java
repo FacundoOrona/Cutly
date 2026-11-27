@@ -4,6 +4,7 @@ import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +19,14 @@ public class TurnoLifecycleScheduler {
 
     private final TurnoRepository turnoRepository;
     private final NotificacionTurnoService notificacionTurnoService;
+    private final RemuneracionService remuneracionService;
 
     public TurnoLifecycleScheduler(TurnoRepository turnoRepository,
-                                   NotificacionTurnoService notificacionTurnoService) {
+                                   NotificacionTurnoService notificacionTurnoService,
+                                   RemuneracionService remuneracionService) {
         this.turnoRepository = turnoRepository;
         this.notificacionTurnoService = notificacionTurnoService;
+        this.remuneracionService = remuneracionService;
     }
 
     @Scheduled(fixedDelayString = "${cutly.turnos.lifecycle-delay-ms:30000}")
@@ -51,7 +55,8 @@ public class TurnoLifecycleScheduler {
     private void completarSiCorresponde(Turno turno, LocalDateTime ahora) {
         if (turno.getStatus() == TurnoStatus.IN_PROGRESS && !turno.getFechaHoraFin().isAfter(ahora)) {
             turno.setStatus(TurnoStatus.COMPLETED);
-            turnoRepository.save(turno);
+            Turno guardado = turnoRepository.save(turno);
+            remuneracionService.asegurarPendiente(guardado);
         }
     }
 }

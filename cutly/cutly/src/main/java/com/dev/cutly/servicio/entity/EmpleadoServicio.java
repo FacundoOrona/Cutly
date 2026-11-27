@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 
  /* Un empleado puede realizar varios servicios y un servicio puede ser realizado por varios empleados.
     Por eso necesitamos una relación:
@@ -37,4 +38,7 @@ public class EmpleadoServicio {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "servicio_id", nullable = false)
     private Servicio servicio;
+
+    @Column(name = "porcentaje_comision", precision = 5, scale = 2)
+    private BigDecimal porcentajeComision;
 }

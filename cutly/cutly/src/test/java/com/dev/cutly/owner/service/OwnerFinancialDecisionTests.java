@@ -16,6 +16,7 @@ import com.dev.cutly.pago.repository.*;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -32,6 +33,7 @@ import java.security.MessageDigest;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +52,7 @@ class OwnerFinancialDecisionTests {
     @Mock PagoRepository pagoRepository;
     @Mock IdempotenciaFinancieraRepository idempotenciaRepository;
     @Mock NotificacionTurnoService notificacionTurnoService;
+    @Mock RemuneracionService remuneracionService;
     OwnerTurnosService service;
     Negocio negocio;
     Turno turno;
@@ -58,7 +61,7 @@ class OwnerFinancialDecisionTests {
         service = new OwnerTurnosService(turnoRepository, ownerNegocioService, clienteLocalRepository, ownerClienteLocalService,
                 servicioRepository, empleadoRepository, empleadoServicioRepository, usuarioRepository, horarioValidator,
                 resultadoRepository, deudaRepository, pagoRepository, idempotenciaRepository,
-                notificacionTurnoService);
+                notificacionTurnoService, remuneracionService);
         Usuario owner = new Usuario(); owner.setUsuarioId(7L); owner.setNombre("Owner"); owner.setApellido("Test");
         negocio = new Negocio(); negocio.setNegocioId(9L); negocio.setOwner(owner); negocio.setNombre("Negocio"); negocio.setStatus(NegocioStatus.ACTIVE);
         ClienteLocal cliente = new ClienteLocal(); cliente.setClienteLocalId(11L); cliente.setNombre("Cliente"); cliente.setApellido("Local");
@@ -77,6 +80,7 @@ class OwnerFinancialDecisionTests {
         service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO, new BigDecimal("1200"), null, MetodoPago.EFECTIVO, null, null), "key-1", "owner@test.local");
         verify(pagoRepository).save(argThat(p -> p.getMonto().compareTo(new BigDecimal("1200")) == 0 && p.getTurno() == turno && p.getResultadoFinanciero() != null));
         verify(idempotenciaRepository).saveAndFlush(any(IdempotenciaFinanciera.class));
+        verify(remuneracionService).resolverDecision(eq(turno), any(ResultadoFinancieroTurno.class), eq(true));
         assertEquals(TurnoStatus.COMPLETED, turno.getStatus());
     }
 
@@ -129,6 +133,7 @@ class OwnerFinancialDecisionTests {
     @Test void gratuidadGuardaMotivoSinPagoNiDeuda() {
         service.completarConDecision(9L, 17L, new DecisionFinancieraRequestDto(DecisionFinanciera.GRATUIDAD, null, null, null, null, "Promoción"), "key-1", "owner@test.local");
         verify(resultadoRepository).save(argThat(r -> r.getMontoAcordado().signum() == 0 && "Promoción".equals(r.getMotivoGratuidad())));
+        verify(remuneracionService).resolverDecision(eq(turno), any(ResultadoFinancieroTurno.class), eq(true));
         verifyNoInteractions(pagoRepository, deudaRepository);
     }
 

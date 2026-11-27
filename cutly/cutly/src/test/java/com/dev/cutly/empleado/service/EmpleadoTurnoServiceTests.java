@@ -12,6 +12,7 @@ import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.ServicioRepository;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import com.dev.cutly.negocio.enums.NegocioStatus;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
@@ -60,6 +61,7 @@ class EmpleadoTurnoServiceTests {
     @Mock private ClienteLocalRepository clienteLocalRepository;
     @Mock private ClienteLocalService clienteLocalService;
     @Mock private TurnoHorarioValidator horarioValidator;
+    @Mock private RemuneracionService remuneracionService;
 
     private EmpleadoTurnoService service;
     private Empleado empleado;
@@ -67,7 +69,8 @@ class EmpleadoTurnoServiceTests {
     @BeforeEach
     void setUp() {
         service = new EmpleadoTurnoService(turnoRepository, empleadoRepository, usuarioRepository, notificacionTurnoService,
-                servicioRepository, empleadoServicioRepository, clienteLocalRepository, clienteLocalService, horarioValidator);
+                servicioRepository, empleadoServicioRepository, clienteLocalRepository, clienteLocalService, horarioValidator,
+                remuneracionService);
         Usuario usuario = new Usuario();
         usuario.setUsuarioId(USUARIO_ID);
         usuario.setNombre("Empleada");
@@ -260,7 +263,7 @@ class EmpleadoTurnoServiceTests {
         Servicio servicio = new Servicio(); servicio.setServicioId(7L); servicio.setNombre("Corte");
         Turno turno = new Turno(); turno.setTurnoId(21L); turno.setNegocio(negocio); turno.setClienteLocal(cliente); turno.setEmpleado(empleado);
         turno.setServicio(servicio); turno.setStatus(TurnoStatus.CONFIRMED); turno.setPrecio(new BigDecimal("1250.00"));
-        when(turnoRepository.findByTurnoIdAndEmpleado_EmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.of(turno));
+        when(turnoRepository.findWithLockingByTurnoIdAndEmpleadoId(21L, EMPLEADO_ID)).thenReturn(Optional.of(turno));
         when(turnoRepository.save(turno)).thenReturn(turno);
 
         service.completar(21L, EMAIL);
@@ -270,6 +273,7 @@ class EmpleadoTurnoServiceTests {
         verify(turnoRepository).save(turno);
         verify(notificacionTurnoService).notificarCambioEstado(
                 turno, TurnoStatus.CONFIRMED, TurnoStatus.COMPLETED, empleado.getUsuario());
+        verify(remuneracionService).asegurarPendiente(turno);
     }
 
     @Test

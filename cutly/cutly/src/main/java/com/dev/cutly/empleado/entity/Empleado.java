@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "empleados")
@@ -29,4 +30,7 @@ public class Empleado {
 
     @Column(nullable = false)
     private boolean activo;
+
+    @Column(name = "porcentaje_remuneracion", nullable = false, precision = 5, scale = 2, columnDefinition = "DECIMAL(5,2) NOT NULL DEFAULT 0.00")
+    private BigDecimal porcentajeRemuneracion = BigDecimal.ZERO;
 }

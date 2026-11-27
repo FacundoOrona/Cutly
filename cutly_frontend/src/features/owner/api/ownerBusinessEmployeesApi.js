@@ -2,6 +2,27 @@ import apiClient from '../../../services/apiClient.js'
 
 const employeesEndpoint = (id) => `/api/owner/negocios/${id}/empleados`
 const employeeServicesEndpoint = (negocioId, empleadoId) => `${employeesEndpoint(negocioId)}/${empleadoId}/servicios`
+const employeeCompensationEndpoint = (negocioId, empleadoId) => `${employeesEndpoint(negocioId)}/${empleadoId}/remuneracion`
+
+export async function getOwnerBusinessEmployeeCompensation({ id, empleadoId }) {
+  const { data } = await apiClient.get(employeeCompensationEndpoint(id, empleadoId))
+  return data
+}
+
+export async function updateOwnerBusinessEmployeeGeneralCompensation({ id, empleadoId, porcentaje }) {
+  const { data } = await apiClient.put(`${employeeCompensationEndpoint(id, empleadoId)}/general`, { porcentaje })
+  return data
+}
+
+export async function updateOwnerBusinessEmployeeServiceCompensation({ id, empleadoId, servicioId, porcentaje }) {
+  const { data } = await apiClient.put(`${employeeCompensationEndpoint(id, empleadoId)}/servicios/${servicioId}`, { porcentaje })
+  return data
+}
+
+export async function removeOwnerBusinessEmployeeServiceCompensation({ id, empleadoId, servicioId }) {
+  const { data } = await apiClient.delete(`${employeeCompensationEndpoint(id, empleadoId)}/servicios/${servicioId}`)
+  return data
+}
 
 export async function getOwnerBusinessEmployees(id) {
   const { data } = await apiClient.get(employeesEndpoint(id))
@@ -45,7 +66,7 @@ export function getOwnerBusinessEmployeesErrorMessage(error, action = 'consultar
 
   if (status === 401) return 'Tu sesión venció. Iniciá sesión nuevamente.'
   if (status === 403) return 'Tu cuenta no tiene acceso a este negocio.'
-  if (status === 404) return 'No se encontró el negocio o el empleado solicitado.'
+  if (status === 404) return message || 'No se encontró el negocio o el empleado solicitado.'
   if (status === 409) {
     return message || (action === 'asignar'
       ? 'El servicio ya está asignado a este empleado.'

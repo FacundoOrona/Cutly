@@ -7,6 +7,9 @@ import com.dev.cutly.servicio.entity.EmpleadoServicio;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.EmpleadoServiciorRepository;
 import com.dev.cutly.servicio.repository.ServicioRepository;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
+import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.pago.repository.ResultadoFinancieroTurnoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +25,26 @@ public class OwnerEmpleadoServicioService {
     private final EmpleadoRepository empleadoRepository;
     private final ServicioRepository servicioRepository;
     private final OwnerNegocioService ownerNegocioService;
+    private final TurnoRepository turnoRepository;
+    private final RemuneracionService remuneracionService;
+    private final ResultadoFinancieroTurnoRepository resultadoRepository;
 
     public OwnerEmpleadoServicioService(
             EmpleadoServiciorRepository empleadoServicioRepository,
             EmpleadoRepository empleadoRepository,
             ServicioRepository servicioRepository,
-            OwnerNegocioService ownerNegocioService
+            OwnerNegocioService ownerNegocioService,
+            TurnoRepository turnoRepository,
+            RemuneracionService remuneracionService,
+            ResultadoFinancieroTurnoRepository resultadoRepository
     ) {
         this.empleadoServicioRepository = empleadoServicioRepository;
         this.empleadoRepository = empleadoRepository;
         this.servicioRepository = servicioRepository;
         this.ownerNegocioService = ownerNegocioService;
+        this.turnoRepository = turnoRepository;
+        this.remuneracionService = remuneracionService;
+        this.resultadoRepository = resultadoRepository;
     }
 
     public List<OwnerServicioDto> listarServiciosAsignados(
@@ -82,10 +94,17 @@ public class OwnerEmpleadoServicioService {
         ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
         buscarEmpleado(negocioId, empleadoId);
         buscarServicio(negocioId, servicioId);
+        List<com.dev.cutly.turno.entity.Turno> turnosBloqueados = turnoRepository
+                .findActiveOrCompletedForEmpleadoServicioWithLocking(negocioId, empleadoId, servicioId);
         EmpleadoServicio asignacion = empleadoServicioRepository
-                .findByEmpleado_EmpleadoIdAndServicio_ServicioId(empleadoId, servicioId)
+                .findWithLockingByEmpleadoAndServicio(empleadoId, servicioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "El servicio no está asignado al empleado"));
+        List<com.dev.cutly.turno.entity.Turno> turnosPendientes = turnosBloqueados.stream()
+                .filter(turno -> turno.getStatus() == com.dev.cutly.turno.enums.TurnoStatus.COMPLETED)
+                .filter(turno -> !resultadoRepository.existsByTurno_TurnoId(turno.getTurnoId()))
+                .toList();
+        remuneracionService.conservarExcepcionesAlDesasignar(turnosPendientes, asignacion);
         empleadoServicioRepository.delete(asignacion);
     }
 

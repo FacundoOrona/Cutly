@@ -1,8 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { assignOwnerBusinessEmployeeService, createOwnerBusinessEmployee, getOwnerBusinessEmployeeServices, getOwnerBusinessEmployees, removeOwnerBusinessEmployeeService, updateOwnerBusinessEmployee, updateOwnerBusinessEmployeeStatus } from '../api/ownerBusinessEmployeesApi.js'
+import { assignOwnerBusinessEmployeeService, createOwnerBusinessEmployee, getOwnerBusinessEmployeeServices, getOwnerBusinessEmployees, removeOwnerBusinessEmployeeService, updateOwnerBusinessEmployee, updateOwnerBusinessEmployeeStatus, getOwnerBusinessEmployeeCompensation, updateOwnerBusinessEmployeeGeneralCompensation, updateOwnerBusinessEmployeeServiceCompensation, removeOwnerBusinessEmployeeServiceCompensation } from '../api/ownerBusinessEmployeesApi.js'
 
 export const ownerBusinessEmployeesQueryKey = (id) => ['ownerBusinesses', 'detail', String(id), 'employees']
 export const ownerBusinessEmployeeServicesQueryKey = (id, empleadoId) => ['ownerBusinesses', 'detail', String(id), 'employees', String(empleadoId), 'services']
+export const ownerBusinessEmployeeCompensationQueryKey = (id, empleadoId) => ['ownerBusinesses', 'detail', String(id), 'employees', String(empleadoId), 'compensation']
+
+export function useOwnerBusinessEmployeeCompensation(id, empleadoId) {
+  return useQuery({ queryKey: ownerBusinessEmployeeCompensationQueryKey(id, empleadoId), queryFn: () => getOwnerBusinessEmployeeCompensation({ id, empleadoId }), enabled: Boolean(id && empleadoId) })
+}
+
+export function useUpdateOwnerBusinessEmployeeCompensation(mutationFn) {
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn, onSuccess: (data, variables) => queryClient.setQueryData(ownerBusinessEmployeeCompensationQueryKey(variables.id, variables.empleadoId), data) })
+}
+
+export function useUpdateOwnerBusinessEmployeeGeneralCompensation() { return useUpdateOwnerBusinessEmployeeCompensation(updateOwnerBusinessEmployeeGeneralCompensation) }
+export function useUpdateOwnerBusinessEmployeeServiceCompensation() { return useUpdateOwnerBusinessEmployeeCompensation(updateOwnerBusinessEmployeeServiceCompensation) }
+export function useRemoveOwnerBusinessEmployeeServiceCompensation() { return useUpdateOwnerBusinessEmployeeCompensation(removeOwnerBusinessEmployeeServiceCompensation) }
 
 export function useOwnerBusinessEmployees(id, options = {}) {
   return useQuery({ queryKey: ownerBusinessEmployeesQueryKey(id), queryFn: () => getOwnerBusinessEmployees(id), enabled: Boolean(id) && (options.enabled ?? true) })

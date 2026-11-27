@@ -16,6 +16,7 @@ import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.enums.TipoClienteTurno;
 import com.dev.cutly.turno.repository.TurnoRepository;
 import com.dev.cutly.turno.service.TurnoHorarioValidator;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -46,12 +47,13 @@ public class EmpleadoTurnoService {
     private final ClienteLocalRepository clienteLocalRepository;
     private final ClienteLocalService clienteLocalService;
     private final TurnoHorarioValidator horarioValidator;
+    private final RemuneracionService remuneracionService;
 
     public EmpleadoTurnoService(TurnoRepository turnoRepository, EmpleadoRepository empleadoRepository,
                                 UsuarioRepository usuarioRepository, NotificacionTurnoService notificacionTurnoService,
                                 ServicioRepository servicioRepository, EmpleadoServiciorRepository empleadoServicioRepository,
                                 ClienteLocalRepository clienteLocalRepository, ClienteLocalService clienteLocalService,
-                                TurnoHorarioValidator horarioValidator) {
+                                TurnoHorarioValidator horarioValidator, RemuneracionService remuneracionService) {
         this.turnoRepository = turnoRepository;
         this.empleadoRepository = empleadoRepository;
         this.usuarioRepository = usuarioRepository;
@@ -61,6 +63,7 @@ public class EmpleadoTurnoService {
         this.clienteLocalRepository = clienteLocalRepository;
         this.clienteLocalService = clienteLocalService;
         this.horarioValidator = horarioValidator;
+        this.remuneracionService = remuneracionService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -179,7 +182,11 @@ public class EmpleadoTurnoService {
 
     private EmpleadoTurnoDto cambiarEstado(Long turnoId, String emailEmpleado, TurnoStatus destino, boolean idempotente) {
         Empleado empleado = obtenerEmpleadoActivo(emailEmpleado);
-        Turno turno = buscarPropio(turnoId, empleado.getEmpleadoId());
+        Turno turno = destino == TurnoStatus.COMPLETED
+                ? turnoRepository.findWithLockingByTurnoIdAndEmpleadoId(turnoId, empleado.getEmpleadoId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "No se encontró el turno solicitado"))
+                : buscarPropio(turnoId, empleado.getEmpleadoId());
         if (idempotente && turno.getStatus() == destino) return aDto(turno);
         if (!transicionValida(turno.getStatus(), destino)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -188,7 +195,9 @@ public class EmpleadoTurnoService {
         TurnoStatus anterior = turno.getStatus();
         turno.setStatus(destino);
         notificacionTurnoService.notificarCambioEstado(turno, anterior, destino, empleado.getUsuario());
-        return aDto(turnoRepository.save(turno));
+        Turno guardado = turnoRepository.save(turno);
+        if (destino == TurnoStatus.COMPLETED) remuneracionService.asegurarPendiente(guardado);
+        return aDto(guardado);
     }
 
     private boolean transicionValida(TurnoStatus actual, TurnoStatus destino) {

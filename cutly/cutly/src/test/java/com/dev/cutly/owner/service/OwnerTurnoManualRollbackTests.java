@@ -11,11 +11,14 @@ import com.dev.cutly.negocio.repository.NegocioRepository;
 import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.owner.dto.cliente.CrearClienteLocalRequestDto;
 import com.dev.cutly.owner.dto.turno.CrearOwnerTurnoManualRequestDto;
+import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
 import com.dev.cutly.pago.entity.Pago;
 import com.dev.cutly.pago.entity.ResultadoFinancieroTurno;
 import com.dev.cutly.pago.enums.DecisionFinanciera;
 import com.dev.cutly.pago.enums.MetodoPago;
 import com.dev.cutly.pago.repository.PagoRepository;
+import com.dev.cutly.pago.repository.IdempotenciaFinancieraRepository;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import com.dev.cutly.pago.repository.ResultadoFinancieroTurnoRepository;
 import com.dev.cutly.servicio.entity.Servicio;
 import com.dev.cutly.servicio.repository.ServicioRepository;
@@ -66,9 +69,11 @@ class OwnerTurnoManualRollbackTests {
     @Autowired private TurnoRepository turnoRepository;
     @Autowired private ResultadoFinancieroTurnoRepository resultadoRepository;
     @Autowired private PagoRepository pagoRepository;
+    @Autowired private IdempotenciaFinancieraRepository idempotenciaRepository;
 
     @MockitoBean private OwnerNegocioService ownerNegocioService;
     @MockitoBean private NotificacionTurnoService notificacionTurnoService;
+    @MockitoBean private RemuneracionService remuneracionService;
 
     private Negocio negocio;
     private Long servicioId;
@@ -224,6 +229,32 @@ class OwnerTurnoManualRollbackTests {
         duplicado.setMotivoGratuidad("Promoción");
         duplicado.setFechaRegistro(LocalDateTime.now());
         assertThrows(DataIntegrityViolationException.class, () -> resultadoRepository.saveAndFlush(duplicado));
+    }
+
+    @Test
+    void revierteFinanzasSiFallaLaConfirmacionDeRemuneracion() {
+        ClienteLocal local = guardarClienteLocal(negocio);
+        Turno turno = crearTurno(local, negocio, negocio.getOwner(), servicioId);
+        turno.setStatus(TurnoStatus.CONFIRMED);
+        turnoRepository.saveAndFlush(turno);
+        String key = "rollback-remuneracion-" + turno.getTurnoId();
+        org.mockito.Mockito.doThrow(new IllegalStateException("Fallo simulado al guardar remuneración"))
+                .when(remuneracionService).resolverDecision(
+                        org.mockito.ArgumentMatchers.any(Turno.class),
+                        org.mockito.ArgumentMatchers.any(ResultadoFinancieroTurno.class),
+                        org.mockito.ArgumentMatchers.eq(true));
+
+        assertThrows(IllegalStateException.class, () -> ownerTurnosService.completarConDecision(
+                negocio.getNegocioId(), turno.getTurnoId(),
+                new DecisionFinancieraRequestDto(DecisionFinanciera.COBRO_DIRECTO,
+                        new BigDecimal("85.00"), null, MetodoPago.EFECTIVO, null, null),
+                key, ownerEmail));
+
+        assertFalse(resultadoRepository.existsByTurno_TurnoId(turno.getTurnoId()));
+        assertFalse(pagoRepository.existsByTurno_TurnoId(turno.getTurnoId()));
+        assertFalse(idempotenciaRepository.findByKey(key).isPresent());
+        assertEquals(TurnoStatus.CONFIRMED,
+                turnoRepository.findById(turno.getTurnoId()).orElseThrow().getStatus());
     }
 
     private ClienteLocal guardarClienteLocal(Negocio negocio) {

@@ -4,6 +4,7 @@ import com.dev.cutly.notificacion.service.NotificacionTurnoService;
 import com.dev.cutly.turno.entity.Turno;
 import com.dev.cutly.turno.enums.TurnoStatus;
 import com.dev.cutly.turno.repository.TurnoRepository;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.*;
 class TurnoLifecycleSchedulerTests {
     @Mock private TurnoRepository turnoRepository;
     @Mock private NotificacionTurnoService notificacionTurnoService;
+    @Mock private RemuneracionService remuneracionService;
 
     @Test
     void notificaUnaVezPorEjecucionSoloTurnosVigentesYProximos() {
@@ -29,7 +31,7 @@ class TurnoLifecycleSchedulerTests {
         when(turnoRepository.findWithLockingByTurnoId(1L)).thenReturn(Optional.of(turno));
         when(turnoRepository.findIdsForAutoCompletion(any(), any())).thenReturn(List.of());
 
-        TurnoLifecycleScheduler scheduler = new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService);
+        TurnoLifecycleScheduler scheduler = new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService, remuneracionService);
         scheduler.procesarTurnos();
 
         verify(turnoRepository).findIdsForReminder(eq(List.of(TurnoStatus.PENDING, TurnoStatus.CONFIRMED)), any(), any());
@@ -43,11 +45,12 @@ class TurnoLifecycleSchedulerTests {
         when(turnoRepository.findIdsForAutoCompletion(TurnoStatus.IN_PROGRESS, any())).thenReturn(List.of(2L));
         when(turnoRepository.findWithLockingByTurnoId(2L)).thenReturn(Optional.of(enCurso));
 
-        TurnoLifecycleScheduler scheduler = new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService);
+        TurnoLifecycleScheduler scheduler = new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService, remuneracionService);
         scheduler.procesarTurnos();
 
         assertEquals(TurnoStatus.COMPLETED, enCurso.getStatus());
         verify(turnoRepository).save(enCurso);
+        verify(remuneracionService).asegurarPendiente(enCurso);
         verifyNoInteractions(notificacionTurnoService);
     }
 
@@ -63,7 +66,7 @@ class TurnoLifecycleSchedulerTests {
                             LocalDateTime.now().plusMinutes(35))));
         }
 
-        new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService).procesarTurnos();
+        new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService, remuneracionService).procesarTurnos();
 
         verifyNoInteractions(notificacionTurnoService);
     }
@@ -75,7 +78,7 @@ class TurnoLifecycleSchedulerTests {
         when(turnoRepository.findIdsForAutoCompletion(TurnoStatus.IN_PROGRESS, any())).thenReturn(List.of(3L));
         when(turnoRepository.findWithLockingByTurnoId(3L)).thenReturn(Optional.of(cancelado));
 
-        new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService).procesarTurnos();
+        new TurnoLifecycleScheduler(turnoRepository, notificacionTurnoService, remuneracionService).procesarTurnos();
 
         assertEquals(TurnoStatus.CANCELLED, cancelado.getStatus());
         verify(turnoRepository, never()).save(any());

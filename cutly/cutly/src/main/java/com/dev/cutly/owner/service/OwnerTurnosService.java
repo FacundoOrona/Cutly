@@ -23,7 +23,11 @@ import com.dev.cutly.pago.entity.*;
 import com.dev.cutly.pago.enums.DecisionFinanciera;
 import com.dev.cutly.pago.enums.MetodoPago;
 import com.dev.cutly.pago.repository.*;
+import com.dev.cutly.remuneracion.service.RemuneracionService;
 import com.dev.cutly.owner.dto.turno.DecisionFinancieraRequestDto;
+import com.dev.cutly.owner.dto.turno.CorregirPrecioHistoricoRequestDto;
+import com.dev.cutly.owner.dto.turno.ResolverComisionRemuneracionRequestDto;
+import com.dev.cutly.owner.dto.turno.OwnerRemuneracionTurnoDto;
 import com.dev.cutly.usuario.entity.Usuario;
 import com.dev.cutly.usuario.enums.Rol;
 import com.dev.cutly.usuario.repository.UsuarioRepository;
@@ -69,6 +73,7 @@ public class OwnerTurnosService {
     private final PagoRepository pagoRepository;
     private final IdempotenciaFinancieraRepository idempotenciaRepository;
     private final NotificacionTurnoService notificacionTurnoService;
+    private final RemuneracionService remuneracionService;
 
     @Autowired
     public OwnerTurnosService(
@@ -85,7 +90,8 @@ public class OwnerTurnosService {
             DeudaClienteRepository deudaRepository,
             PagoRepository pagoRepository,
             IdempotenciaFinancieraRepository idempotenciaRepository,
-            NotificacionTurnoService notificacionTurnoService
+            NotificacionTurnoService notificacionTurnoService,
+            RemuneracionService remuneracionService
     ) {
         this.turnoRepository = turnoRepository;
         this.ownerNegocioService = ownerNegocioService;
@@ -101,6 +107,7 @@ public class OwnerTurnosService {
         this.pagoRepository = pagoRepository;
         this.idempotenciaRepository = idempotenciaRepository;
         this.notificacionTurnoService = notificacionTurnoService;
+        this.remuneracionService = remuneracionService;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -275,6 +282,36 @@ public class OwnerTurnosService {
         return finalizarFinanzas(negocioId, turnoId, request, key, emailOwner, false);
     }
 
+    public OwnerRemuneracionTurnoDto obtenerRemuneracion(Long negocioId, Long turnoId, String emailOwner) {
+        ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
+        buscarTurno(negocioId, turnoId);
+        return remuneracionService.obtener(turnoId);
+    }
+
+    public OwnerRemuneracionTurnoDto corregirPrecioHistorico(Long negocioId, Long turnoId,
+            CorregirPrecioHistoricoRequestDto request, String emailOwner) {
+        Negocio negocio = ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
+        Turno turno = turnoRepository.findWithLockingByTurnoIdAndNegocioId(turnoId, negocioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el turno solicitado"));
+        ResultadoFinancieroTurno resultado = resultadoRepository.findByTurno_TurnoId(turnoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El turno todavía no tiene una decisión financiera"));
+        return remuneracionService.corregirPrecioHistorico(turno, resultado, request, negocio.getOwner());
+    }
+
+    public OwnerRemuneracionTurnoDto resolverComisionRemuneracion(Long negocioId, Long turnoId,
+            ResolverComisionRemuneracionRequestDto request, String emailOwner) {
+        Negocio negocio = ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
+        Turno turno = turnoRepository.findWithLockingByTurnoIdAndNegocioId(turnoId, negocioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No se encontró el turno solicitado"));
+        ResultadoFinancieroTurno resultado = resultadoRepository.findByTurno_TurnoId(turnoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "El turno todavía no tiene una decisión financiera"));
+        return remuneracionService.resolverComisionManualmente(turno, resultado, request, negocio.getOwner());
+    }
+
     private OwnerTurnoDto finalizarFinanzas(Long negocioId, Long turnoId, DecisionFinancieraRequestDto request, String key, String emailOwner, boolean completarTurno) {
         if (key == null || key.isBlank() || key.length() > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Idempotency-Key es obligatorio y admite hasta 100 caracteres");
         Negocio negocio = ownerNegocioService.obtenerEntidadNegocioPropio(negocioId, emailOwner);
@@ -289,6 +326,7 @@ public class OwnerTurnosService {
                     || !previa.get().getRequestHash().equals(hash)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "La clave de idempotencia ya se usó con otra operación");
             }
+            remuneracionService.marcarDecisionAnteriorParaRevision(turno, previa.get().getResultado());
             return aDto(turno);
         }
         if (resultadoRepository.existsByTurno_TurnoId(turnoId)) throw new ResponseStatusException(HttpStatus.CONFLICT, "El turno ya tiene regularización financiera");
@@ -311,6 +349,7 @@ public class OwnerTurnosService {
         IdempotenciaFinanciera idem = new IdempotenciaFinanciera(); idem.setKey(key); idem.setRequestHash(hash); idem.setNegocio(negocio); idem.setTurno(turno); idem.setResultado(resultado);
         try { idempotenciaRepository.saveAndFlush(idem); }
         catch (DataIntegrityViolationException conflict) { throw new ResponseStatusException(HttpStatus.CONFLICT, "La clave de idempotencia ya se usó en otra solicitud"); }
+        remuneracionService.resolverDecision(turno, resultado, completarTurno);
         if (completarTurno) turno.setStatus(TurnoStatus.COMPLETED);
         return aDto(turnoRepository.save(turno));
     }
