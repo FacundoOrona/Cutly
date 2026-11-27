@@ -27,6 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -62,20 +65,21 @@ public class OwnerLiquidacionesService {
                 autorizado.getOwner().getUsuarioId()).orElseThrow(() -> error(HttpStatus.NOT_FOUND, "No se encontró el negocio solicitado"));
         Usuario owner = owner(negocio, email);
         if (request.aplicaciones() == null || request.aplicaciones().isEmpty()) throw error(HttpStatus.BAD_REQUEST, "La liquidación debe incluir remuneraciones");
-        String hash = hash(request);
+        String descripcion = normalizar(request.descripcionMetodo());
+        CrearLiquidacionEmpleadoRequestDto normalizada = new CrearLiquidacionEmpleadoRequestDto(
+                request.fechaEfectiva(), request.metodoPago(), descripcion, request.observaciones(), request.aplicaciones());
+        String hash = hash(normalizada);
         LiquidacionEmpleado previa = liquidacionRepository.findByNegocio_NegocioIdAndClaveIdempotencia(negocioId, clave).orElse(null);
         if (previa != null) {
-            if (!previa.getHashSolicitud().equals(hash)) throw error(HttpStatus.CONFLICT, "La clave de idempotencia ya se usó con otra solicitud");
+            if (!hashPersistido(previa).equals(hash)) throw error(HttpStatus.CONFLICT, "La clave de idempotencia ya se usó con otra solicitud");
             return dto(previa, false);
         }
-        if (request.metodoPago() == MetodoPago.OTRO && (request.descripcionMetodo() == null || request.descripcionMetodo().isBlank()))
-            throw error(HttpStatus.BAD_REQUEST, "Debe describir el medio de pago OTRO");
+        validarTexto(request);
         List<Long> ids = request.aplicaciones().keySet().stream().sorted().toList();
         List<RemuneracionEmpleado> remuneraciones = remuneracionRepository.bloquearEnOrden(ids);
         if (remuneraciones.size() != ids.size()) throw error(HttpStatus.NOT_FOUND, "No se encontraron todas las remuneraciones solicitadas");
         Long empleadoId = remuneraciones.get(0).getEmpleado().getEmpleadoId();
         BigDecimal total = BigDecimal.ZERO;
-        Map<Long, BigDecimal> saldos = new HashMap<>();
         Map<Long,BigDecimal> pagosPrevios = new HashMap<>();
         for (Object[] fila : aplicacionRepository.totalesVigentes(ids)) pagosPrevios.put((Long)fila[0],(BigDecimal)fila[1]);
         for (RemuneracionEmpleado r : remuneraciones) {
@@ -88,15 +92,18 @@ public class OwnerLiquidacionesService {
             BigDecimal importe = request.aplicaciones().get(r.getRemuneracionId());
             if (importe == null || importe.signum() <= 0 || importe.scale() > 2 || importe.compareTo(saldo) > 0)
                 throw error(HttpStatus.CONFLICT, "El importe aplicado debe ser positivo y no superar el saldo pendiente");
-            total = total.add(importe); saldos.put(r.getRemuneracionId(), saldo.subtract(importe));
+            total = total.add(importe);
         }
         Empleado empleado = empleadoRepository.findByEmpleadoIdAndNegocio_NegocioId(empleadoId, negocioId)
                 .orElseThrow(() -> error(HttpStatus.CONFLICT, "La relación entre empleado y negocio no es válida"));
         LiquidacionEmpleado liquidacion = new LiquidacionEmpleado(negocio, empleado, owner,
-                request.fechaEfectiva(), request.metodoPago(), normalizar(request.descripcionMetodo()),
+                request.fechaEfectiva(), request.metodoPago(), descripcion,
                 request.observaciones(), total, clave, hash);
         for (RemuneracionEmpleado r : remuneraciones) liquidacion.agregar(new AplicacionLiquidacion(
                 liquidacion, r, request.aplicaciones().get(r.getRemuneracionId())));
+        BigDecimal sumaAplicaciones = liquidacion.getAplicaciones().stream().map(AplicacionLiquidacion::getImporte)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.compareTo(sumaAplicaciones) != 0) throw new IllegalStateException("El total debe coincidir con las aplicaciones validadas");
         liquidacionRepository.saveAndFlush(liquidacion);
         return dto(liquidacion, false);
     }
@@ -123,7 +130,14 @@ public class OwnerLiquidacionesService {
         Pageable p = PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "fechaRegistro").and(Sort.by(Sort.Direction.DESC, "liquidacionId")));
         Page<LiquidacionEmpleado> data = empleadoId == null ? liquidacionRepository.findByNegocio_NegocioId(negocioId, p)
                 : liquidacionRepository.findByNegocio_NegocioIdAndEmpleado_EmpleadoId(negocioId, empleadoId, p);
-        return data.map(l -> dto(l, false));
+        List<Long> liquidacionIds = data.getContent().stream().map(LiquidacionEmpleado::getLiquidacionId).toList();
+        List<AplicacionLiquidacion> aplicaciones = liquidacionIds.isEmpty() ? List.of()
+                : aplicacionRepository.findByLiquidacion_LiquidacionIdInOrderByAplicacionLiquidacionId(liquidacionIds);
+        Map<Long,List<AplicacionLiquidacion>> porLiquidacion = aplicaciones.stream().collect(Collectors.groupingBy(
+                a -> a.getLiquidacion().getLiquidacionId()));
+        List<Long> remuneracionIds = aplicaciones.stream().map(a -> a.getRemuneracion().getRemuneracionId()).distinct().toList();
+        Map<Long,BigDecimal> pagos = totalesPagados(remuneracionIds);
+        return data.map(l -> dto(l, porLiquidacion.getOrDefault(l.getLiquidacionId(), List.of()), pagos));
     }
 
     @Transactional(readOnly=true)
@@ -153,7 +167,7 @@ public class OwnerLiquidacionesService {
     @Transactional(readOnly=true)
     public RemuneracionPagoDto detalleRemuneracion(Long negocioId, Long id, String email) {
         ownerNegocio.obtenerEntidadNegocioPropio(negocioId, email);
-        RemuneracionEmpleado r = remuneracionRepository.findById(id).filter(x -> x.getNegocio().getNegocioId().equals(negocioId))
+        RemuneracionEmpleado r = remuneracionRepository.findByRemuneracionIdAndNegocio_NegocioId(id, negocioId)
                 .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "No se encontró la remuneración solicitada"));
         return remuneracionDto(r, aplicacionRepository.totalVigente(id),true);
     }
@@ -161,21 +175,23 @@ public class OwnerLiquidacionesService {
     @Transactional(readOnly=true)
     public List<Map<String,Object>> resumen(Long negocioId, String email) {
         ownerNegocio.obtenerEntidadNegocioPropio(negocioId, email);
-        List<RemuneracionEmpleado> todas = remuneracionRepository.findByNegocio_NegocioId(negocioId);
-        Map<Long,BigDecimal> pagados = new HashMap<>();
-        List<Long> ids = todas.stream().map(RemuneracionEmpleado::getRemuneracionId).toList();
-        if (!ids.isEmpty()) for (Object[] fila : aplicacionRepository.totalesVigentes(ids)) pagados.put((Long) fila[0], (BigDecimal) fila[1]);
-        Map<Long,List<RemuneracionEmpleado>> porEmpleado = todas.stream().collect(Collectors.groupingBy(r -> r.getEmpleado().getEmpleadoId()));
+        Map<Long,List<Object[]>> porEmpleado = remuneracionRepository.resumenPorEmpleado(negocioId).stream()
+                .collect(Collectors.groupingBy(f -> (Long) f[0]));
         return empleadoRepository.findByNegocio_NegocioIdOrderByEmpleadoIdAsc(negocioId).stream().map(e -> {
-            List<RemuneracionEmpleado> remuneracionesEmpleado=porEmpleado.getOrDefault(e.getEmpleadoId(),List.of());
-            BigDecimal confirmado=BigDecimal.ZERO, pago=BigDecimal.ZERO, saldo=BigDecimal.ZERO;
+            List<Object[]> remuneracionesEmpleado=porEmpleado.getOrDefault(e.getEmpleadoId(),List.of());
+            BigDecimal confirmado=BigDecimal.ZERO, saldo=BigDecimal.ZERO;
             int pendientes=0, parciales=0, completos=0, revision=0, definicion=0;
-            for (RemuneracionEmpleado r : remuneracionesEmpleado) {
-                if (r.getEstado()==EstadoRemuneracion.PENDIENTE_REVISION_MANUAL) revision++;
-                if (r.getEstado()==EstadoRemuneracion.PENDIENTE_DEFINICION_FINANCIERA) definicion++;
-                if (r.getEstado()!=EstadoRemuneracion.CONFIRMADA || r.getMontoCalculado()==null || r.getMontoCalculado().signum()<=0) continue;
-                BigDecimal pagado=pagados.getOrDefault(r.getRemuneracionId(),BigDecimal.ZERO), pendiente=r.getMontoCalculado().subtract(pagado);
-                confirmado=confirmado.add(r.getMontoCalculado()); pago=pago.add(pagado); saldo=saldo.add(pendiente);
+            BigDecimal pago = BigDecimal.ZERO;
+            for (Object[] fila : remuneracionesEmpleado) {
+                EstadoRemuneracion estado = (EstadoRemuneracion) fila[1];
+                BigDecimal monto = (BigDecimal) fila[2];
+                BigDecimal pagado = (BigDecimal) fila[3];
+                pago = pago.add(pagado);
+                if (estado==EstadoRemuneracion.PENDIENTE_REVISION_MANUAL) revision++;
+                if (estado==EstadoRemuneracion.PENDIENTE_DEFINICION_FINANCIERA) definicion++;
+                if (estado!=EstadoRemuneracion.CONFIRMADA || monto==null || monto.signum()<=0) continue;
+                BigDecimal pendiente=monto.subtract(pagado);
+                confirmado=confirmado.add(monto); saldo=saldo.add(pendiente);
                 if (pagado.signum()==0) pendientes++; else if (pendiente.signum()>0) parciales++; else completos++;
             }
             return Map.<String,Object>of("empleadoId",e.getEmpleadoId(),"nombre",e.getUsuario().getNombre()+" "+e.getUsuario().getApellido(),
@@ -203,8 +219,10 @@ public class OwnerLiquidacionesService {
     private LiquidacionEmpleadoDto dto(LiquidacionEmpleado l, boolean ignored) {
         List<com.dev.cutly.liquidacion.entity.AplicacionLiquidacion> filas=aplicacionRepository.findByLiquidacion_LiquidacionIdOrderByAplicacionLiquidacionId(l.getLiquidacionId());
         List<Long> ids=filas.stream().map(a -> a.getRemuneracion().getRemuneracionId()).toList();
-        Map<Long,BigDecimal> pagos=new HashMap<>();
-        if (!ids.isEmpty()) for (Object[] fila:aplicacionRepository.totalesVigentes(ids)) pagos.put((Long)fila[0],(BigDecimal)fila[1]);
+        return dto(l, filas, totalesPagados(ids));
+    }
+
+    private LiquidacionEmpleadoDto dto(LiquidacionEmpleado l, List<AplicacionLiquidacion> filas, Map<Long,BigDecimal> pagos) {
         List<AplicacionLiquidacionDto> aplicaciones = filas.stream().map(a -> {
             BigDecimal pagado=pagos.getOrDefault(a.getRemuneracion().getRemuneracionId(),BigDecimal.ZERO);
             BigDecimal saldo=a.getRemuneracion().getMontoCalculado().subtract(pagado);
@@ -216,16 +234,61 @@ public class OwnerLiquidacionesService {
                 l.getOwnerRegistrante().getEmail(),l.getOwnerAnulador()==null?null:l.getOwnerAnulador().getEmail(),aplicaciones);
     }
 
+    private Map<Long,BigDecimal> totalesPagados(List<Long> ids) {
+        Map<Long,BigDecimal> pagos = new HashMap<>();
+        if (!ids.isEmpty()) for (Object[] fila : aplicacionRepository.totalesVigentes(ids)) pagos.put((Long) fila[0], (BigDecimal) fila[1]);
+        return pagos;
+    }
+
+    private void validarTexto(CrearLiquidacionEmpleadoRequestDto request) {
+        String descripcion = request.descripcionMetodo();
+        String observaciones = request.observaciones();
+        if (descripcion != null && descripcion.length() > 100) throw error(HttpStatus.BAD_REQUEST, "La descripción del medio de pago admite hasta 100 caracteres");
+        if (observaciones != null && observaciones.length() > 500) throw error(HttpStatus.BAD_REQUEST, "Las observaciones admiten hasta 500 caracteres");
+        if (request.metodoPago() == null) throw error(HttpStatus.BAD_REQUEST, "El medio de pago es obligatorio");
+        if (request.metodoPago() == MetodoPago.OTRO && normalizar(descripcion) == null)
+            throw error(HttpStatus.BAD_REQUEST, "Debe describir el medio de pago OTRO");
+        if (request.metodoPago() != MetodoPago.OTRO && normalizar(descripcion) != null)
+            throw error(HttpStatus.BAD_REQUEST, "La descripción solo corresponde al medio de pago OTRO");
+    }
+
     private Usuario owner(Negocio n, String email) {
         Usuario u=usuarioRepository.findByEmail(email).filter(x -> x.getRol()==Rol.OWNER && x.getUsuarioId().equals(n.getOwner().getUsuarioId()))
                 .orElseThrow(() -> error(HttpStatus.FORBIDDEN,"La cuenta autenticada no es OWNER de este negocio"));
         return u;
     }
-    private String hash(CrearLiquidacionEmpleadoRequestDto r) {
-        String body=r.fechaEfectiva()+"|"+r.metodoPago()+"|"+r.descripcionMetodo()+"|"+r.observaciones()+"|"+
-                new TreeMap<>(r.aplicaciones());
-        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body.getBytes(StandardCharsets.UTF_8))); }
-        catch (Exception e) { throw new IllegalStateException(e); }
+    String hash(CrearLiquidacionEmpleadoRequestDto r) {
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            DataOutputStream out = new DataOutputStream(bytes);
+            writeString(out, r.fechaEfectiva().toString());
+            writeString(out, r.metodoPago().name());
+            writeString(out, normalizar(r.descripcionMetodo()));
+            writeString(out, r.observaciones());
+            TreeMap<Long,BigDecimal> ordenadas = new TreeMap<>(r.aplicaciones());
+            out.writeInt(ordenadas.size());
+            for (var entry : ordenadas.entrySet()) {
+                out.writeLong(entry.getKey());
+                writeString(out, entry.getValue().stripTrailingZeros().toPlainString());
+            }
+            out.flush();
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()));
+        } catch (IOException | java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+    }
+
+    private String hashPersistido(LiquidacionEmpleado l) {
+        Map<Long,BigDecimal> aplicaciones = aplicacionRepository.findByLiquidacion_LiquidacionIdOrderByAplicacionLiquidacionId(l.getLiquidacionId())
+                .stream().collect(Collectors.toMap(a -> a.getRemuneracion().getRemuneracionId(), AplicacionLiquidacion::getImporte));
+        CrearLiquidacionEmpleadoRequestDto persistida = new CrearLiquidacionEmpleadoRequestDto(
+                l.getFechaEfectiva(), l.getMetodoPago(), l.getDescripcionMetodo(), l.getObservaciones(), aplicaciones);
+        return hash(persistida);
+    }
+
+    private void writeString(DataOutputStream out, String value) throws IOException {
+        if (value == null) { out.writeInt(-1); return; }
+        byte[] encoded = value.getBytes(StandardCharsets.UTF_8);
+        out.writeInt(encoded.length);
+        out.write(encoded);
     }
     private String normalizar(String s) { return s==null||s.isBlank()?null:s.trim(); }
     private void validarPagina(int page,int size) {

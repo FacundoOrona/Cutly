@@ -3,6 +3,7 @@ package com.dev.cutly.owner.service;
 import com.dev.cutly.empleado.entity.Empleado;
 import com.dev.cutly.empleado.repository.EmpleadoRepository;
 import com.dev.cutly.liquidacion.entity.LiquidacionEmpleado;
+import com.dev.cutly.liquidacion.entity.AplicacionLiquidacion;
 import com.dev.cutly.liquidacion.repository.AplicacionLiquidacionRepository;
 import com.dev.cutly.liquidacion.repository.LiquidacionEmpleadoRepository;
 import com.dev.cutly.negocio.entity.Negocio;
@@ -22,11 +23,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import jakarta.validation.Validation;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDate;
-import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,17 +52,22 @@ class OwnerLiquidacionesServiceTests {
         owner=new Usuario(); owner.setUsuarioId(7L); owner.setNombre("Ana"); owner.setApellido("Owner");
         owner.setEmail("owner@test.local"); owner.setRol(Rol.OWNER);
         negocio=new Negocio(); negocio.setNegocioId(5L); negocio.setOwner(owner);
-        when(ownerNegocio.obtenerEntidadNegocioPropio(5L,owner.getEmail())).thenReturn(negocio);
-        when(negocioRepository.findWithLockingByNegocioIdAndOwner_UsuarioId(5L,7L)).thenReturn(Optional.of(negocio));
-        when(usuarioRepository.findByEmail(owner.getEmail())).thenReturn(Optional.of(owner));
+        lenient().when(ownerNegocio.obtenerEntidadNegocioPropio(5L,owner.getEmail())).thenReturn(negocio);
+        lenient().when(negocioRepository.findWithLockingByNegocioIdAndOwner_UsuarioId(5L,7L)).thenReturn(Optional.of(negocio));
+        lenient().when(usuarioRepository.findByEmail(owner.getEmail())).thenReturn(Optional.of(owner));
     }
 
     @Test void mismaClaveYContenidoDevuelveLaLiquidacionPersistidaSinCrearOtra() throws Exception {
         var request=request();
-        LiquidacionEmpleado previa=new LiquidacionEmpleado(negocio,empleado(),owner,request.fechaEfectiva(),
-                request.metodoPago(),null,null,new BigDecimal("25.00"),"key-1",hash(request));
+        RemuneracionEmpleado remuneracion = remuneracion(new BigDecimal("100.00"));
+        LiquidacionEmpleado previa=new LiquidacionEmpleado(negocio,remuneracion.getEmpleado(),owner,request.fechaEfectiva(),
+                request.metodoPago(),null,null,new BigDecimal("25.00"),"key-1","legacy-hash");
+        AplicacionLiquidacion aplicacion = new AplicacionLiquidacion(previa,remuneracion,new BigDecimal("25.00"));
+        previa.agregar(aplicacion);
+        field(previa,"liquidacionId",22L);
         when(liquidacionRepository.findByNegocio_NegocioIdAndClaveIdempotencia(5L,"key-1")).thenReturn(Optional.of(previa));
-        when(aplicacionRepository.findByLiquidacion_LiquidacionIdOrderByAplicacionLiquidacionId(null)).thenReturn(java.util.List.of());
+        when(aplicacionRepository.findByLiquidacion_LiquidacionIdOrderByAplicacionLiquidacionId(22L)).thenReturn(java.util.List.of(aplicacion));
+        when(aplicacionRepository.totalesVigentes(anyCollection())).thenReturn(java.util.List.<Object[]>of(new Object[]{10L,new BigDecimal("25.00")}));
 
         var result=service.crear(5L,request,"key-1",owner.getEmail());
 
@@ -115,6 +120,62 @@ class OwnerLiquidacionesServiceTests {
         verify(liquidacionRepository,never()).saveAndFlush(any());
     }
 
+    @Test void hashEsIndependienteDelOrdenYEscalaDecimalDeAplicaciones() {
+        var first = new CrearLiquidacionEmpleadoRequestDto(LocalDate.of(2026, 1, 10), MetodoPago.EFECTIVO,
+                null, "nota", new LinkedHashMap<>(Map.of(10L, new BigDecimal("25.0"), 11L, new BigDecimal("5.00"))));
+        var reversed = new LinkedHashMap<Long,BigDecimal>();
+        reversed.put(11L, new BigDecimal("5")); reversed.put(10L, new BigDecimal("25.00"));
+        var second = new CrearLiquidacionEmpleadoRequestDto(first.fechaEfectiva(), first.metodoPago(), "   ", "nota", reversed);
+        assertEquals(service.hash(first), service.hash(second));
+    }
+
+    @Test void hashDistingueSeparadoresDentroDeCampos() {
+        var first = new CrearLiquidacionEmpleadoRequestDto(LocalDate.of(2026, 1, 10), MetodoPago.OTRO,
+                "efectivo|manual", "transferencia", Map.of(10L, new BigDecimal("25.00")));
+        var second = new CrearLiquidacionEmpleadoRequestDto(first.fechaEfectiva(), first.metodoPago(),
+                "efectivo", "manual|transferencia", first.aplicaciones());
+        assertNotEquals(service.hash(first), service.hash(second));
+    }
+
+    @Test void hashDistingueSolicitudesQueColisionabanConLaConcatenacionAnterior() {
+        var first = new CrearLiquidacionEmpleadoRequestDto(LocalDate.of(2026, 1, 10), MetodoPago.OTRO,
+                "x", "y|z", Map.of(10L, new BigDecimal("25.00")));
+        var second = new CrearLiquidacionEmpleadoRequestDto(first.fechaEfectiva(), first.metodoPago(),
+                "x|y", "z", first.aplicaciones());
+        assertNotEquals(service.hash(first), service.hash(second));
+    }
+
+    @Test void normalizaDescripcionEquivalenteParaMetodoOtro() {
+        var first = new CrearLiquidacionEmpleadoRequestDto(LocalDate.of(2026, 1, 10), MetodoPago.OTRO,
+                " Transferencia ", "nota", Map.of(10L, new BigDecimal("25.00")));
+        var second = new CrearLiquidacionEmpleadoRequestDto(first.fechaEfectiva(), first.metodoPago(),
+                "Transferencia", "nota", first.aplicaciones());
+        assertEquals(service.hash(first), service.hash(second));
+    }
+
+    @Test void validaLongitudesDeTextoEnLosLimitesExactos() {
+        var validator = Validation.buildDefaultValidatorFactory().getValidator();
+        var exacto = new CrearLiquidacionEmpleadoRequestDto(LocalDate.now(), MetodoPago.OTRO,
+                "d".repeat(100), "o".repeat(500), Map.of(1L, BigDecimal.ONE));
+        var excedido = new CrearLiquidacionEmpleadoRequestDto(LocalDate.now(), MetodoPago.OTRO,
+                "d".repeat(101), "o".repeat(501), Map.of(1L, BigDecimal.ONE));
+        assertTrue(validator.validate(exacto).isEmpty());
+        assertEquals(2, validator.validate(excedido).size());
+    }
+
+    @Test void descripcionVaciaSoloSeAceptaCuandoMetodoNoEsOtro() {
+        when(liquidacionRepository.findByNegocio_NegocioIdAndClaveIdempotencia(5L,"key-1")).thenReturn(Optional.empty());
+        var otroVacio = new CrearLiquidacionEmpleadoRequestDto(LocalDate.now(), MetodoPago.OTRO,
+                "   ", null, Map.of(10L, BigDecimal.ONE));
+        var ordinarioDescrito = new CrearLiquidacionEmpleadoRequestDto(LocalDate.now(), MetodoPago.EFECTIVO,
+                "caja", null, Map.of(10L, BigDecimal.ONE));
+        assertEquals(400, assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.crear(5L, otroVacio, "key-1", owner.getEmail())).getStatusCode().value());
+        assertEquals(400, assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.crear(5L, ordinarioDescrito, "key-1", owner.getEmail())).getStatusCode().value());
+        verifyNoInteractions(remuneracionRepository);
+    }
+
     private CrearLiquidacionEmpleadoRequestDto request() {
         return new CrearLiquidacionEmpleadoRequestDto(LocalDate.of(2026,1,10),MetodoPago.EFECTIVO,null,null,
                 Map.of(10L,new BigDecimal("25.00")));
@@ -134,10 +195,6 @@ class OwnerLiquidacionesServiceTests {
         return remuneracion;
     }
     private void field(Object target,String name,Object value) throws Exception {
-        var field=RemuneracionEmpleado.class.getDeclaredField(name); field.setAccessible(true); field.set(target,value);
-    }
-    private String hash(CrearLiquidacionEmpleadoRequestDto request) throws Exception {
-        String body=request.fechaEfectiva()+"|"+request.metodoPago()+"|"+request.descripcionMetodo()+"|"+request.observaciones()+"|"+new java.util.TreeMap<>(request.aplicaciones());
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(body.getBytes(StandardCharsets.UTF_8)));
+        var field=target.getClass().getDeclaredField(name); field.setAccessible(true); field.set(target,value);
     }
 }

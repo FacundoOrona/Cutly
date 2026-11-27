@@ -3,6 +3,7 @@ package com.dev.cutly.liquidacion.repository;
 import com.dev.cutly.liquidacion.entity.AplicacionLiquidacion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,5 +17,9 @@ public interface AplicacionLiquidacionRepository extends JpaRepository<Aplicacio
             "and a.remuneracion.remuneracionId in :ids group by a.remuneracion.remuneracionId")
     List<Object[]> totalesVigentes(@Param("ids") java.util.Collection<Long> ids);
     List<AplicacionLiquidacion> findByLiquidacion_LiquidacionIdOrderByAplicacionLiquidacionId(Long liquidacionId);
+    @EntityGraph(attributePaths = {"remuneracion", "remuneracion.turno", "remuneracion.turno.servicio",
+            "remuneracion.turno.cliente", "remuneracion.turno.clienteLocal"})
+    List<AplicacionLiquidacion> findByLiquidacion_LiquidacionIdInOrderByAplicacionLiquidacionId(java.util.Collection<Long> liquidacionIds);
     List<AplicacionLiquidacion> findByRemuneracion_RemuneracionIdOrderByAplicacionLiquidacionId(Long remuneracionId);
+    long countByLiquidacion_Negocio_NegocioId(Long negocioId);
 }

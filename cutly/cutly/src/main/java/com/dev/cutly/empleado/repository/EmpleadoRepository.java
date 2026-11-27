@@ -3,6 +3,7 @@ package com.dev.cutly.empleado.repository;
 import com.dev.cutly.empleado.entity.Empleado;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,7 @@ import java.util.Optional;
 
 public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
 
+    @EntityGraph(attributePaths = "usuario")
     List<Empleado> findByNegocio_NegocioIdOrderByEmpleadoIdAsc(Long negocioId);
 
     List<Empleado> findByNegocio_NegocioIdAndActivoTrueOrderByEmpleadoIdAsc(Long negocioId);

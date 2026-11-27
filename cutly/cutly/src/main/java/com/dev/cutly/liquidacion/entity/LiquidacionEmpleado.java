@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -47,6 +48,8 @@ public class LiquidacionEmpleado {
     @OneToMany(mappedBy = "liquidacion", cascade = CascadeType.ALL, orphanRemoval = false)
     private List<AplicacionLiquidacion> aplicaciones = new ArrayList<>();
 
+    public List<AplicacionLiquidacion> getAplicaciones() { return Collections.unmodifiableList(aplicaciones); }
+
     public LiquidacionEmpleado(Negocio negocio, Empleado empleado, Usuario owner, LocalDate fechaEfectiva,
                               MetodoPago metodoPago, String descripcionMetodo, String observaciones,
                               BigDecimal total, String clave, String hash) {
@@ -57,7 +60,20 @@ public class LiquidacionEmpleado {
         this.claveIdempotencia = clave; this.hashSolicitud = hash;
     }
 
-    public void agregar(AplicacionLiquidacion aplicacion) { aplicaciones.add(aplicacion); }
+    public void agregar(AplicacionLiquidacion aplicacion) {
+        if (liquidacionId != null) throw new IllegalStateException("No se pueden modificar aplicaciones de una liquidación persistida");
+        if (aplicacion == null || aplicacion.getLiquidacion() != this) throw new IllegalArgumentException("La aplicación debe pertenecer a esta liquidación");
+        aplicaciones.add(aplicacion);
+    }
+
+    @PrePersist
+    private void validarIntegridad() {
+        if (aplicaciones.isEmpty() || aplicaciones.stream().anyMatch(a -> a == null || a.getImporte() == null))
+            throw new IllegalStateException("La liquidación debe incluir aplicaciones válidas");
+        BigDecimal suma = aplicaciones.stream().map(AplicacionLiquidacion::getImporte).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (importeTotal == null || importeTotal.compareTo(suma) != 0)
+            throw new IllegalStateException("El total de la liquidación debe coincidir con sus aplicaciones");
+    }
     public void anular(String motivo, Usuario owner) {
         if (estado != EstadoLiquidacion.VIGENTE) throw new IllegalStateException("La liquidación ya fue anulada");
         estado = EstadoLiquidacion.ANULADA; motivoAnulacion = motivo;
