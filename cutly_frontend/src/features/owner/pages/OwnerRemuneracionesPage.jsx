@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Building2, CircleAlert, LoaderCircle, RefreshCw, Wallet } from 'lucide-react'
+import { Building2, CheckCircle2, CircleAlert, Eye, LoaderCircle, RefreshCw, Wallet } from 'lucide-react'
 import { useActiveOwnerBusiness } from '../context/OwnerBusinessContext.jsx'
 import { getOwnerRemuneracionesErrorMessage } from '../api/ownerRemuneracionesApi.js'
 import { useOwnerRemuneraciones, useOwnerRemuneracionesResumen } from '../hooks/useOwnerRemuneraciones.js'
+import OwnerRemuneracionDetailDrawer from '../components/OwnerRemuneracionDetailDrawer.jsx'
+import OwnerLiquidacionForm from '../components/OwnerLiquidacionForm.jsx'
 import './OwnerRemuneracionesPage.css'
 
 const pageSize = 20
@@ -28,6 +30,10 @@ function dateTime(value) {
   return new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed)
 }
 
+function isEligibleForLiquidacion(item) {
+  return item.estado === 'CONFIRMADA' && Number(item.importeConfirmado) > 0 && Number(item.saldoPendiente) > 0
+}
+
 function StateMessage({ error, loading, empty, onRetry, retrying }) {
   if (error) return <div className="owner-remuneraciones-state is-error" role="alert"><CircleAlert size={17} /><span>{error}</span>{onRetry && <button type="button" className="owners-secondary-button" onClick={onRetry} disabled={retrying}><RefreshCw size={14} /> Reintentar</button>}</div>
   if (loading) return <div className="owner-remuneraciones-state" role="status"><LoaderCircle size={18} className="spin" /> Cargando…</div>
@@ -49,6 +55,10 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [page, setPage] = useState(0)
+  const [selectedRemuneraciones, setSelectedRemuneraciones] = useState({})
+  const [detailId, setDetailId] = useState(null)
+  const [showLiquidacionForm, setShowLiquidacionForm] = useState(false)
+  const [successNotice, setSuccessNotice] = useState('')
   const summaryQuery = useOwnerRemuneracionesResumen(negocioId)
   const summary = Array.isArray(summaryQuery.data) ? summaryQuery.data : []
   const dateRangeInvalid = Boolean(desde && hasta && desde > hasta)
@@ -57,6 +67,10 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
   const remuneraciones = Array.isArray(result?.content) ? result.content : []
   const currentPage = typeof result?.number === 'number' ? result.number : page
   const totalPages = typeof result?.totalPages === 'number' ? result.totalPages : null
+  const selectedItems = Object.values(selectedRemuneraciones)
+  const selectedEmployeeId = selectedItems[0]?.empleadoId
+  const selectedEmployee = summary.find((employee) => String(employee.empleadoId) === String(selectedEmployeeId))
+  const detailEmployee = summary.find((employee) => String(employee.empleadoId) === String(detailId?.empleadoId))
 
   function updateFilter(setter, value) {
     setter(value)
@@ -69,6 +83,28 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
     setTab('remuneraciones')
   }
 
+  function toggleRemuneracionSelection(item) {
+    const id = String(item.remuneracionId)
+    setSelectedRemuneraciones((current) => {
+      if (current[id]) {
+        const next = { ...current }
+        delete next[id]
+        return next
+      }
+      if (!isEligibleForLiquidacion(item)) return current
+      const currentEmployeeId = Object.values(current)[0]?.empleadoId
+      if (currentEmployeeId != null && String(currentEmployeeId) !== String(item.empleadoId)) return current
+      return { ...current, [id]: item }
+    })
+  }
+
+  function finishLiquidacion() {
+    setShowLiquidacionForm(false)
+    setSelectedRemuneraciones({})
+    setSuccessNotice('La liquidación se registró correctamente.')
+    setTab('remuneraciones')
+  }
+
   return <>
     <span className="eyebrow"><span className="eyebrow-dot" /> ESPACIO OWNER</span>
     <div className="owners-heading"><div><h1>Remuneraciones</h1><p className="owners-description">Consultá las remuneraciones generadas por los turnos de {negocioNombre || 'el negocio seleccionado'}.</p></div></div>
@@ -76,6 +112,8 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
     <nav className="owner-remuneraciones-tabs" aria-label="Vistas de remuneraciones" role="tablist">
       {tabs.map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={tab === value} className={tab === value ? 'is-active' : ''} onClick={() => setTab(value)}>{label}</button>)}
     </nav>
+
+    {successNotice && <div className="owner-remuneracion-success" role="status"><CheckCircle2 size={17} /><span>{successNotice}</span><button type="button" className="icon-button" onClick={() => setSuccessNotice('')} aria-label="Cerrar confirmación">×</button></div>}
 
     {tab === 'resumen' && <section className="owner-remuneraciones-panel" aria-label="Resumen de remuneraciones por empleado">
       <div className="owner-remuneraciones-panel-heading"><div><h2>Resumen por empleado</h2><p>Importes y cantidades informados por el sistema para el negocio activo.</p></div></div>
@@ -105,6 +143,10 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
         <label className="owner-form-field"><span>Desde</span><input type="date" value={desde} max={hasta || undefined} onChange={(event) => updateFilter(setDesde, event.target.value)} /></label>
         <label className="owner-form-field"><span>Hasta</span><input type="date" value={hasta} min={desde || undefined} onChange={(event) => updateFilter(setHasta, event.target.value)} /></label>
       </div>
+      {selectedItems.length > 0 && <section className="owner-remuneracion-selection" aria-label="Remuneraciones seleccionadas">
+        <div><strong>{selectedItems.length} {selectedItems.length === 1 ? 'remuneración seleccionada' : 'remuneraciones seleccionadas'}</strong><span>{selectedEmployee?.nombre || `Empleado #${selectedEmployeeId}`} · saldo disponible conjunto: {money(selectedItems.reduce((sum, item) => sum + Number(item.saldoPendiente), 0))}</span></div>
+        <div><button type="button" className="owners-secondary-button" onClick={() => { setSelectedRemuneraciones({}); setShowLiquidacionForm(false) }}>Cancelar selección</button><button type="button" className="owner-create-button" onClick={() => { setSuccessNotice(''); setShowLiquidacionForm(true); setTab('liquidaciones') }}>Continuar a liquidación</button></div>
+      </section>}
       <div className="owner-remuneraciones-results" aria-busy={listQuery.isFetching}>
         {dateRangeInvalid ? <StateMessage empty="Corregí el rango de fechas para consultar las remuneraciones." />
           : listQuery.isError ? <StateMessage error={getOwnerRemuneracionesErrorMessage(listQuery.error)} onRetry={() => void listQuery.refetch()} retrying={listQuery.isFetching} />
@@ -112,15 +154,24 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
               : remuneraciones.length === 0 ? <StateMessage empty="No hay remuneraciones para los filtros seleccionados." />
                 : <>
                   <div className="owner-remuneraciones-result-count">{typeof result?.totalElements === 'number' ? `${result.totalElements} resultados` : ''}</div>
-                  <div className="owner-remuneraciones-table-wrap"><table className="owners-table owner-remuneraciones-table"><thead><tr><th>Turno</th><th>Empleado</th><th>Servicio</th><th>Cliente</th><th>Inicio del turno</th><th>Remuneración</th><th>Pagado</th><th>Saldo pendiente</th><th>Estado</th><th>Estado de pago</th></tr></thead><tbody>{remuneraciones.map((item) => <tr key={item.remuneracionId}>
+                  <div className="owner-remuneraciones-table-wrap"><table className="owners-table owner-remuneraciones-table"><thead><tr><th>Seleccionar</th><th>Turno</th><th>Empleado</th><th>Servicio</th><th>Cliente</th><th>Inicio del turno</th><th>Remuneración</th><th>Pagado</th><th>Saldo pendiente</th><th>Estado</th><th>Estado de pago</th><th>Detalle</th></tr></thead><tbody>{remuneraciones.map((item) => {
+                    const eligible = isEligibleForLiquidacion(item)
+                    const selected = Boolean(selectedRemuneraciones[String(item.remuneracionId)])
+                    const belongsToOtherEmployee = selectedEmployeeId != null && String(selectedEmployeeId) !== String(item.empleadoId)
+                    return <tr key={item.remuneracionId}>
+                    <td data-label="Seleccionar"><input type="checkbox" aria-label={`Seleccionar remuneración #${item.remuneracionId}`} title={!eligible ? 'Solo se pueden seleccionar remuneraciones confirmadas con saldo pendiente positivo.' : belongsToOtherEmployee ? 'La selección actual pertenece a otro empleado.' : ''} checked={selected} disabled={!eligible || (!selected && belongsToOtherEmployee)} onChange={() => toggleRemuneracionSelection(item)} /></td>
                     <td data-label="Turno">#{item.turnoId ?? '—'}</td><td data-label="Empleado">{summary.find((employee) => String(employee.empleadoId) === String(item.empleadoId))?.nombre || `#${item.empleadoId}`}</td><td data-label="Servicio">{item.servicioNombre || '—'}</td><td data-label="Cliente">{item.clienteNombre || '—'}</td><td data-label="Inicio del turno">{dateTime(item.fechaHoraInicio)}</td><td data-label="Remuneración" className="owner-remuneraciones-money">{money(item.importeConfirmado)}</td><td data-label="Pagado" className="owner-remuneraciones-money">{money(item.totalPagado)}</td><td data-label="Saldo pendiente" className="owner-remuneraciones-money">{money(item.saldoPendiente)}</td>
                     <td data-label="Estado"><span className={`owner-remuneraciones-status state-${String(item.estado || '').toLowerCase()}`}>{remunerationLabels[item.estado] || item.estado || '—'}</span></td><td data-label="Estado de pago"><span className={`owner-remuneraciones-status payment-${String(item.estadoPago || '').toLowerCase()}`}>{paymentLabels[item.estadoPago] || item.estadoPago || '—'}</span></td>
-                  </tr>)}</tbody></table></div>
+                    <td data-label="Detalle"><button type="button" className="owners-secondary-button owner-remuneracion-detail-button" onClick={() => setDetailId({ remuneracionId: item.remuneracionId, empleadoId: item.empleadoId })} aria-label={`Ver detalle de remuneración #${item.remuneracionId}`}><Eye size={14} /> Ver</button></td>
+                  </tr>})}</tbody></table></div>
                   <nav className="owner-remuneraciones-pagination" aria-label="Paginación de remuneraciones"><span>{typeof result?.totalElements === 'number' ? `${result.totalElements} resultados` : ''}</span><div><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={currentPage === 0 || listQuery.isFetching}>Anterior</button><span>{totalPages != null ? `Página ${currentPage + 1} de ${totalPages}` : `Página ${currentPage + 1}`}</span><button type="button" className="owners-secondary-button" onClick={() => setPage((current) => current + 1)} disabled={listQuery.isFetching || (totalPages != null ? currentPage + 1 >= totalPages : remuneraciones.length < pageSize)}>Siguiente</button></div></nav>
                 </>}
       </div>
     </section>}
 
-    {tab === 'liquidaciones' && <section className="owner-remuneraciones-panel owner-remuneraciones-pending" aria-label="Liquidaciones pendientes"><Wallet size={22} /><h2>Liquidaciones</h2><p>Esta vista estará disponible en una próxima etapa.</p></section>}
+    {tab === 'liquidaciones' && <section className="owner-remuneraciones-panel" aria-label="Registro de liquidaciones"><div className="owner-remuneraciones-panel-heading"><div><h2>Liquidaciones</h2><p>Registro de un pago para las remuneraciones seleccionadas del mismo empleado.</p></div></div>{selectedItems.length > 0 ? <><div className="owner-liquidaciones-selected">{selectedItems.length} remuneraciones de {selectedEmployee?.nombre || `Empleado #${selectedEmployeeId}`} listas para revisar.</div><button type="button" className="owner-create-button" onClick={() => setShowLiquidacionForm(true)}>Abrir formulario de liquidación</button></> : <div className="owner-remuneraciones-state"><Wallet size={20} /> Seleccioná remuneraciones confirmadas en la pestaña Remuneraciones para comenzar.</div>}</section>}
+
+    {detailId && <OwnerRemuneracionDetailDrawer key={`${negocioId}-${detailId.remuneracionId}`} negocioId={negocioId} remuneracionId={detailId.remuneracionId} employeeName={detailEmployee?.nombre} onClose={() => setDetailId(null)} />}
+    {showLiquidacionForm && selectedItems.length > 0 && <OwnerLiquidacionForm key={`${negocioId}-${selectedItems.map((item) => item.remuneracionId).sort().join('-')}`} negocioId={negocioId} empleadoId={selectedEmployeeId} empleadoNombre={selectedEmployee?.nombre || `Empleado #${selectedEmployeeId}`} remuneraciones={selectedItems} onCancel={() => setShowLiquidacionForm(false)} onSuccess={finishLiquidacion} />}
   </>
 }

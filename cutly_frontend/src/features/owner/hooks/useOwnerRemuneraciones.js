@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { getOwnerRemuneraciones, getOwnerRemuneracionesResumen, getOwnerRemuneracion } from '../api/ownerRemuneracionesApi.js'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createOwnerLiquidacion, getOwnerRemuneraciones, getOwnerRemuneracionesResumen, getOwnerRemuneracion } from '../api/ownerRemuneracionesApi.js'
 
 export const ownerRemuneracionesPrefix = (negocioId) => [
   'ownerBusinesses', 'detail', String(negocioId), 'remuneraciones',
@@ -41,5 +41,20 @@ export function useOwnerRemuneracion({ negocioId, remuneracionId }, options = {}
     queryKey: ownerRemuneracionDetailQueryKey({ negocioId, remuneracionId }),
     queryFn: () => getOwnerRemuneracion({ negocioId, remuneracionId }),
     enabled: Boolean(negocioId && remuneracionId) && (options.enabled ?? true),
+  })
+}
+
+export function useCreateOwnerLiquidacion() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createOwnerLiquidacion,
+    onSuccess: (_liquidacion, variables) => {
+      queryClient.invalidateQueries({ queryKey: ownerRemuneracionesPrefix(variables.negocioId) })
+    },
+    onError: (error, variables) => {
+      if (error.response?.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ownerRemuneracionesPrefix(variables.negocioId) })
+      }
+    },
   })
 }
