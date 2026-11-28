@@ -5,6 +5,7 @@ import { getOwnerRemuneracionesErrorMessage } from '../api/ownerRemuneracionesAp
 import { useOwnerRemuneraciones, useOwnerRemuneracionesResumen } from '../hooks/useOwnerRemuneraciones.js'
 import OwnerRemuneracionDetailDrawer from '../components/OwnerRemuneracionDetailDrawer.jsx'
 import OwnerLiquidacionForm from '../components/OwnerLiquidacionForm.jsx'
+import OwnerLiquidacionesSection from '../components/OwnerLiquidacionesSection.jsx'
 import './OwnerRemuneracionesPage.css'
 
 const pageSize = 20
@@ -169,9 +170,9 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
       </div>
     </section>}
 
-    {tab === 'liquidaciones' && <section className="owner-remuneraciones-panel" aria-label="Registro de liquidaciones"><div className="owner-remuneraciones-panel-heading"><div><h2>Liquidaciones</h2><p>Registro de un pago para las remuneraciones seleccionadas del mismo empleado.</p></div></div>{selectedItems.length > 0 ? <><div className="owner-liquidaciones-selected">{selectedItems.length} remuneraciones de {selectedEmployee?.nombre || `Empleado #${selectedEmployeeId}`} listas para revisar.</div><button type="button" className="owner-create-button" onClick={() => setShowLiquidacionForm(true)}>Abrir formulario de liquidación</button></> : <div className="owner-remuneraciones-state"><Wallet size={20} /> Seleccioná remuneraciones confirmadas en la pestaña Remuneraciones para comenzar.</div>}</section>}
+    {tab === 'liquidaciones' && <OwnerLiquidacionesSection negocioId={negocioId} empleados={summary} />}
 
     {detailId && <OwnerRemuneracionDetailDrawer key={`${negocioId}-${detailId.remuneracionId}`} negocioId={negocioId} remuneracionId={detailId.remuneracionId} employeeName={detailEmployee?.nombre} onClose={() => setDetailId(null)} />}
-    {showLiquidacionForm && selectedItems.length > 0 && <OwnerLiquidacionForm key={`${negocioId}-${selectedItems.map((item) => item.remuneracionId).sort().join('-')}`} negocioId={negocioId} empleadoId={selectedEmployeeId} empleadoNombre={selectedEmployee?.nombre || `Empleado #${selectedEmployeeId}`} remuneraciones={selectedItems} onCancel={() => setShowLiquidacionForm(false)} onSuccess={finishLiquidacion} />}
+    {showLiquidacionForm && selectedItems.length > 0 && <OwnerLiquidacionForm key={`${negocioId}-${selectedItems.map((item) => item.remuneracionId).sort().join('-')}`} negocioId={negocioId} empleadoId={selectedEmployeeId} empleadoNombre={selectedEmployee?.nombre || `Empleado #${selectedEmployeeId}`} remuneraciones={selectedItems} onCancel={() => { setShowLiquidacionForm(false); setTab('remuneraciones') }} onSuccess={finishLiquidacion} />}
   </>
 }
