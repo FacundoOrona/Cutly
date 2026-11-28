@@ -181,6 +181,23 @@ class LiquidacionesConcurrencyIntegrationTests {
         assertEquals(new BigDecimal("40.00"), page.getContent().get(0).importeTotal());
     }
 
+    @Test void resumenSumaAplicacionesVigentesYExcluyeLiquidacionAnuladaDeEmpleadoInactivo() {
+        var primera = service.crear(negocio.getNegocioId(), request("summary-first", "20.00"), "summary-first", email);
+        service.crear(negocio.getNegocioId(), request("summary-second", "30.00"), "summary-second", email);
+
+        @SuppressWarnings("unchecked") Map<String,Object> before = (Map<String,Object>) service.resumen(negocio.getNegocioId(), email).get(0);
+        assertEquals(new BigDecimal("50.00"), before.get("totalPagado"));
+        assertEquals(new BigDecimal("50.00"), before.get("totalPendiente"));
+        assertEquals(1, before.get("parcialmentePagadas"));
+
+        service.anular(negocio.getNegocioId(), primera.liquidacionId(), "Corrección de prueba", email);
+
+        @SuppressWarnings("unchecked") Map<String,Object> after = (Map<String,Object>) service.resumen(negocio.getNegocioId(), email).get(0);
+        assertEquals(new BigDecimal("30.00"), after.get("totalPagado"));
+        assertEquals(new BigDecimal("70.00"), after.get("totalPendiente"));
+        assertEquals(1, after.get("parcialmentePagadas"));
+    }
+
     @Test void ownerAjenoYIdsDeOtroNegocioNoAccedenALosDatos() {
         Usuario otroOwner = usuario("Otro", "Owner", 84000001, "otro-owner@test.local", Rol.OWNER);
         otroOwner = usuarioRepository.saveAndFlush(otroOwner);

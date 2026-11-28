@@ -190,7 +190,7 @@ public class OwnerLiquidacionesService {
                 if (estado==EstadoRemuneracion.PENDIENTE_REVISION_MANUAL) revision++;
                 if (estado==EstadoRemuneracion.PENDIENTE_DEFINICION_FINANCIERA) definicion++;
                 if (estado!=EstadoRemuneracion.CONFIRMADA || monto==null || monto.signum()<=0) continue;
-                BigDecimal pendiente=monto.subtract(pagado);
+                BigDecimal pendiente=monto.subtract(pagado).max(BigDecimal.ZERO);
                 confirmado=confirmado.add(monto); saldo=saldo.add(pendiente);
                 if (pagado.signum()==0) pendientes++; else if (pendiente.signum()>0) parciales++; else completos++;
             }

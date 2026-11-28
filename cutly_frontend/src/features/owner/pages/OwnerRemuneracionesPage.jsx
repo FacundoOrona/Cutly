@@ -129,7 +129,7 @@ function OwnerRemuneracionesContent({ negocioId, negocioNombre }) {
                 <div className="is-balance"><dt>Total pendiente</dt><dd>{money(employee.totalPendiente)}</dd></div>
               </dl>
               <div className="owner-remuneraciones-counts">
-                <span>Pendientes <b>{employee.pendientes}</b></span><span>Parciales <b>{employee.parcialmentePagadas}</b></span><span>Pagadas <b>{employee.totalmentePagadas}</b></span>
+                <span>Sin pagos <b>{employee.pendientes}</b></span><span>Parciales <b>{employee.parcialmentePagadas}</b></span><span>Pagadas <b>{employee.totalmentePagadas}</b></span>
                 <span>Revisión manual <b>{employee.pendientesRevisionManual}</b></span><span>Definición financiera <b>{employee.pendientesDefinicionFinanciera}</b></span>
               </div>
               <button type="button" className="owners-secondary-button" onClick={() => filterEmployee(employee.empleadoId)}>Ver remuneraciones</button>

@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -151,6 +152,52 @@ class OwnerLiquidacionesServiceTests {
         var second = new CrearLiquidacionEmpleadoRequestDto(first.fechaEfectiva(), first.metodoPago(),
                 "Transferencia", "nota", first.aplicaciones());
         assertEquals(service.hash(first), service.hash(second));
+    }
+
+    @Test void resumenCalculaIndicadoresPorRemuneracionSinDuplicarAgregaciones() {
+        Empleado empleado = empleado();
+        empleado.setActivo(false);
+        when(remuneracionRepository.resumenPorEmpleado(5L)).thenReturn(List.<Object[]>of(
+                resumenRow(EstadoRemuneracion.CONFIRMADA, "100.00", "0.00"),
+                resumenRow(EstadoRemuneracion.CONFIRMADA, "80.00", "30.00"),
+                resumenRow(EstadoRemuneracion.CONFIRMADA, "120.00", "50.00"),
+                resumenRow(EstadoRemuneracion.CONFIRMADA, "40.00", "40.00"),
+                resumenRow(EstadoRemuneracion.CONFIRMADA, "10.00", "15.00"),
+                resumenRow(EstadoRemuneracion.PENDIENTE_REVISION_MANUAL, null, "0.00"),
+                resumenRow(EstadoRemuneracion.PENDIENTE_DEFINICION_FINANCIERA, null, "0.00"),
+                resumenRow(EstadoRemuneracion.SIN_REMUNERACION, null, "0.00")));
+        when(empleadoRepository.findByNegocio_NegocioIdOrderByEmpleadoIdAsc(5L)).thenReturn(List.of(empleado));
+
+        @SuppressWarnings("unchecked") Map<String, Object> row = (Map<String, Object>) service.resumen(5L, owner.getEmail()).get(0);
+
+        assertEquals(new BigDecimal("350.00"), row.get("totalConfirmado"));
+        assertEquals(new BigDecimal("135.00"), row.get("totalPagado"));
+        assertEquals(new BigDecimal("220.00"), row.get("totalPendiente"));
+        assertEquals(1, row.get("pendientes"));
+        assertEquals(2, row.get("parcialmentePagadas"));
+        assertEquals(2, row.get("totalmentePagadas"));
+        assertEquals(1, row.get("pendientesRevisionManual"));
+        assertEquals(1, row.get("pendientesDefinicionFinanciera"));
+        assertEquals(5, (int) row.get("pendientes") + (int) row.get("parcialmentePagadas") + (int) row.get("totalmentePagadas"));
+        assertFalse(empleado.isActivo());
+        verify(remuneracionRepository).resumenPorEmpleado(5L);
+    }
+
+    @Test void resumenNoPermiteSaldoPendienteNegativoPorSobreaplicacion() {
+        Empleado empleado = empleado();
+        when(remuneracionRepository.resumenPorEmpleado(5L)).thenReturn(List.<Object[]>of(
+                resumenRow(EstadoRemuneracion.CONFIRMADA, "100.00", "125.00")));
+        when(empleadoRepository.findByNegocio_NegocioIdOrderByEmpleadoIdAsc(5L)).thenReturn(List.of(empleado));
+
+        @SuppressWarnings("unchecked") Map<String, Object> row = (Map<String, Object>) service.resumen(5L, owner.getEmail()).get(0);
+
+        assertEquals(BigDecimal.ZERO, row.get("totalPendiente"));
+        assertEquals(1, row.get("totalmentePagadas"));
+        assertEquals(new BigDecimal("125.00"), row.get("totalPagado"));
+    }
+
+    private Object[] resumenRow(EstadoRemuneracion estado, String monto, String pagado) {
+        return new Object[]{4L, estado, monto == null ? null : new BigDecimal(monto), new BigDecimal(pagado)};
     }
 
     @Test void validaLongitudesDeTextoEnLosLimitesExactos() {
